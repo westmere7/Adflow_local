@@ -1,0 +1,49 @@
+# Keep the image to what the browser actually loads.
+.git
+.github
+.claude
+.gemini
+.vscode
+node_modules
+_temp
+
+# Dev tooling and deploy configs for other targets
+dev-server.js
+run-server.bat
+Dockerfile
+docker-compose.yml
+.dockerignore
+vercel.json
+.vercelignore
+
+# Repo docs and debris (the in-app docs live in scripts/docs-content.js)
+README.md
+DEPLOYMENT.md
+knowledge_base.md
+error_logs.txt
+run-docker.bat
+stop-docker.bat
+run-docker.command
+stop-docker.command
+.gitattributes
+
+# Electron desktop shell — not part of the web deployment
+node_modules
+dist
+electron
+package.json
+package-lock.json
+build
+ELECTRON.md
+MAC-README.txt
+run-electron.bat
+run-electron.command
+
+# Repo metadata and crash debris that must never reach the web root
+.gitignore
+*.stackdump
+build-app.bat
+build-app.command
+SECURITY.md
+DEPENDENCIES.md
+*.pptx

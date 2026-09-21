@@ -1,0 +1,27 @@
+# Line endings. Without this, a Windows checkout can hand a macOS or Linux user a
+# shell script full of CR characters, which fails with "bad interpreter: ^M".
+* text=auto
+
+# Shell scripts must always be LF, whatever the checkout platform.
+*.command text eol=lf
+*.sh      text eol=lf
+Dockerfile   text eol=lf
+docker/*.conf text eol=lf
+
+# Windows batch files must always be CRLF.
+*.bat text eol=crlf
+
+# Never touch binary payloads.
+*.flow  binary
+*.woff2 binary
+*.woff  binary
+*.otf   binary
+*.ttf   binary
+*.wasm  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.mp4   binary

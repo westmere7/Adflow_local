@@ -1,0 +1,80 @@
+{
+  "name": "rmit-adflow",
+  "productName": "RMIT Adflow",
+  "version": "0.60.1",
+  "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition \u2014 distributed as a portable folder, not an installer.",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "RMIT University",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "prebuild": "node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
+    "build:win": "npm run prebuild && electron-builder --win --dir",
+    "build:mac": "npm run prebuild && electron-builder --mac --dir",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});console.log('dist/ removed')\"",
+    "release:win": "npm run clean && npm run build:win",
+    "release:mac": "npm run clean && npm run build:mac"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "au.edu.rmit.adflow",
+    "productName": "RMIT Adflow",
+    "copyright": "RMIT University",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asar": false,
+    "files": [
+      "index.html",
+      "preview.html",
+      "batch.html",
+      "styles.css",
+      "scripts/**/*",
+      "lib/**/*",
+      "data/**/*",
+      "Startup/**/*",
+      "electron/**/*",
+      "build/icon.png",
+      "!scripts/build-docs-screenshots.mjs",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.graphics-design",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "linux": {
+      "target": [
+        "dir"
+      ],
+      "icon": "build/icon.png",
+      "category": "Graphics"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+# Files that should not be uploaded to the Vercel static deployment.
+.git
+.github
+.claude
+.gemini
+node_modules
+_temp
+dev-server.js
+run-server.bat
+Dockerfile
+docker-compose.yml
+docker
+.dockerignore
+README.md
+DEPLOYMENT.md
+knowledge_base.md
+error_logs.txt
+diff_props.txt
+workflow-test.txt
+run-docker.bat
+stop-docker.bat
+run-docker.command
+stop-docker.command
+
+# Electron desktop shell — not part of the web deployment
+node_modules
+dist
+electron
+package.json
+package-lock.json
+build
+ELECTRON.md
+run-electron.bat
+run-electron.command
+
+# Repo metadata and crash debris
+.gitignore
+.gitattributes
+*.stackdump
+build-app.bat
+build-app.command
+SECURITY.md
+DEPENDENCIES.md
+*.pptx

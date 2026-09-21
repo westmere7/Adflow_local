@@ -1,0 +1,6684 @@
+
+:root {
+  --bg-body: #0b0c0f;
+  --bg-panel: #121419;
+  --bg-input: #181b22;
+  --bg-btn: #1f2330;
+  --border-light: #272c3a;
+  --border-btn: #3a4055;
+  --text-main: #c7ccdb;
+  --text-muted: #5a6178;
+  --text-bright: #ffffff;
+  --text-label: #9aa1b6;
+  --accent-base: #7c5cff;
+  --accent-hover: #9079ff;
+  --accent-light: #b5a9ff;
+  --accent-dark: #2a1f55;
+  --text-accent: var(--accent-light);
+  --text-on-accent: #ffffff;
+  --table-zebra-1: rgba(255, 255, 255, 0.018);
+  --table-zebra-2: rgba(255, 255, 255, 0.036);
+  --overlay-hover: rgba(255, 255, 255, 0.04);
+  --overlay-hover-subtle: rgba(255, 255, 255, 0.03);
+  --shadow-light: rgba(0, 0, 0, 0.25);
+  --shadow-medium: rgba(0, 0, 0, 0.4);
+  --shadow-heavy: rgba(0, 0, 0, 0.55);
+}
+
+body.theme-light {
+  color-scheme: light;
+  --bg-body: #f1f5f9;
+  --bg-panel: #ffffff;
+  --bg-input: #f8fafc;
+  --bg-btn: #e2e8f0;
+  --border-light: #cbd5e1;
+  --border-btn: #94a3b8;
+  --text-main: #334155;
+  --text-muted: #64748b;
+  --text-bright: #0f172a;
+  --text-label: #475569;
+  --accent-base: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-light: #93c5fd;
+  --accent-dark: #e0f2fe;
+  --text-on-accent: #ffffff;
+  --table-zebra-1: rgba(0, 0, 0, 0.018);
+  --table-zebra-2: rgba(0, 0, 0, 0.036);
+  --overlay-hover: rgba(0, 0, 0, 0.04);
+  --overlay-hover-subtle: rgba(0, 0, 0, 0.03);
+  --shadow-light: rgba(15, 23, 42, 0.08);
+  --shadow-medium: rgba(15, 23, 42, 0.12);
+  --shadow-heavy: rgba(15, 23, 42, 0.16);
+}
+
+/* ============================================================================
+   Scrollbars — one thin, themed bar everywhere
+   ----------------------------------------------------------------------------
+   Chromium's defaults are ~15px wide with stepper arrows at each end. Inside a
+   design tool they read as browser furniture, and in the desktop build, where
+   there is no browser around them, they simply look broken.
+
+   The thumb is painted inside a transparent border rather than across the full
+   track: the track stays a comfortable 10px pointer target while the visible bar
+   is 6px. `background-clip: padding-box` is what keeps that border transparent
+   instead of painting the thumb colour underneath it.
+
+   Colours come from the theme variables through color-mix, so both themes are
+   covered by this one block — including Light, where the very same declaration
+   yields a dark thumb because `--text-muted` is dark there. Nothing to keep in
+   sync when a theme is added.
+
+   Deliberately NOT using the standard `scrollbar-width` / `scrollbar-color`
+   properties here: when both are present, Chromium honours the standard ones and
+   ignores these pseudo-elements entirely, which would cost the hover and active
+   states. They are applied only where the pseudo-elements are unsupported (see
+   the @supports block below, which is what Firefox falls into). The one
+   `scrollbar-width: none` elsewhere in this file is scoped to inline-editing
+   layer names, where hiding the bar outright is the intent.
+   ========================================================================== */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--text-muted) 50%, transparent);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--text-muted) 80%, transparent);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--accent-base);
+}
+
+/* Steppers, and the dead square where a vertical and horizontal bar meet.
+   Both are pure clutter at this size. */
+*::-webkit-scrollbar-button { display: none; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* Engines without the pseudo-elements (Firefox) get the standard properties
+   instead. Scoped this way round so Chromium never sees them — see above. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--text-muted) 55%, transparent) transparent;
+  }
+}
+
+    @font-face {
+      font-family: 'Museo';
+      src: url('data/fonts/Museo300-Regular.woff2') format('woff2');
+      font-weight: 300;
+    }
+
+    @font-face {
+      font-family: 'Museo';
+      src: url('data/fonts/Museo500-Regular.woff2') format('woff2');
+      font-weight: 500;
+    }
+
+    @font-face {
+      font-family: 'Museo';
+      src: url('data/fonts/Museo700-Regular.woff2') format('woff2');
+      font-weight: 700;
+    }
+
+    @font-face {
+      font-family: 'Helvetica Neue LT Pro';
+      src: url('data/fonts/helveticaneueltpro_lt.woff2') format('woff2');
+      font-weight: 300;
+    }
+
+    @font-face {
+      font-family: 'Helvetica Neue LT Pro';
+      src: url('data/fonts/helveticaneueltpro_roman.woff2') format('woff2');
+      font-weight: 400;
+    }
+
+    @font-face {
+      font-family: 'Helvetica Neue LT Pro';
+      src: url('data/fonts/helveticaneueltpro.woff2') format('woff2');
+      font-weight: 500;
+    }
+
+    @keyframes anim-zoom-in {
+      from { opacity: 0; transform: scale(var(--zoom-from, 1.1)); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes anim-zoom-in-nofade {
+      from { transform: scale(var(--zoom-from, 1.1)); }
+      to { transform: scale(1); }
+    }
+
+    @keyframes anim-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* 'Rise' text entrance — unit travels out from under its overflow mask.
+       One keyframe per direction; 'up' keeps the original name so projects saved
+       before directions existed are unchanged. Mirrored in the export bundle's
+       inline <style> (export-pipeline.js) — keep both in step. */
+    @keyframes anim-rise {
+      from { transform: translateY(115%); }
+      to { transform: translateY(0); }
+    }
+    @keyframes anim-rise-down {
+      from { transform: translateY(-115%); }
+      to { transform: translateY(0); }
+    }
+    @keyframes anim-rise-left {
+      from { transform: translateX(-115%); }
+      to { transform: translateX(0); }
+    }
+    @keyframes anim-rise-right {
+      from { transform: translateX(115%); }
+      to { transform: translateX(0); }
+    }
+    /* The optional fade (riseFade) composes anim-fade-in on its own linear
+       track alongside anim-rise — see buildRiseContentHTML. */
+
+    /* 'Word Pop' — per-word scale + fade, driven with an overshoot ease in the
+       animation shorthand so scale passes 1 and settles back. */
+    @keyframes anim-word-pop {
+      from { opacity: 0; transform: scale(0.72); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* 'Cursor' text entrance — a caret appears, then the text slides
+       horizontally out of it (see buildCursorContentHTML / setupCursorLines).
+       -center carries the "Center out" wrapper motion; -blink/-hide drive the
+       caret's own timeline. Mirrored in the export bundle's inline <style>
+       (export-pipeline.js) — keep both in step. */
+    @keyframes anim-cursor-slide {
+      from { transform: translateX(-106%); }
+      to { transform: translateX(0); }
+    }
+    /* Whole block centres on its own width (the 53% default). Line by line
+       overrides --cur-shift with a pixel offset per line, so every line's
+       cursor waits on one shared column instead of half its own width in —
+       see setupCursorLines. */
+    @keyframes anim-cursor-center {
+      from { transform: translateX(var(--cur-shift, 53%)); }
+      to { transform: translateX(0); }
+    }
+    @keyframes anim-cursor-blink {
+      0%, 39% { opacity: 1; }
+      40%, 69% { opacity: 0; }
+      70%, 100% { opacity: 1; }
+    }
+    @keyframes anim-cursor-hide {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    /* 'Unreveal' — the inverse of Reveal: each unit travels back behind its mask,
+       returning the way it came in. Mirrored in the export bundle's inline
+       <style> (export-pipeline.js) — keep both in step. */
+    @keyframes anim-unreveal-up {
+      from { transform: translateY(0); }
+      to { transform: translateY(115%); }
+    }
+    @keyframes anim-unreveal-down {
+      from { transform: translateY(0); }
+      to { transform: translateY(-115%); }
+    }
+    @keyframes anim-unreveal-left {
+      from { transform: translateX(0); }
+      to { transform: translateX(-115%); }
+    }
+    @keyframes anim-unreveal-right {
+      from { transform: translateX(0); }
+      to { transform: translateX(115%); }
+    }
+
+    @keyframes anim-slide-up {
+      from { opacity: 0; translate: 0 20px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes anim-slide-up-nofade {
+      from { translate: 0 20px; }
+      to { translate: 0 0; }
+    }
+
+    @keyframes anim-slide-down {
+      from { opacity: 0; translate: 0 -20px; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes anim-slide-down-nofade {
+      from { translate: 0 -20px; }
+      to { translate: 0 0; }
+    }
+
+    @keyframes anim-slide-left {
+      from { opacity: 0; translate: 20px 0; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes anim-slide-left-nofade {
+      from { translate: 20px 0; }
+      to { translate: 0 0; }
+    }
+
+    @keyframes anim-slide-right {
+      from { opacity: 0; translate: -20px 0; }
+      to { opacity: 1; translate: 0 0; }
+    }
+    @keyframes anim-slide-right-nofade {
+      from { translate: -20px 0; }
+      to { translate: 0 0; }
+    }
+
+    @keyframes anim-pop-in {
+      from { opacity: 0; scale: 0.8; }
+      to { opacity: 1; scale: 1; }
+    }
+    @keyframes anim-pop-in-nofade {
+      from { scale: 0.8; }
+      to { scale: 1; }
+    }
+
+    @keyframes anim-typing {
+
+      from { clip-path: inset(0 100% 0 0); }
+
+      to { clip-path: inset(0 0 0 0); }
+
+    }
+
+
+    @keyframes anim-fade-typing {
+
+      0% {
+
+        -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%);
+
+        -webkit-mask-size: 300% 100%;
+
+        -webkit-mask-position: 100% 0;
+
+      }
+
+      100% {
+
+        -webkit-mask-position: 0 0;
+
+      }
+
+    }
+
+
+    @keyframes anim-bg-grow {
+
+      from { transform: scaleX(0); }
+
+      to { transform: scaleX(1); }
+
+    }
+
+    @keyframes anim-swipe-left  { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes anim-swipe-right { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes anim-swipe-up    { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes anim-swipe-down  { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes anim-swipe-left-fade  { from { clip-path: inset(0 0 0 100%); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+    @keyframes anim-swipe-right-fade { from { clip-path: inset(0 100% 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+    @keyframes anim-swipe-up-fade    { from { clip-path: inset(100% 0 0 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+    @keyframes anim-swipe-down-fade  { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+
+    /* Exit ("out") animations — reverse of the entry presets, played near frame end. */
+    @keyframes anim-fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes anim-blur-out { from { filter: blur(0px); opacity: 1; } to { filter: blur(20px); opacity: 0; } }
+    @keyframes anim-blur-out-nofade { from { filter: blur(0px); } to { filter: blur(20px); } }
+    @keyframes anim-swipe-out-left  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
+    @keyframes anim-swipe-out-right { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 100% 0 0); } }
+    @keyframes anim-swipe-out-up    { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(100% 0 0 0); } }
+    @keyframes anim-swipe-out-down  { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 100% 0); } }
+    @keyframes anim-swipe-out-left-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 0 100%); opacity: 0; } }
+    @keyframes anim-swipe-out-right-fade { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 100% 0 0); opacity: 0; } }
+    @keyframes anim-swipe-out-up-fade    { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(100% 0 0 0); opacity: 0; } }
+    @keyframes anim-swipe-out-down-fade  { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 0 100% 0); opacity: 0; } }
+
+
+    @keyframes eff-pulse {
+
+      0% {
+
+        scale: 1;
+
+      }
+
+
+      50% {
+
+        scale: var(--pulse-scale, 1.05);
+
+      }
+
+
+      100% {
+
+        scale: 1;
+
+      }
+
+    }
+
+
+    @keyframes eff-float {
+
+      0% {
+
+        translate: 0 0;
+
+      }
+
+
+      50% {
+
+        translate: var(--float-x, 0px) var(--float-y, -10px);
+
+      }
+
+
+      100% {
+
+        translate: 0 0;
+
+      }
+
+    }
+
+
+    @keyframes eff-flash {
+
+
+      0%,
+
+      50%,
+
+      100% {
+
+        opacity: 1;
+
+      }
+
+
+      25%,
+
+      75% {
+
+        opacity: 0;
+
+      }
+
+    }
+
+
+    @keyframes eff-wiggle {
+      0%, 100% {
+        rotate: -5deg;
+      }
+      50% {
+        rotate: 5deg;
+      }
+    }
+
+
+    @keyframes eff-spin {
+      100% {
+        rotate: var(--spin-target, 360deg);
+      }
+    }
+
+    /* ---- Surface effect: Underline ---------------------------------------
+       Keep byte-identical to the copy in export-pipeline.js's CSS template —
+       the editor and the exported ad have to agree.
+
+       The rule is the TEXT SPAN's own background, not an overlay on the layer
+       box: an inline box's background is laid out per line fragment, so wrapped
+       text gets one underline per line, each the width of its own line, with no
+       measuring. box-decoration-break:clone is what makes each fragment its own
+       painting area rather than one continuous strip.
+
+       Animating background-size / background-position-x rather than a transform
+       keeps this safe on the timeline, where the entrance and the effect end up
+       on the same node and a transform would drag the type with it. The flat
+       stretches in the middle and at the end are the hold and the pause. */
+    @keyframes eff-underline {
+      0%        { background-size: 0% var(--ul-size, 3px);   background-position-x: left; }
+      26%, 58%  { background-size: 100% var(--ul-size, 3px); background-position-x: left; }
+      59%       { background-size: 100% var(--ul-size, 3px); background-position-x: right; }
+      86%, 100% { background-size: 0% var(--ul-size, 3px);   background-position-x: right; }
+    }
+
+    /* The span runs its OWN copy of the animation off --fx-dur/--fx-delay
+       rather than inheriting, because the node carrying the effect differs
+       between the timeline and the export. --ul-offset lifts the rule off the
+       text's baseline box. */
+    .fx-underline {
+      background-image: linear-gradient(var(--ul-color, #e61e2a), var(--ul-color, #e61e2a));
+      background-repeat: no-repeat;
+      background-position: left calc(100% - var(--ul-offset, 0px));
+      background-size: 0% var(--ul-size, 3px);
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      animation: eff-underline var(--fx-dur, 2s) ease-in-out var(--fx-delay, 0s) infinite;
+    }
+
+
+    @keyframes eff-heartbeat {
+
+      0% {
+
+        scale: 1;
+
+      }
+
+
+      14% {
+
+        scale: var(--heartbeat-scale, 1.3);
+
+      }
+
+
+      28% {
+
+        scale: 1;
+
+      }
+
+
+      42% {
+
+        scale: var(--heartbeat-scale, 1.3);
+
+      }
+
+
+      70% {
+
+        scale: 1;
+
+      }
+
+    }
+
+
+    @keyframes eff-pan {
+      0% {
+        translate: var(--pan-x, 0px) var(--pan-y, 0px);
+        rotate: var(--pan-rotate, 0deg);
+        opacity: var(--pan-opacity-start, 1);
+      }
+      100% {
+        translate: 0 0;
+        rotate: 0deg;
+        opacity: 1;
+      }
+    }
+
+
+    @keyframes eff-zoom {
+      0% { scale: 1; }
+      100% { scale: var(--zoom-target, 1.5); }
+    }
+
+    @keyframes eff-pulse-inverse {
+      0% { scale: 1; }
+      50% { scale: var(--pulse-scale-inverse, 0.9524); }
+      100% { scale: 1; }
+    }
+    @keyframes eff-float-inverse {
+      0% { translate: 0 0; }
+      50% { translate: var(--float-x-inverse, 0px) var(--float-y-inverse, 10px); }
+      100% { translate: 0 0; }
+    }
+    @keyframes eff-wiggle-inverse {
+      0%, 100% { rotate: 5deg; }
+      50% { rotate: -5deg; }
+    }
+    @keyframes eff-spin-inverse {
+      100% { rotate: var(--spin-target-inverse, -360deg); }
+    }
+    @keyframes eff-heartbeat-inverse {
+      0% { scale: 1; }
+      14% { scale: var(--heartbeat-scale-inverse, 0.7692); }
+      28% { scale: 1; }
+      42% { scale: var(--heartbeat-scale-inverse, 0.7692); }
+      70% { scale: 1; }
+    }
+    @keyframes eff-pan-inverse {
+      0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); }
+      100% { translate: 0 0; rotate: 0deg; }
+    }
+    @keyframes eff-zoom-inverse {
+      0% { scale: 1; }
+      100% { scale: var(--zoom-target-inverse, 0.6667); }
+    }
+
+
+    * {
+
+      box-sizing: border-box;
+
+      margin: 0;
+
+      padding: 0;
+
+    }
+
+
+    html,
+
+    body {
+
+      height: 100%;
+
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+      color: var(--text-main);
+
+      background: var(--bg-body);
+
+      overflow: hidden;
+
+      color-scheme: dark;
+
+    }
+
+
+    button {
+
+      font-family: inherit;
+
+      color: inherit;
+
+    }
+
+
+    :focus {
+
+      outline: none;
+
+    }
+
+
+    ::selection {
+
+      background: var(--accent-base);
+
+      color: var(--text-bright);
+
+    }
+
+
+    /* ---------- layout ---------- */
+
+    .app {
+
+      display: grid;
+
+      grid-template-rows: 48px 1fr;
+
+      grid-template-columns: minmax(0, 1fr);
+
+      height: 100vh;
+
+      width: 100%;
+
+    }
+
+
+    .app.preview-lock .topbar,
+
+    .app.preview-lock .panel {
+
+      pointer-events: none;
+
+      opacity: 0.3;
+
+      transition: opacity 0.2s;
+
+    }
+
+
+    .canvas-frame.locked * {
+
+      pointer-events: none !important;
+
+    }
+
+
+    .menu-item {
+
+      position: relative;
+
+      color: var(--text-main);
+
+      padding: 4px 10px;
+
+      cursor: pointer;
+
+      border-radius: 4px;
+
+      user-select: none;
+
+    }
+
+
+    .menu-item:hover {
+
+      background: var(--bg-btn);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .dropdown {
+
+      display: none;
+
+      position: absolute;
+
+      top: 100%;
+
+      left: 0;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 4px;
+
+      min-width: 160px;
+
+      z-index: 200;
+
+      box-shadow: 0 8px 24px var(--shadow-medium);
+
+      padding: 4px 0;
+
+    }
+
+
+    .menu-item:hover .dropdown {
+
+      display: block;
+
+    }
+
+
+    .dropdown-item.has-sub {
+
+      position: relative;
+
+    }
+
+    
+
+    .dropdown-item .sub-dropdown {
+
+      display: none;
+
+      position: absolute;
+
+      top: -4px;
+
+      left: 100%;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 4px;
+
+      min-width: 140px;
+
+      z-index: 201;
+
+      box-shadow: 0 8px 24px var(--shadow-medium);
+
+      padding: 4px 0;
+
+    }
+
+    
+
+    .dropdown-item.has-sub:hover > .sub-dropdown {
+
+      display: block;
+
+    }
+
+
+    .dropdown-item {
+
+      padding: 6px 16px;
+
+      color: var(--text-main);
+
+      display: flex;
+
+      justify-content: space-between;
+
+      align-items: center;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      white-space: nowrap;
+
+    }
+
+
+    /* The row you are already on. Marked with a tinted background and a bright
+       label rather than accent-coloured TEXT, which was the bug: accent text on
+       the accent hover background rendered the workspace name invisible. */
+    .dropdown-item.dropdown-item-current {
+      background: var(--accent-dark);
+      color: var(--text-bright);
+      font-weight: 600;
+    }
+
+    /* Inherits the row's colour, so it stays legible on the plain, current and
+       hover backgrounds alike — it was hard-coded to --text-muted before. */
+    .dropdown-current-badge {
+      font-size: 9px;
+      letter-spacing: .04em;
+      color: currentColor;
+      opacity: .7;
+      flex-shrink: 0;
+    }
+
+    .dropdown-item:hover {
+
+      background: var(--accent-base);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .dropdown-divider {
+
+      height: 1px;
+
+      background: var(--border-light);
+
+      margin: 4px 0;
+
+    }
+
+
+    .topbar {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      padding: 0 12px;
+
+      background: var(--bg-panel);
+
+      border-bottom: 1px solid var(--border-light);
+
+    }
+
+
+    .topbar .title {
+
+      font-size: 13px;
+
+      font-weight: 600;
+
+      color: var(--text-bright);
+
+      letter-spacing: .02em;
+
+      margin-right: 4px;
+
+    }
+
+
+    .topbar .spacer {
+
+      flex: 1;
+
+    }
+
+
+    .topbar input:not([type="checkbox"]) {
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 12px;
+      outline: none;
+      width: 280px;
+    }
+
+
+    .topbar input:focus {
+
+      border-color: var(--accent-base);
+
+    }
+
+    /* Frame controls: when the top bar runs out of room the row splits into
+       pages (like flipping frames) — no scrollbar, no free scrolling. Chevron
+       arrows on the wrapper (#frame-controls-wrap) appear at whichever edge has
+       more controls; clicking one pages to the next/previous set.
+       updateFrameControlsArrows() toggles them from the scroll position. */
+    #frame-controls-container {
+      /* overflow:hidden (set inline) hides the scrollbar and blocks free
+         scrolling, but still allows the programmatic scrollLeft that paging uses;
+         scroll-behavior makes each page change slide instead of jump. */
+      scroll-behavior: smooth;
+    }
+    /* Keep each control its natural size so the row overflows into pages
+       instead of squashing when space is tight. */
+    #frame-controls-container > * { flex-shrink: 0; }
+
+    /* Edge chevrons: hidden until the row overflows in that direction, then
+       fade in over a panel-coloured gradient that masks the clipped controls. */
+    .frame-scroll-arrow {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 26px;
+      display: flex;
+      align-items: center;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--text-muted);
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease, color 0.15s ease;
+      z-index: 3;
+    }
+    #frame-controls-arrow-left {
+      left: 0;
+      justify-content: flex-start;
+      background: linear-gradient(to right, var(--bg-panel) 60%, transparent);
+    }
+    #frame-controls-arrow-right {
+      right: 13px; /* clear the 12px padding + 1px divider so the chevron hugs the scroll area */
+      justify-content: flex-end;
+      background: linear-gradient(to left, var(--bg-panel) 60%, transparent);
+    }
+    .frame-scroll-arrow:hover { color: var(--accent-base); }
+    #frame-controls-wrap.overflow-left #frame-controls-arrow-left,
+    #frame-controls-wrap.overflow-right #frame-controls-arrow-right {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+
+    .topbar label {
+
+      font-size: 11px;
+
+      color: var(--text-label);
+
+    }
+
+
+    .seg {
+
+      display: inline-flex;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 6px;
+
+      padding: 2px;
+
+    }
+
+
+    .seg button {
+
+      background: transparent;
+
+      border: none;
+
+      padding: 5px 10px;
+
+      font-size: 11px;
+
+      color: var(--text-label);
+
+      border-radius: 4px;
+
+      cursor: pointer;
+
+      transition: all .12s;
+
+    }
+
+
+    .seg button.active {
+
+      background: var(--accent-dark);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .seg button:hover:not(.active) {
+
+      color: var(--text-bright);
+
+    }
+
+
+    .btn {
+
+      background: var(--bg-btn);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-main);
+
+      padding: 6px 12px;
+
+      border-radius: 6px;
+
+      font-size: 12px;
+
+      cursor: pointer;
+
+      transition: all .12s;
+
+    }
+
+
+    .btn:hover {
+
+      background: var(--border-light);
+
+      border-color: var(--border-btn);
+
+      color: var(--text-bright);
+
+    }
+
+    .btn:disabled {
+
+      opacity: 0.45;
+
+      cursor: not-allowed;
+
+      pointer-events: none;
+
+    }
+
+
+    .btn.primary {
+      background: var(--accent-base);
+      border-color: var(--accent-base);
+      color: var(--text-on-accent);
+    }
+
+
+    .btn.primary:hover {
+
+      background: var(--accent-hover);
+
+      border-color: var(--accent-hover);
+
+    }
+
+
+    .btn.ghost {
+
+      background: transparent;
+
+      border: 1px solid var(--border-light);
+
+    }
+
+    .btn.ghost.active {
+
+      background: var(--accent-dark);
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+    }
+
+    .btn.ghost.active:hover {
+
+      background: var(--accent-hover);
+
+      border-color: var(--accent-hover);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .btn.icon {
+
+      padding: 6px 8px;
+
+    }
+
+    /* Documentation screenshots (data/docs/*.png, regenerated by
+       scripts/build-docs-screenshots.mjs). Captured at 1.25–2x and displayed at
+       CSS width, so they stay sharp on high-DPI screens. */
+    .doc-shot {
+      margin: 14px 0 18px;
+      display: block;
+    }
+
+    .doc-shot img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      background: var(--bg-panel);
+      box-shadow: 0 6px 18px var(--shadow-heavy, rgba(0, 0, 0, .35));
+    }
+
+    /* Element-level shots are small; letting them stretch to panel width would
+       blow a 250px button up to 700px of mush. */
+    .doc-shot.doc-shot-inline img {
+      max-width: min(100%, 420px);
+    }
+
+    .doc-shot figcaption {
+      margin-top: 7px;
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+
+    /* "Full preview" + hover-preview toggle: one segmented control. The two
+       buttons share a single 1px seam (negative margin collapses the doubled
+       border) and only the outer corners are rounded, so the toggle reads as
+       part of the button rather than a stray icon beside it. */
+    #preview-btn-wrap {
+      display: inline-flex;
+      align-items: stretch;
+    }
+
+    #preview-btn-wrap #btn-preview {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    #btn-hover-preview {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 7px;
+      margin-left: -1px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      color: var(--text-muted);
+    }
+
+    /* Whichever half the pointer is on lifts above the seam so its hover border
+       isn't clipped by the neighbour. */
+    #preview-btn-wrap #btn-preview:hover,
+    #btn-hover-preview:hover {
+      position: relative;
+      z-index: 1;
+    }
+
+    #btn-hover-preview svg {
+      display: block;
+    }
+
+    /* Armed uses the same accent-dark fill every other toolbar toggle uses, not a
+       solid accent — a solid fill here would sit right beside the accent Export
+       button and read as one long primary control. */
+    #btn-hover-preview.active {
+      background: var(--accent-dark);
+      border-color: var(--accent-base);
+      color: var(--text-bright);
+      position: relative;
+      z-index: 1;
+    }
+
+    #btn-hover-preview.active:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: var(--text-bright);
+    }
+
+    /* New Project ▸ where the project starts from. Three peers in one radio group,
+       so they get identical type and weight — the selected row is distinguished by
+       its background alone, never by being larger or bolder than the others. */
+    .np-start-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 9px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    /* Only the radio + its text are clickable-as-a-label; the template row's picker
+       is a sibling, because a <select> or <button> inside a <label> gets hijacked by
+       the label's own activation behaviour. */
+    .np-start-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      cursor: pointer;
+      user-select: none;
+      flex: none;
+    }
+
+    .np-start-row:hover {
+      background: var(--bg-input);
+    }
+
+    .np-start-row:has(input:checked) {
+      background: var(--bg-input);
+      border-color: var(--accent-base);
+    }
+
+    .np-start-row .np-start-title {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+
+    .np-start-row .np-start-hint {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Canvas sizes of the base project — a notch quieter than the hint above it, so
+       the row reads name-and-counts first and the detail second. */
+    .np-start-row .np-start-meta {
+      display: block;
+      font-size: 10.5px;
+      color: var(--text-muted);
+      opacity: 0.8;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .np-start-row .np-start-meta:empty {
+      display: none;
+    }
+
+    /* New Project ▸ Canvases. One row per size the blank board gets built from, and a
+       size typed in by hand is the same kind of row as a preset — nothing about the
+       row says where it came from except the remove button it can afford to have. */
+    .np-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      transition: background 0.12s ease;
+    }
+
+    .np-row:hover {
+      background: var(--overlay-hover);
+    }
+
+    /* The label owns the row except the remove button, which has to sit outside it:
+       a <button> inside a <label> loses its click to the label's own activation. */
+    .np-row .np-row-main {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .np-row .np-row-name {
+      font-size: 12px;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .np-row .np-row-dim {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-left: auto;
+      padding-left: 10px;
+      flex: none;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Most rows are ticked, so ticked is the resting look and it is the switched-off
+       ones that recede. Marking the ticked state instead would light up the whole box
+       and say nothing. */
+    .np-row:has(input:not(:checked)) .np-row-name,
+    .np-row:has(input:not(:checked)) .np-row-dim {
+      opacity: 0.45;
+    }
+
+    /* Held open on every row, filled only on the removable ones, so the size column
+       reads as one column all the way down. */
+    .np-row .np-row-slot {
+      width: 18px;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* The preview version bar carries a second copy of the toggle, because the
+       top bar is hidden inside a preview and the Version dropdown's hover is the
+       one thing it still controls there. Same armed treatment as the original. */
+    #preview-hover-preview svg {
+      display: block;
+    }
+
+    #preview-hover-preview.active {
+      background: var(--accent-dark);
+      border-color: var(--accent-base);
+      color: var(--text-bright);
+    }
+
+    #preview-hover-preview.active:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: var(--text-bright);
+    }
+
+    /* Armed and actually playing — the seam picks up the accent too, so the pair
+       clearly belongs together while the preview is running. */
+    #preview-btn-wrap.hover-preview-playing #btn-preview {
+      border-color: var(--accent-base);
+      color: var(--text-bright);
+    }
+
+
+    .workspace {
+
+      display: grid;
+
+      grid-template-columns: 290px minmax(0, 1fr) 290px;
+
+      min-height: 0;
+
+      position: relative;
+
+    }
+
+
+    body.preview-active .app {
+
+      display: block;
+
+    }
+
+
+    body.preview-active .workspace {
+
+      display: block;
+
+      height: 100vh;
+
+    }
+
+
+    body.preview-active .panel,
+
+    body.preview-active .menubar,
+
+    body.preview-active .topbar {
+
+      display: none !important;
+
+    }
+
+
+    body.preview-active .canvas-area {
+
+      height: 100vh;
+
+      box-sizing: border-box;
+
+      border: 3px solid var(--accent-base);
+
+    }
+
+    /* In full preview the ads should render exactly as they would in
+       the wild — no editor outlines, no active-canvas accent rings.
+       previewFrameNode already sets `canvas.style.boxShadow = 'none'`
+       inline, but we belt-and-braces it here with !important so any
+       stray rule (e.g. .canvas-frame.active .canvas) can't sneak the
+       accent-coloured ring back in. Same for outline/border. */
+
+    body.preview-active .canvas,
+    body.preview-active .canvas-frame.active .canvas {
+
+      box-shadow: none !important;
+
+      outline: none !important;
+
+      border: 0 !important;
+
+    }
+
+
+    /* ---------- panels ---------- */
+
+    .panel {
+
+      background: var(--bg-panel);
+
+      border-right: 1px solid var(--border-light);
+
+      display: flex;
+
+      flex-direction: column;
+
+      min-height: 0;
+
+    }
+
+
+    .panel.right {
+
+      border-right: none;
+
+      border-left: 1px solid var(--border-light);
+
+    }
+
+
+    .panel h3 {
+
+      font-size: 10px;
+
+      font-weight: 600;
+
+      color: var(--text-muted);
+
+      text-transform: uppercase;
+
+      letter-spacing: .08em;
+
+      padding: 12px 0 8px 0;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: space-between;
+
+    }
+
+
+    .panel h3 button:not(.btn) {
+
+      background: transparent;
+
+      border: none;
+
+      color: var(--text-muted);
+
+      cursor: pointer;
+
+      font-size: 14px;
+
+      padding: 0 4px;
+
+    }
+
+
+    .panel h3 button:not(.btn):hover {
+
+      color: var(--text-bright);
+
+    }
+
+
+    .panel-section {
+
+      padding: 0 12px 12px 12px;
+
+      background: color-mix(in srgb, var(--text-main) 2.5%, transparent);
+
+      border-radius: 6px;
+
+      margin: 6px 14px;
+
+    }
+
+
+    /* Each animation sub-panel (In Animations / Continuous Effect / Frame
+       Transition) reads as a distinct recessed card so the three are easy to
+       tell apart even when every setting is expanded. */
+    .animation-sub-panel {
+
+      background: var(--bg-body);
+
+      border: none;
+
+      border-radius: 8px;
+
+      padding: 12px;
+
+      margin-top: 10px;
+
+    }
+
+    .animation-sub-panel > :last-child {
+      margin-bottom: 0 !important;
+    }
+
+    .animation-sub-panel:first-child {
+
+      margin-top: 4px;
+
+    }
+
+    /* Sub-panel heading: brighter + bolder than a plain label, led by a short
+       accent bar so each section's start is easy to spot in a dense panel. */
+    .animation-sub-panel .anim-sub-head {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 7px;
+
+      font-size: 10.5px;
+
+      font-weight: 700;
+
+      letter-spacing: 0.07em;
+
+      text-transform: uppercase;
+
+      color: var(--text-label);
+      margin-bottom: 0;
+    }
+
+    .animation-sub-panel .anim-sub-head svg {
+      width: 11px;
+      height: 11px;
+    }
+
+
+    .panel-section.highlighted {
+
+      background: var(--accent-dark);
+
+      border: 1px solid var(--accent-base);
+
+      border-radius: 8px;
+
+      margin: 6px 14px;
+
+      padding: 0 12px 12px;
+
+    }
+
+    .panel-section.highlighted h3 {
+
+      padding: 12px 12px 8px;
+
+    }
+
+
+    /* `.panel h3.panel-header-collapsible` instead of bare class —
+       needed to outrank the `.panel h3` rule above which sets
+       `justify-content: space-between` (specificity 0,1,1). */
+    .panel h3.panel-header-collapsible {
+
+      cursor: pointer;
+
+      user-select: none;
+
+      transition: color 0.2s ease;
+
+      /* Override .panel h3's space-between so we can place the chevron
+         immediately before the label on the left, with any action
+         buttons pushed to the far right via `margin-left: auto`. */
+
+      justify-content: flex-start;
+
+      gap: 8px;
+
+    }
+
+
+    .panel-header-collapsible:hover {
+
+      color: var(--text-bright) !important;
+
+    }
+
+
+    .panel-header-collapsible .collapse-icon {
+
+      /* Flex `order: -1` flips the chevron in front of the label
+         without touching the HTML. Accent-coloured, slightly thicker
+         stroke, and flex-shrink:0 so it never gets squeezed. Negative
+         margin-left tugs the chevron a bit closer to the panel's
+         left edge so the label still starts where it used to. */
+
+      order: -1;
+
+      flex-shrink: 0;
+
+      margin-left: -4px;
+
+      color: var(--text-accent);
+
+      stroke-width: 3.5;
+
+      width: 13.5px;
+
+      height: 13.5px;
+
+      filter: drop-shadow(0 0 3px color-mix(in srgb, var(--text-accent) 40%, transparent));
+
+      transition: transform 0.2s ease, color 0.2s ease, filter 0.2s ease;
+
+    }
+
+
+    .panel-header-collapsible:hover .collapse-icon {
+
+      color: var(--text-accent);
+
+      filter: drop-shadow(0 0 4.5px color-mix(in srgb, var(--text-accent) 70%, transparent));
+
+    }
+
+    /* Push any non-label, non-chevron child (i.e. an actions span or
+       the dynamically-injected fullscreen button) to the far right. */
+
+    .panel-header-collapsible > *:not(:first-child):not(.collapse-icon) {
+
+      margin-left: auto;
+
+    }
+
+    .panel-header-collapsible > *:not(:first-child):not(.collapse-icon) ~ *:not(:first-child):not(.collapse-icon) {
+
+      margin-left: 0;
+
+    }
+
+
+    .panel-section.collapsed {
+
+      padding-bottom: 0 !important;
+
+    }
+
+
+    .panel-section.collapsed > *:not(h3) {
+
+      display: none !important;
+
+    }
+
+    /* Collapse-state visual is driven by the polyline-points swap in
+       initCollapsiblePanels (script.js) — the SVG `<polyline>` is
+       rewritten between a down chevron (▼) and a right chevron (▶)
+       on each toggle. CSS rotation was a v0.16.34 fallback but was
+       compounding with the points swap when the browser DID honour
+       SVG transforms — net result: ▲ instead of ▶. So no transform
+       rule here anymore; the JS-driven points swap is canonical. */
+
+
+    .panel-scroll {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex: 1;
+      height: 100%;
+    }
+
+    /* ---------- scroll-edge fades ----------
+       Both side columns clip their contents with no outward sign of it: a
+       section header sitting flush against the bottom edge looks like the end
+       of the panel, not the middle of it. A soft fade at whichever edge has
+       content beyond it says otherwise.
+
+       Sticky pseudo-elements rather than absolutely-positioned overlays,
+       because these live INSIDE the scroller — an absolute child would scroll
+       away with the content, and hanging them on .panel instead would have to
+       account for the pinned header and the sequencer that sit outside the
+       scroll area. Negative margins keep them out of the flow, so they overlay
+       the first and last 28px instead of displacing anything.
+
+       The .scroll-above / .scroll-below classes come from JS (initPanelScrollFades),
+       since CSS cannot ask where a scroller currently sits. */
+    .panel-scroll::before,
+    .panel-scroll::after {
+      content: '';
+      position: sticky;
+      z-index: 5;
+      flex: 0 0 auto;
+      height: 28px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .18s ease;
+    }
+    .panel-scroll::before {
+      top: 0;
+      margin-bottom: -28px;
+      background: linear-gradient(to bottom, var(--bg-panel) 15%, transparent);
+    }
+    .panel-scroll::after {
+      bottom: 0;
+      margin-top: -28px;
+      background: linear-gradient(to top, var(--bg-panel) 15%, transparent);
+    }
+    .panel-scroll.scroll-above::before { opacity: 1; }
+    .panel-scroll.scroll-below::after { opacity: 1; }
+
+    .panel-section.sibling-hidden {
+      display: none !important;
+    }
+
+    .panel-section.full-mode {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-bottom: none;
+    }
+
+    .panel-section.full-mode > *:not(h3) {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .panel-section-content {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+
+    .add-grid {
+
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 6px;
+
+    }
+
+
+    .add-btn {
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      padding: 10px 8px;
+
+      border-radius: 6px;
+
+      font-size: 11px;
+
+      color: var(--text-main);
+
+      cursor: pointer;
+
+      display: flex;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      gap: 6px;
+
+      transition: all .12s;
+
+    }
+
+
+    .add-btn:hover {
+
+      background: var(--bg-btn);
+
+      border-color: var(--border-btn);
+
+      color: var(--text-bright);
+
+    }
+
+    .brand-dropdown-btn {
+      border: 1px solid color-mix(in srgb, var(--accent-base) 35%, var(--border-light)) !important;
+      background: color-mix(in srgb, var(--accent-base) 4%, var(--bg-input)) !important;
+    }
+
+    .brand-dropdown-btn:hover {
+      border-color: var(--accent-base) !important;
+      background: color-mix(in srgb, var(--accent-base) 10%, var(--bg-input)) !important;
+    }
+
+
+    .add-btn:disabled {
+
+      opacity: .3;
+
+      cursor: not-allowed;
+
+    }
+
+
+    .add-btn svg {
+
+      width: 14px;
+
+      height: 14px;
+
+    }
+
+
+    /* canvas list (in left panel) */
+
+    .canvas-item {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      padding: 6px 8px;
+
+      border-radius: 4px;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      color: var(--text-label);
+
+    }
+
+
+    .canvas-item:hover {
+
+      background: var(--bg-input);
+
+      color: var(--text-main);
+
+    }
+
+
+    .canvas-item.active {
+
+      background: var(--accent-dark);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .canvas-item .ci-name {
+
+      flex: 1;
+
+      overflow: hidden;
+
+      white-space: nowrap;
+
+      text-overflow: ellipsis;
+
+      font-weight: 500;
+
+    }
+
+
+    .canvas-item .ci-dim {
+
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+
+      font-size: 10px;
+
+      color: var(--text-muted);
+
+    }
+
+
+    .canvas-item.active .ci-dim {
+
+      color: var(--accent-base);
+
+    }
+
+
+    .canvas-item .icon-btn {
+
+      display: none;
+
+      background: transparent;
+
+      border: none;
+
+      color: var(--text-muted);
+
+      cursor: pointer;
+
+      padding: 0 4px;
+
+    }
+
+
+    .canvas-item:hover .icon-btn {
+
+      display: inline-flex;
+
+    }
+
+
+    .canvas-item .icon-btn:hover {
+
+      color: var(--text-bright);
+
+    }
+
+
+    /* layers list */
+
+    .layer-section-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 12px 0 6px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border-bottom: 1px solid var(--border-light);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .layer-section-title:first-of-type {
+      padding-top: 4px;
+    }
+
+    .layer {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 6px;
+
+      padding: 5px 6px;
+
+      border-radius: 4px;
+
+      cursor: pointer;
+
+      font-size: 10.5px;
+
+      color: var(--text-main);
+
+      position: relative;
+
+      background: rgba(255, 255, 255, 0.02);
+
+      margin-bottom: 4px;
+
+      transition: background 0.15s ease, border-color 0.15s ease;
+
+    }
+
+    /* Mask connector: a short vertical line sitting *between* the two
+       layer icons (the mask shape above, its image below). Horizontally
+       aligned to the icon column centre (.layer-icon is 13px wide at
+       6px left padding → icon centre ≈ x=12.5, so the 2px line sits at
+       left:12). Vertically clipped to the row padding zones so it
+       fills the small gap between adjacent icons and nothing more. A
+       gentle fade at the icon-side end keeps it from butting up
+       against the icon glyph. */
+    .layer.mask-group-sibling-selected {
+      border-left: 3px solid color-mix(in srgb, var(--text-accent) 35%, transparent);
+      padding-left: 3px;
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+
+    .layer:hover {
+
+      background: rgba(255, 255, 255, 0.06);
+
+      color: var(--text-main);
+
+    }
+
+
+    .layer.selected {
+
+      background: var(--accent-dark);
+
+      color: var(--text-bright);
+
+      border-left: 3px solid var(--text-accent);
+
+      padding-left: 3px;
+
+      border-top-left-radius: 0;
+
+      border-bottom-left-radius: 0;
+
+    }
+
+    body.theme-light .layer {
+      background: rgba(0, 0, 0, 0.02);
+    }
+    body.theme-light .layer:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    body.theme-light .layer.selected,
+
+
+    body.theme-light .link-group-row.selected {
+      background: var(--accent-light);
+    }
+
+    .layer.read-only-folder {
+      color: var(--text-accent, #a78bfa) !important;
+      font-weight: 600;
+    }
+    .layer.read-only-folder .layer-icon {
+      color: var(--accent-base, #7c5cff) !important;
+      opacity: 1;
+    }
+    .layer.read-only-asset {
+      color: var(--text-accent, #a78bfa) !important;
+      opacity: 0.85;
+    }
+    .layer.read-only-asset .layer-icon {
+      color: var(--accent-base, #7c5cff) !important;
+      opacity: 1;
+    }
+
+
+    .layer .layer-icon {
+
+      width: 13px;
+
+      height: 13px;
+
+      flex-shrink: 0;
+
+      opacity: .7;
+
+    }
+
+
+    .layer .layer-name {
+
+      flex: 1;
+
+      white-space: nowrap;
+
+      overflow: hidden;
+
+      -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+
+      mask-image: linear-gradient(to right, black 80%, transparent 100%);
+
+    }
+
+
+    .layer .layer-name::-webkit-scrollbar {
+
+      display: none;
+
+    }
+
+
+    .layer .layer-name[contenteditable="true"],
+    .link-group-row .layer-name[contenteditable="true"] {
+      background: var(--bg-body);
+      color: var(--text-bright);
+      border: 1px solid var(--accent-base);
+      border-radius: 3px;
+      padding: 2px 4px;
+      margin: -3px -5px;
+      outline: none;
+      cursor: text;
+      user-select: text;
+      -webkit-user-select: text;
+      mask-image: none !important;
+      -webkit-mask-image: none !important;
+      overflow-x: auto !important;
+      scrollbar-width: none !important;
+      -ms-overflow-style: none !important;
+    }
+    .layer .layer-name[contenteditable="true"]::-webkit-scrollbar,
+    .link-group-row .layer-name[contenteditable="true"]::-webkit-scrollbar {
+      display: none !important;
+    }
+
+
+    .layer .layer-actions {
+
+      display: flex;
+
+      gap: 2px;
+
+    }
+
+
+    .layer .icon-btn {
+
+      background: transparent;
+
+      border: none;
+
+      color: var(--text-main);
+
+      cursor: pointer;
+
+      padding: 2px;
+
+      border-radius: 3px;
+
+      display: flex;
+
+      font-size: 11px;
+
+      opacity: 0.3;
+
+      transition: opacity 0.1s, background 0.1s;
+
+    }
+
+
+    .layer .icon-btn.active {
+
+      opacity: 1;
+
+    }
+
+
+    .layer .icon-btn svg {
+
+      width: 13px;
+
+      height: 13px;
+
+    }
+
+
+    .layer .icon-btn:hover {
+
+      opacity: 1;
+
+      background: var(--border-light);
+
+    }
+
+
+    /* Role-assignment icon — gray only when role === misc (unassigned);
+       accent purple for every known role, whether auto-detected or manual */
+
+    .layer .icon-btn.role-btn {
+
+      opacity: 0.45;
+
+    }
+
+
+    .layer .icon-btn.role-btn:hover {
+
+      opacity: 1;
+
+    }
+
+
+    .layer .icon-btn.role-btn.role-assigned {
+
+      opacity: 1;
+
+      color: var(--accent-base);
+
+    }
+
+
+    .layer .icon-btn.role-btn.role-assigned:hover {
+
+      background: color-mix(in srgb, var(--accent-base) 14%, transparent);
+
+    }
+
+
+    /* Role-picker dropdown items */
+
+    .role-picker-popup .dropdown-item.role-picker-item {
+
+      padding: 5px 12px;
+
+      font-size: 11.5px;
+
+      cursor: pointer;
+
+    }
+
+
+    .role-picker-popup .dropdown-item.role-picker-item:hover {
+
+      background: var(--border-light);
+
+    }
+
+
+    .role-picker-popup .dropdown-item.role-picker-reset {
+
+      padding: 6px 12px;
+
+      cursor: pointer;
+
+    }
+
+
+    .role-picker-popup .dropdown-item.role-picker-reset:hover {
+
+      background: var(--border-light);
+
+      color: var(--text-main);
+
+    }
+
+
+    /* properties panel */
+
+    .prop-row {
+
+      margin-bottom: 8px;
+
+    }
+
+
+    .prop-row label {
+
+      display: block;
+
+      font-size: 9px;
+
+      color: var(--text-muted);
+
+      text-transform: uppercase;
+
+      letter-spacing: .04em;
+
+      margin-bottom: 3px;
+
+      font-weight: 600;
+
+    }
+
+
+    .prop-row input[type="text"],
+
+    .prop-row input[type="number"],
+
+    .prop-row input[type="url"],
+
+    .prop-row select,
+
+    .prop-row textarea {
+
+      width: 100%;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-main);
+
+      border-radius: 6px;
+
+      padding: 4px 6px;
+
+      font-size: 11px;
+
+      font-family: inherit;
+
+      outline: none;
+
+      box-sizing: border-box;
+
+    }
+
+    .prop-row input[type="text"],
+    .prop-row input[type="number"],
+    .prop-row input[type="url"],
+    .prop-row select {
+      height: 24px;
+    }
+
+    .prop-row input:disabled,
+    .prop-row select:disabled,
+    .prop-row textarea:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+
+    .prop-row input:focus,
+
+    .prop-row select:focus,
+
+    .prop-row textarea:focus {
+
+      border-color: var(--accent-base);
+
+    }
+
+
+    input[type="number"] {
+
+      padding-right: 0 !important;
+
+    }
+
+
+    .prop-row input[type="color"] {
+
+      width: 24px;
+
+      height: 24px;
+
+      border: 1px solid var(--border-light);
+
+      background: var(--bg-input);
+
+      border-radius: 6px;
+
+      padding: 0;
+
+      cursor: pointer;
+
+      flex-shrink: 0;
+
+    }
+
+
+    /* A canvas dimension that has been edited but not applied yet. Placed AFTER the
+       :focus rule above deliberately — same specificity, so source order decides, and a
+       pending field must stay marked once focus moves to the Apply button. */
+    .prop-row input.dim-pending {
+      border-color: var(--accent-base);
+      color: var(--text-bright);
+    }
+
+    #c-swap-dims:hover {
+      color: var(--accent-base);
+      border-color: var(--accent-base);
+    }
+
+    /* The Add-canvas menu's group flyouts hold up to sixteen sizes, which is taller than
+       a short window — scroll the flyout rather than letting it run off the screen. */
+    #canvas-size-popup .sub-dropdown {
+      max-height: min(60vh, 420px);
+      overflow-y: auto;
+    }
+
+    .prop-grid-2 {
+
+      display: grid;
+
+      grid-template-columns: 1fr 1fr;
+
+      gap: 6px;
+
+    }
+
+    .prop-row-compact {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      padding: 2px 6px;
+      transition: border-color 0.15s ease-in-out;
+      box-sizing: border-box;
+      height: 24px;
+    }
+
+    .prop-row-compact:focus-within {
+      border-color: var(--accent-base);
+    }
+
+    .prop-row-compact input[type="number"] {
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+      outline: none !important;
+      width: 100% !important;
+      color: var(--text-main) !important;
+      font-size: 11px !important;
+      margin: 0 !important;
+      height: 100% !important;
+    }
+
+    .prop-row-compact svg {
+      color: var(--text-muted);
+      transition: color 0.15s ease-in-out;
+      flex-shrink: 0;
+    }
+
+    .prop-row-compact:focus-within svg {
+      color: var(--text-bright);
+    }
+
+    .cp-trigger:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+
+    .prop-empty {
+
+      font-size: 12px;
+
+      color: var(--text-muted);
+
+      padding: 20px 14px;
+
+      text-align: center;
+
+      line-height: 1.6;
+
+    }
+
+
+    .align-group {
+
+      display: flex;
+
+      gap: 4px;
+
+    }
+
+
+    .align-btn {
+
+      flex: 1;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-label);
+
+      border-radius: 6px;
+
+      padding: 6px 0;
+
+      cursor: pointer;
+
+      transition: all .1s;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+    }
+
+
+    .align-btn:hover {
+
+      background: var(--border-light);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .align-btn.active {
+
+      background: var(--accent-base);
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+    }
+
+    .anim-mode-toggle:hover:not([disabled]) {
+      background: var(--border-light) !important;
+      color: var(--text-bright) !important;
+    }
+
+    .anim-mode-toggle.active:hover:not([disabled]) {
+      background: var(--accent-base) !important;
+      filter: brightness(1.1);
+    }
+
+
+    .checkbox-row {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+    }
+
+
+    .checkbox-row input {
+
+      width: auto;
+
+    }
+
+
+    .checkbox-row label {
+
+      margin: 0;
+
+      text-transform: none;
+
+      font-size: 11px;
+
+      color: var(--text-main);
+
+      font-weight: 400;
+
+      letter-spacing: 0;
+
+    }
+
+
+    /* ---------- canvas area ---------- */
+
+    .canvas-area {
+
+      background: var(--bg-body);
+
+      position: relative;
+
+      overflow: auto;
+
+      display: grid;
+
+    }
+
+    .canvas-area.tool-zoom-active:not(.panning-active),
+    .canvas-area.tool-zoom-active:not(.panning-active) * {
+      cursor: zoom-in !important;
+    }
+    .canvas-area.tool-zoom-active.zoom-out-active:not(.panning-active),
+    .canvas-area.tool-zoom-active.zoom-out-active:not(.panning-active) * {
+      cursor: zoom-out !important;
+    }
+
+
+    /* workspace inside canvas-area */
+
+    .workspace-canvas {
+
+      grid-area: 1 / 1;
+
+      position: relative;
+
+      /* Board is BOARD_SIZE in script.js — keep these in sync. Trimmed from
+         5000 so users can't pan far off into empty void; canvases are anchored
+         near the top-left (~500px margin) leaving room for temporary parking. */
+      width: 3000px;
+
+      height: 3000px;
+
+      margin-left: 16px;
+
+      margin-top: 16px;
+
+    }
+
+
+    /* faint dotted grid for the workspace */
+
+    .workspace-canvas {
+
+      background-image: radial-gradient(rgba(58, 64, 85, .4) 1px, transparent 1px);
+
+      background-size: 24px 24px;
+
+    }
+
+
+    .canvas-frame {
+
+      position: absolute;
+
+    }
+
+
+    .canvas-frame.active {
+
+      z-index: 10;
+
+    }
+
+
+    .canvas-header {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      height: 22px;
+
+      margin-bottom: 6px;
+
+      font-size: 10px;
+
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+
+      color: var(--text-muted);
+
+      letter-spacing: .04em;
+
+      cursor: move;
+
+      user-select: none;
+
+    }
+
+
+    .canvas-header .name {
+
+      color: var(--text-main);
+
+      font-family: 'Inter', sans-serif;
+
+      font-weight: 500;
+
+      letter-spacing: 0;
+
+    }
+
+
+    .canvas-header .dim {
+
+      color: var(--text-muted);
+
+    }
+
+
+    .canvas-frame.active .canvas-header .name {
+
+      color: var(--accent-base);
+
+    }
+
+
+    .canvas-frame.active .canvas-header::before {
+
+      content: '';
+
+      width: 6px;
+
+      height: 6px;
+
+      border-radius: 50%;
+
+      background: var(--accent-base);
+
+      box-shadow: 0 0 6px var(--accent-base);
+
+    }
+
+
+    .canvas {
+
+      position: relative;
+
+      box-shadow: 0 0 0 1px var(--bg-btn), 0 4px 20px rgba(0, 0, 0, 0.4);
+
+    }
+
+
+    .canvas-frame.active .canvas {
+
+      box-shadow: 0 0 0 1.5px var(--accent-base), 0 8px 30px rgba(0, 0, 0, 0.5);
+
+    }
+
+
+    /* Drop-target highlight when dragging image files over a canvas */
+
+    .canvas.drop-target {
+
+      outline: 2px dashed var(--accent-base);
+
+      outline-offset: -2px;
+
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-base) 25%, transparent), 0 8px 30px rgba(0, 0, 0, 0.5);
+
+    }
+
+    /* Properties-panel image preview accepting a dropped photo. Mirrors the
+       canvas drop-target language (dashed accent + glow) and adds an explicit
+       label, since the preview is small and easy to misread as inert. */
+    .img-preview-container.img-drop-active {
+      outline: 2px dashed var(--accent-base);
+      outline-offset: -3px;
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-base) 30%, transparent);
+    }
+    .img-preview-container.img-drop-active .img-preview-overlay {
+      opacity: 0 !important;   /* suppress the hover "Browse…" overlay underneath */
+    }
+    .img-drop-hint {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: color-mix(in srgb, var(--accent-base) 30%, rgba(8, 9, 14, 0.82));
+      color: #fff;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      text-align: center;
+      padding: 8px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .img-drop-hint svg { opacity: .95; }
+    .img-drop-hint span { text-shadow: 0 1px 3px rgba(0, 0, 0, .55); }
+
+
+    .el {
+
+      position: absolute;
+
+      cursor: move;
+
+      user-select: none;
+
+      pointer-events: auto;
+
+    }
+
+
+    .el.text {
+
+      display: flex;
+
+      align-items: center;
+
+    }
+
+
+    .el.text>span {
+
+      width: 100%;
+
+      pointer-events: none;
+
+      line-height: 1.2;
+
+      white-space: pre-wrap;
+
+      word-break: normal;
+
+      overflow-wrap: normal;
+
+    }
+
+
+    .el.shape-rect,
+
+    .el.shape-circle,
+
+    .el.button {
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+    }
+
+
+    .el.button {
+
+      font-weight: 600;
+
+      white-space: pre-wrap;
+
+    }
+
+
+    .el.button span,
+
+    .el.button .editable {
+
+      word-break: normal;
+
+    }
+
+
+    .el.image img {
+
+      width: 100%;
+
+      height: 100%;
+
+      object-fit: contain;
+
+      pointer-events: none;
+
+      display: block;
+
+    }
+
+
+    .el.editing {
+
+      cursor: text;
+
+    }
+
+
+    .el.editing>span,
+
+    .el.editing>.editable {
+
+      pointer-events: all;
+
+      outline: none;
+
+      cursor: text;
+
+    }
+
+
+    .editable {
+
+      width: 100%;
+
+      display: block;
+
+      height: auto;
+
+      white-space: pre-wrap;
+
+      word-break: normal;
+
+      overflow-wrap: normal;
+
+    }
+
+
+    .editable[contenteditable="true"] {
+
+      caret-color: var(--accent-base);
+
+    }
+
+
+    .el.button .editable::selection {
+
+      background: rgba(0, 0, 0, 0.3);
+
+      color: inherit;
+
+    }
+
+
+    .selection-outline {
+
+      position: absolute;
+
+      border: calc(1.5px / var(--z, 1)) solid var(--accent-base);
+
+      pointer-events: none;
+
+      z-index: 999999;
+
+    }
+
+    .selection-edge {
+      position: absolute;
+      pointer-events: auto;
+      cursor: move;
+      background: transparent;
+    }
+
+    .selection-edge.top {
+      top: calc(-4px / var(--z, 1));
+      left: 0;
+      width: 100%;
+      height: calc(8px / var(--z, 1));
+    }
+
+    .selection-edge.bottom {
+      bottom: calc(-4px / var(--z, 1));
+      left: 0;
+      width: 100%;
+      height: calc(8px / var(--z, 1));
+    }
+
+    .selection-edge.left {
+      top: 0;
+      left: calc(-4px / var(--z, 1));
+      width: calc(8px / var(--z, 1));
+      height: 100%;
+    }
+
+    .selection-edge.right {
+      top: 0;
+      right: calc(-4px / var(--z, 1));
+      width: calc(8px / var(--z, 1));
+      height: 100%;
+    }
+
+
+    .handle {
+
+      position: absolute;
+
+      width: calc(8px / var(--z, 1));
+
+      height: calc(8px / var(--z, 1));
+
+      background: var(--accent-base);
+
+      border: calc(1.5px / var(--z, 1)) solid var(--text-bright);
+
+      border-radius: calc(2px / var(--z, 1));
+
+      pointer-events: all;
+
+    }
+
+
+    .selection-outline.group {
+
+      border-color: #ffab00;
+
+    }
+
+
+    .selection-outline.group .handle {
+
+      background: #ffab00;
+
+    }
+
+
+    .handle.nw {
+
+      top: calc(-5px / var(--z, 1));
+
+      left: calc(-5px / var(--z, 1));
+
+      cursor: nw-resize;
+
+    }
+
+
+    .handle.ne {
+
+      top: calc(-5px / var(--z, 1));
+
+      right: calc(-5px / var(--z, 1));
+
+      cursor: ne-resize;
+
+    }
+
+
+    .handle.sw {
+
+      bottom: calc(-5px / var(--z, 1));
+
+      left: calc(-5px / var(--z, 1));
+
+      cursor: sw-resize;
+
+    }
+
+
+    .handle.se {
+
+      bottom: calc(-5px / var(--z, 1));
+
+      right: calc(-5px / var(--z, 1));
+
+      cursor: se-resize;
+
+    }
+
+
+    .handle.n {
+
+      top: calc(-5px / var(--z, 1));
+
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      cursor: ns-resize;
+
+    }
+
+
+    .handle.s {
+
+      bottom: calc(-5px / var(--z, 1));
+
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      cursor: ns-resize;
+
+    }
+
+
+    .handle.w {
+
+      top: 50%;
+
+      left: calc(-5px / var(--z, 1));
+
+      transform: translateY(-50%);
+
+      cursor: ew-resize;
+
+    }
+
+
+    .handle.e {
+
+      top: 50%;
+
+      right: calc(-5px / var(--z, 1));
+
+      transform: translateY(-50%);
+
+      cursor: ew-resize;
+
+    }
+
+
+    .handle.rot {
+
+      top: calc(-20px / var(--z, 1));
+
+      left: 50%;
+
+      transform: translateX(-50%);
+
+      border-radius: 50%;
+
+      cursor: crosshair;
+
+    }
+
+
+    .handle.radius {
+
+      border-radius: 50%;
+
+      cursor: nwse-resize;
+
+    }
+
+
+    .handle.rot,
+
+    .handle.radius,
+
+    .selection-outline.group .handle.rot,
+
+    .selection-outline.group .handle.radius {
+
+      background: #06b6d4;
+
+    }
+
+
+    /* modal */
+
+    .modal-bg {
+
+      position: fixed;
+
+      inset: 0;
+
+      background: rgba(0, 0, 0, .6);
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      z-index: 100;
+
+    }
+
+
+    .modal {
+
+      background: var(--bg-panel);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 10px;
+
+      width: 640px;
+
+      max-width: 90vw;
+
+      max-height: 86vh;
+
+      display: flex;
+
+      flex-direction: column;
+
+      box-shadow: 0 20px 60px var(--shadow-heavy);
+
+    }
+
+
+    .modal-head {
+
+      display: flex;
+
+      align-items: center;
+
+      padding: 14px 18px;
+
+      border-bottom: 1px solid var(--border-light);
+
+    }
+
+
+    .modal-head h2 {
+
+      font-size: 14px;
+
+      font-weight: 600;
+
+      color: var(--text-bright);
+
+      flex: 1;
+
+    }
+
+
+    .modal-body {
+
+      flex: 1;
+
+      overflow: auto;
+
+      padding: 16px 18px;
+
+    }
+
+
+    .modal-body textarea {
+
+      width: 100%;
+
+      height: 380px;
+
+      background: var(--bg-body);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-main);
+
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+
+      font-size: 11px;
+
+      padding: 12px;
+
+      border-radius: 6px;
+
+      resize: none;
+
+      outline: none;
+
+      line-height: 1.6;
+
+    }
+
+
+    .modal-foot {
+
+      display: flex;
+
+      gap: 8px;
+
+      padding: 12px 18px;
+
+      border-top: 1px solid var(--border-light);
+
+      justify-content: flex-end;
+
+    }
+
+
+    /* settings panel vertical tabs and theme selector */
+
+    .settings-tabs-nav-vertical {
+
+      width: 220px;
+
+      border-right: 1px solid var(--border-light);
+
+      background: var(--bg-body);
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 4px;
+
+      padding: 16px 12px;
+
+      flex-shrink: 0;
+
+      overflow-y: auto;
+
+    }
+
+
+    .settings-tab-btn-vertical {
+
+      padding: 10px 12px;
+
+      text-align: left;
+
+      background: none;
+
+      border: 1px solid transparent;
+
+      border-radius: 6px;
+
+      color: var(--text-muted);
+
+      font-size: 12px;
+
+      font-weight: 500;
+
+      cursor: pointer;
+
+      font-family: inherit;
+
+      transition: all 0.2s;
+
+      outline: none;
+
+    }
+
+
+    .settings-tab-btn-vertical:hover {
+
+      background: var(--bg-btn);
+
+      color: var(--text-main);
+
+    }
+
+
+    .settings-tab-btn-vertical.active {
+
+      background: var(--accent-dark);
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+      font-weight: 600;
+
+    }
+
+
+    .settings-theme-btn {
+
+      padding: 8px 12px;
+
+      border-radius: 6px;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      font-family: inherit;
+
+      text-align: left;
+
+      border: 1px solid var(--border-light);
+
+      background: var(--bg-input);
+
+      color: var(--text-main);
+
+      transition: all 0.2s;
+
+      outline: none;
+
+    }
+
+
+    .settings-theme-btn:hover {
+
+      border-color: var(--text-muted);
+
+      background: var(--bg-btn);
+
+    }
+
+
+    .settings-theme-btn.active {
+
+      border-color: var(--accent-base);
+
+      background: var(--accent-dark);
+
+      color: var(--text-bright);
+
+    }
+
+
+    .shortcuts-table {
+
+      width: 100%;
+
+      font-size: 13px;
+
+      color: var(--text-main);
+
+    }
+
+
+    .shortcuts-table td {
+
+      padding: 8px 0;
+
+      border-bottom: 1px solid var(--border-light);
+
+    }
+
+
+    .shortcuts-table td:first-child {
+
+      color: var(--text-label);
+
+    }
+
+
+    .shortcuts-table td:last-child {
+
+      text-align: right;
+
+    }
+
+
+    .kbd {
+
+      display: inline-block;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 4px;
+
+      padding: 2px 6px;
+
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+
+      font-size: 11px;
+
+      color: var(--text-bright);
+
+    }
+
+
+    /* ---------- context menu ---------- */
+
+    #ctx-menu {
+
+      position: fixed;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 6px;
+
+      box-shadow: 0 8px 24px var(--shadow-medium);
+
+      padding: 4px 0;
+
+      min-width: 160px;
+
+      z-index: 999999;
+
+      display: none;
+
+      flex-direction: column;
+
+    }
+
+
+    .ctx-item {
+
+      padding: 6px 12px;
+
+      font-size: 12px;
+
+      color: var(--text-main);
+
+      cursor: pointer;
+
+      user-select: none;
+
+    }
+
+
+    .ctx-item.highlight {
+      color: var(--accent-base);
+      font-weight: 500;
+    }
+
+    /* Link section — everything that acts on the OTHER canvases, kept together.
+       A hairline accent rule on the left and a barely-there tint: enough to read
+       as one block, not enough to shout. A solid accent fill was tried first and
+       looked like a banner sitting in the middle of the menu. */
+    .ctx-section-link {
+      margin: 3px 0;
+      padding: 1px 0 2px;
+      border-left: 2px solid var(--accent-base);
+      background: rgba(255, 255, 255, 0.028);
+    }
+
+    .ctx-section-head {
+      padding: 6px 12px 3px;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Rows keep the menu's own weight and colour; the band does the grouping. */
+    .ctx-section-link .ctx-item:hover {
+      background: var(--accent-base);
+      color: var(--text-bright);
+    }
+
+    .ctx-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Hollow ring when off, filled accent when on — states the mode without a
+       badge. It used to prefix a tick only when on, so "off" and "not a toggle"
+       looked identical. */
+    .ctx-toggle-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: transparent;
+      box-shadow: inset 0 0 0 1.5px currentColor;
+      opacity: .38;
+    }
+
+    .ctx-toggle-row.is-on .ctx-toggle-dot {
+      background: var(--accent-base);
+      box-shadow: none;
+      opacity: 1;
+    }
+
+    .ctx-toggle-row:hover.is-on .ctx-toggle-dot {
+      background: var(--text-bright);
+    }
+
+    .ctx-toggle-state {
+      margin-left: auto;
+      padding-left: 10px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .ctx-toggle-row.is-on .ctx-toggle-state {
+      color: var(--accent-base);
+    }
+
+    .ctx-toggle-row:hover .ctx-toggle-state {
+      color: inherit;
+      opacity: .8;
+    }
+
+
+    .ctx-item:hover,
+    .ctx-item.highlight:hover {
+      background: var(--accent-base);
+      color: var(--text-bright);
+    }
+
+    /* Destructive menu items. These used to carry an INLINE color:#ef4444, which
+       beat the :hover rule above — so on the accent-purple hover background the
+       text stayed mid-red and was barely legible. As a class, hover can lighten
+       it to a red that still reads as a warning but has real contrast on purple. */
+    .ctx-item.ctx-danger {
+      color: #ef4444;
+    }
+
+    .ctx-item.ctx-danger:hover {
+      background: var(--danger-base, #dc2626);
+      color: #fff5f5;
+    }
+
+    /* A menu command that cannot do anything in this context. Greyed and inert rather than
+       hidden: the command still belongs in the menu, and knowing it exists but has nothing
+       to apply is the useful half of the answer. Its id is dropped when disabled too, so
+       there is no handler to reach even if a click got through. */
+    .ctx-item.ctx-disabled {
+      opacity: 0.4;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .ctx-item.has-submenu {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ctx-item.has-submenu::after {
+      content: '▶';
+      font-size: 8px;
+      margin-left: 8px;
+      opacity: 0.5;
+    }
+
+    .ctx-submenu {
+      display: none;
+      position: absolute;
+      left: 100%;
+      top: -1px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 4px 0;
+      min-width: 140px;
+      box-shadow: 0 4px 12px var(--shadow-light);
+      z-index: 1000;
+    }
+
+    .ctx-item.has-submenu:hover > .ctx-submenu {
+      display: block;
+    }
+
+
+    .ctx-divider {
+
+      height: 1px;
+
+      background: var(--border-light);
+
+      margin: 4px 0;
+
+    }
+
+    /* ---------- export render progress ----------
+       A determinate ring, not a barber's pole: the exporter knows exactly which
+       frame it is on, so the indicator should say so. The sweeping arc on top
+       keeps it alive during the encode step, where frames tick over faster than
+       the eye reads the number. */
+    @keyframes vqe-spin { to { transform: rotate(360deg); } }
+
+    .vqe-spin { animation: vqe-spin .85s linear infinite; transform-origin: 50% 50%; }
+
+    .vqe-ring { flex-shrink: 0; }
+    .vqe-ring circle { fill: none; stroke-width: 2.5; }
+    .vqe-ring .vqe-ring-track { stroke: rgba(255, 255, 255, .13); }
+    .vqe-ring .vqe-ring-fill {
+      stroke: var(--accent-base);
+      stroke-linecap: round;
+      transform: rotate(-90deg);          /* start the sweep at 12 o'clock */
+      transform-origin: 50% 50%;
+      transition: stroke-dashoffset .16s linear;
+    }
+
+    /* Context-menu heading — names what the menu is acting on (the canvas, or
+       the selected element) so a right-click that landed on the wrong thing is
+       obvious before anything is clicked. Deliberately quiet: it is a label,
+       not an item, so it takes no hover and no pointer. */
+    .ctx-header {
+      padding: 4px 12px 5px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: default;
+      user-select: none;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+
+    /* ---------- zoom tool cursor override ---------- */
+
+    .tool-zoom-active,
+
+    .tool-zoom-active * {
+
+      cursor: zoom-in !important;
+
+    }
+
+    .tool-zoom-active.zoom-out,
+
+    .tool-zoom-active.zoom-out * {
+
+      cursor: zoom-out !important;
+
+    }
+
+
+    /* ---------- text tool cursor and interaction override ---------- */
+
+    .canvas-area.tool-text-active .el:not(.text):not(.button) {
+
+      pointer-events: none !important;
+
+    }
+
+
+    .canvas-area.tool-text-active .el.text,
+
+    .canvas-area.tool-text-active .el.button,
+
+    .canvas-area.tool-text-active .el.text *,
+
+    .canvas-area.tool-text-active .el.button * {
+
+      cursor: text !important;
+
+      pointer-events: auto !important;
+
+    }
+
+
+    /* ---------- rulers ---------- */
+
+    #ruler-h {
+
+      position: sticky;
+
+      top: 0;
+
+      left: 0;
+
+      width: max-content;
+
+      min-width: 100%;
+
+      height: 16px;
+
+      background: var(--bg-btn);
+
+      border-bottom: 1px solid var(--border-light);
+
+      z-index: 100;
+
+      cursor: row-resize;
+
+      grid-area: 1 / 1;
+
+      display: block;
+
+      margin-left: 16px;
+
+      align-self: start;
+
+    }
+
+
+    #ruler-v {
+
+      position: sticky;
+
+      left: 0;
+
+      top: 0;
+
+      width: 16px;
+
+      height: max-content;
+
+      min-height: 100%;
+
+      background: var(--bg-btn);
+
+      border-right: 1px solid var(--border-light);
+
+      z-index: 100;
+
+      cursor: col-resize;
+
+      grid-area: 1 / 1;
+
+      display: block;
+
+      margin-top: 16px;
+
+      justify-self: start;
+
+    }
+
+
+    #ruler-corner {
+
+      position: sticky;
+
+      top: 0;
+
+      left: 0;
+
+      width: 16px;
+
+      height: 16px;
+
+      background: var(--bg-input);
+
+      border-right: 1px solid var(--border-light);
+
+      border-bottom: 1px solid var(--border-light);
+
+      z-index: 101;
+
+      grid-area: 1 / 1;
+
+      align-self: start;
+
+      justify-self: start;
+
+    }
+
+
+    .guide-h {
+
+      position: absolute;
+
+      left: 0;
+
+      right: 0;
+
+      height: 1px;
+
+      background: #00ffff;
+
+      z-index: 50;
+
+      cursor: row-resize;
+
+    }
+
+
+    .guide-v {
+
+      position: absolute;
+
+      top: 0;
+
+      bottom: 0;
+
+      width: 1px;
+
+      background: #00ffff;
+
+      z-index: 50;
+
+      cursor: col-resize;
+
+    }
+
+
+    #size-overlay {
+
+      display: none;
+
+      position: fixed;
+
+      inset: 0;
+
+      background: var(--bg-body);
+
+      z-index: 999999;
+
+      flex-direction: column;
+
+      align-items: center;
+
+      justify-content: center;
+
+      text-align: center;
+
+      padding: 40px;
+
+    }
+
+
+    .smart-guide {
+
+      position: absolute;
+
+      background: #e91e63;
+
+      z-index: 10000;
+
+      pointer-events: none;
+
+      opacity: 0.8;
+
+    }
+
+
+    .smart-guide.x {
+
+      width: calc(1px / var(--z, 1));
+
+      top: 0;
+
+      bottom: 0;
+
+    }
+
+
+    .smart-guide.y {
+
+      height: calc(1px / var(--z, 1));
+
+      left: 0;
+
+      right: 0;
+
+    }
+
+
+    /* Custom Color Picker Styles */
+
+    .cp-modal {
+
+      position: absolute;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      border-radius: 8px;
+
+      box-shadow: 0 10px 30px var(--shadow-heavy);
+
+      width: 260px;
+
+      z-index: 10000;
+
+      display: flex;
+
+      flex-direction: column;
+
+      overflow: hidden;
+
+    }
+
+    .cp-header {
+
+      display: flex;
+
+      border-bottom: 1px solid var(--border-light);
+
+    }
+
+    .cp-tab {
+
+      flex: 1;
+
+      padding: 10px 0;
+
+      background: transparent;
+
+      border: none;
+
+      color: var(--text-label);
+
+      font-size: 11px;
+
+      font-weight: 600;
+
+      cursor: pointer;
+
+      text-transform: uppercase;
+
+      letter-spacing: .05em;
+
+    }
+
+    .cp-tab.active {
+
+      color: var(--text-bright);
+
+      border-bottom: 2px solid var(--accent-base);
+
+    }
+
+    .cp-body {
+
+      padding: 16px;
+
+    }
+
+    /* Save / Discard footer. Mirrors .cp-header's divider so the picker reads as
+       header → body → footer, and stays inside the modal's overflow:hidden
+       rounding. */
+    .cp-foot {
+      display: flex;
+      gap: 8px;
+      padding: 10px 16px 12px;
+      border-top: 1px solid var(--border-light);
+      background: var(--bg-panel, var(--bg-input));
+    }
+
+    .cp-foot-btn {
+      flex: 1;
+      padding: 7px 0;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: .03em;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 1px solid var(--border-light);
+      background: var(--bg-btn);
+      color: var(--text-main);
+      transition: all .12s;
+    }
+
+    .cp-foot-btn:hover {
+      background: var(--border-light);
+      border-color: var(--border-btn);
+      color: var(--text-bright);
+    }
+
+    .cp-foot-primary {
+      background: var(--accent-base);
+      border-color: var(--accent-base);
+      color: var(--text-on-accent);
+    }
+
+    .cp-foot-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: var(--text-on-accent);
+    }
+
+    .cp-row {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+    }
+
+    .cp-input {
+
+      flex: 1;
+
+      background: var(--bg-body);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-main);
+
+      border-radius: 6px;
+
+      padding: 6px 8px;
+
+      font-size: 12px;
+
+      outline: none;
+
+      text-align: center;
+
+      text-transform: uppercase;
+
+    }
+
+    .cp-btn {
+
+      background: var(--border-light);
+
+      border: 1px solid var(--border-btn);
+
+      color: var(--text-main);
+
+      border-radius: 6px;
+
+      padding: 6px 8px;
+
+      cursor: pointer;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+    }
+
+    .cp-btn:hover {
+
+      background: var(--border-btn);
+
+      color: var(--text-bright);
+
+    }
+
+    .cp-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .cp-btn:disabled:hover {
+      background: var(--border-light);
+      color: var(--text-main);
+    }
+
+    .cp-color-btn {
+
+      width: 100%;
+
+      height: 24px;
+
+      border-radius: 6px;
+
+      border: 1px solid var(--border-light);
+
+      cursor: pointer;
+
+    }
+
+    .cp-grad-stop-container {
+
+      flex: 1;
+
+      padding: 2px;
+
+      border: 2px solid transparent;
+
+      border-radius: 6px;
+
+    }
+
+    .cp-grad-stop-container.active {
+
+      border-color: var(--accent-base);
+
+    }
+
+    .cp-divider {
+
+      height: 1px;
+
+      background: var(--border-light);
+
+      margin: 12px 0;
+
+    }
+
+    .cp-swatch-grid {
+
+      display: grid;
+
+      grid-template-columns: repeat(8, 1fr);
+
+      gap: 6px;
+
+    }
+
+    .cp-swatch {
+
+      width: 100%;
+
+      aspect-ratio: 1;
+
+      border-radius: 4px;
+
+      border: 1px solid var(--border-light);
+
+      cursor: pointer;
+
+    }
+
+    .cp-swatch:hover {
+
+      border-color: var(--accent-base);
+
+    }
+
+
+    /* Minimum supported screen is 1366×768. Width is a hard floor — below
+       1366 the chrome can't lay out without horizontal clipping, so we gate
+       it. Height is forgiving (panels scroll vertically): on a real 1366×768
+       monitor the browser/OS chrome leaves only ~600–660px of viewport, so
+       the height floor is set low enough that such machines still get the app
+       rather than the overlay. Touch-only devices are gated regardless. */
+    @media (max-width: 1365px),
+
+    (max-height: 600px),
+
+    (pointer: coarse) and (hover: none) {
+
+      #size-overlay {
+
+        display: flex;
+
+      }
+
+
+      .app {
+
+        display: none !important;
+
+      }
+
+    }
+
+/* Fullscreen Mode */
+body.fullscreen-mode .app { grid-template-rows: 1fr !important; }
+body.fullscreen-mode .topbar { display: none !important; }
+body.fullscreen-mode .workspace { grid-template-columns: 1fr !important; }
+body.fullscreen-mode .panel { display: none !important; }
+body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mode #ruler-corner, body.fullscreen-mode .guide-h, body.fullscreen-mode .guide-v { display: none !important; }
+
+
+    /* ---------- Automation panel ---------- */
+
+    .automation-grid {
+
+      display: flex;
+
+      flex-direction: column;
+
+      gap: 6px;
+
+    }
+
+
+    .automation-btn {
+
+      display: flex;
+
+      align-items: center;
+
+      gap: 8px;
+
+      padding: 8px 10px;
+
+      background: var(--bg-input);
+
+      border: 1px solid var(--border-light);
+
+      color: var(--text-main);
+
+      border-radius: 4px;
+
+      cursor: pointer;
+
+      font-size: 11px;
+
+      font-weight: 500;
+
+      text-align: left;
+
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+
+    }
+
+
+    .automation-btn:hover {
+
+      background: var(--bg-btn);
+
+    }
+
+
+    .automation-btn.active {
+
+      color: var(--accent-base);
+
+    }
+
+
+    .automation-btn svg {
+
+      width: 16px;
+
+      height: 16px;
+
+      flex-shrink: 0;
+
+    }
+
+
+    .automation-btn > span:first-of-type {
+
+      flex: 1;
+
+    }
+
+
+    .automation-btn.featured {
+
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-base) 25%, transparent), color-mix(in srgb, var(--accent-hover) 12%, transparent));
+
+      border-color: var(--accent-base);
+
+      color: var(--text-bright);
+
+      font-weight: 600;
+
+      box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-base) 25%, transparent), 0 4px 12px color-mix(in srgb, var(--accent-base) 18%, transparent);
+
+    }
+
+
+    .automation-btn.featured:hover {
+
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent-base) 35%, transparent), color-mix(in srgb, var(--accent-hover) 20%, transparent));
+
+    }
+
+
+    .automation-btn .badge-ai {
+
+      font-size: 9px;
+
+      font-weight: 700;
+
+      letter-spacing: 0.05em;
+
+      padding: 2px 5px;
+
+      border-radius: 3px;
+
+      background: var(--accent-base);
+
+      color: #fff;
+
+    }
+
+
+    /* ---------- Safezone overlay ---------- */
+
+    .safezone-overlay {
+
+      position: absolute;
+
+      pointer-events: none;
+
+      border: calc(1px / var(--z, 1)) solid #00ffff;
+
+      opacity: 0.45;
+
+      z-index: 49;
+
+    }
+
+
+    .safezone-cross {
+
+      position: absolute;
+
+      left: 50%;
+
+      top: 50%;
+
+      width: calc(14px / var(--z, 1));
+
+      height: calc(14px / var(--z, 1));
+
+      transform: translate(-50%, -50%);
+
+    }
+
+
+    .safezone-cross::before,
+
+    .safezone-cross::after {
+
+      content: '';
+
+      position: absolute;
+
+      background: #00ffff;
+
+    }
+
+
+    .safezone-cross::before {
+
+      left: 0;
+
+      right: 0;
+
+      top: 50%;
+
+      height: calc(1px / var(--z, 1));
+
+      transform: translateY(-50%);
+
+    }
+
+
+    .safezone-cross::after {
+
+      top: 0;
+
+      bottom: 0;
+
+      left: 50%;
+
+      width: calc(1px / var(--z, 1));
+
+      transform: translateX(-50%);
+    }
+
+    .cp-trigger {
+      padding: 0 !important;
+      /* Clip the (gradient) background to the padding box so it doesn't bleed under
+         the 1px border — Chrome otherwise renders a thin light seam between a dark
+         border and a gradient fill on small rounded elements. */
+      background-clip: padding-box;
+    }
+
+
+    /* ---------- gradient stop markers ---------- */
+    .cp-grad-marker {
+      position: absolute;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+      transform: translateX(-50%);
+      cursor: ew-resize;
+      box-sizing: border-box;
+    }
+    .cp-grad-marker.active {
+      border-color: var(--accent-base);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 0 6px var(--accent-base);
+    }
+
+    /* Midpoint (transition-balance) markers — diamond shaped, smaller and
+       below the colour-stop markers so they're visually distinct. They
+       sit between two colour stops and biasing is via drag. Double-click
+       resets to 0.5 (linear). */
+    .cp-grad-mid-marker {
+      position: absolute;
+      top: 2px;
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted, #888);
+      border: 1px solid #fff;
+      transform: translateX(-50%) rotate(45deg);
+      cursor: ew-resize;
+      box-sizing: border-box;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.35);
+      opacity: 0.85;
+    }
+    .cp-grad-mid-marker:hover {
+      background: var(--accent-base);
+      opacity: 1;
+    }
+
+    /* Saved-gradients row — flex of wide swatches, scrollable. */
+    .cp-grad-swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .cp-grad-swatch {
+      flex: 0 0 calc(25% - 5px);
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      background-color: #888;
+    }
+    .cp-grad-swatch:hover {
+      border-color: var(--accent-base);
+    }
+
+
+    /* Linked-element highlight (visual only — siblings of the selected element, or a
+       hovered link-group row). Non-live = static dashed border; live adds the marching-
+       ants animation. Both share identical geometry / thickness / offset, so they differ
+       only by motion. */
+    .el.link-highlight::after,
+    .el.link-highlight-hover::after,
+    .el.link-highlight-live::after,
+    .el.link-highlight-hover-live::after {
+      content: '';
+      position: absolute;
+      inset: calc(-1.5px / var(--z, 1));
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 100000;
+      background-image:
+        linear-gradient(90deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(90deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(0deg, var(--accent-light) 50%, transparent 50%),
+        linear-gradient(0deg, var(--accent-light) 50%, transparent 50%);
+      background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+      background-size:
+        calc(10px / var(--z, 1)) calc(2px / var(--z, 1)),
+        calc(10px / var(--z, 1)) calc(2px / var(--z, 1)),
+        calc(2px / var(--z, 1)) calc(10px / var(--z, 1)),
+        calc(2px / var(--z, 1)) calc(10px / var(--z, 1));
+      background-position: 0 0, 0 100%, 0 0, 100% 0;
+    }
+
+    /* Live Link Mode — identical border, animated */
+    @keyframes marching-ants {
+      0% {
+        background-position: 0 0, 0 100%, 0 0, 100% 0;
+      }
+      100% {
+        background-position: calc(20px / var(--z, 1)) 0, calc(-20px / var(--z, 1)) 100%, 0 calc(-20px / var(--z, 1)), 100% calc(20px / var(--z, 1));
+      }
+    }
+
+    @keyframes marching-ants-circle {
+      0% {
+        transform: rotate(0deg);
+      }
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .el.link-highlight-live::after,
+    .el.link-highlight-hover-live::after {
+      animation: marching-ants 0.8s linear infinite;
+    }
+
+    /* Circles can't use the 4-edge gradient dashes — they clip into broken
+       fragments around the curve. Use a real dashed border, which follows the
+       50% border-radius cleanly. For live-link mode, we rotate the circle border
+       to simulate marching ants. */
+    .el.shape-circle.link-highlight::after,
+    .el.shape-circle.link-highlight-hover::after {
+      background: none;
+      animation: none;
+      border: calc(2px / var(--z, 1)) dashed var(--accent-light);
+    }
+
+    .el.shape-circle.link-highlight-live::after,
+    .el.shape-circle.link-highlight-hover-live::after {
+      background: none;
+      border: calc(2px / var(--z, 1)) dashed var(--accent-light);
+      animation: marching-ants-circle 20s linear infinite;
+      transform-origin: center;
+    }
+
+
+/* Data-merge: a small badge marks the dynamic-data element — a lightning bolt, plus a
+   link icon when the element is in a link group. Shown only on the selected element (not
+   its linked siblings) and floated just above the top-right, outside the outline. */
+.selection-outline .dm-badge {
+  position: absolute;
+  bottom: calc(100% + 7px / var(--z, 1));
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(3px / var(--z, 1));
+  color: var(--accent-base);
+  pointer-events: none;
+  z-index: 100001;
+}
+.selection-outline .dm-badge svg {
+  width: calc(13px / var(--z, 1));
+  height: calc(13px / var(--z, 1));
+  display: block;
+  filter: drop-shadow(0 0 calc(1px / var(--z, 1)) rgba(0,0,0,.75));
+}
+
+#save-status-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  margin-left: 8px;
+  width: 106px;
+  flex-shrink: 0;
+  user-select: none;
+  cursor: pointer;
+  height: auto;
+  gap: 2px;
+}
+
+.save-icon-status {
+  width: 15px;
+  height: 15px;
+  stroke-width: 3;
+  color: var(--text-muted, #8b8f9c);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  display: block;
+}
+
+#save-status-container:hover .save-icon-status {
+  transform: scale(1.15);
+}
+
+/* Local / Cloud specific states styling */
+.save-icon-status.status-saving {
+  color: var(--accent-base, #7c5cff);
+  filter: drop-shadow(0 0 3px var(--accent-base));
+}
+
+.save-icon-status.status-saved {
+  color: var(--accent-base, #7c5cff);
+  filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent-base) 45%, transparent));
+}
+
+.save-icon-status.status-unsaved {
+  color: var(--text-muted, #8b8f9c);
+}
+
+.save-icon-status.status-error {
+  color: #ef4444;
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.5));
+  animation: save-shake 0.4s ease;
+}
+
+.save-icon-status.status-none {
+  color: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+#save-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--accent-base, #7c5cff);
+  z-index: 99999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, background-color 0.4s ease;
+}
+
+#save-progress-bar.status-saving {
+  opacity: 1;
+  background: linear-gradient(90deg, var(--accent-base, #7c5cff) 0%, #a78bfa 50%, var(--accent-base, #7c5cff) 100%);
+  background-size: 200% 100%;
+  animation: save-progress-pulse 1.5s infinite linear;
+}
+
+#save-progress-bar.status-saved {
+  opacity: 1;
+  background: #10b981;
+  animation: save-progress-fade 1.5s forwards ease-out;
+}
+
+#save-progress-bar.status-error {
+  opacity: 1;
+  background: #ef4444;
+  animation: save-shake 0.4s ease;
+}
+
+@keyframes save-progress-pulse {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes save-progress-fade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#project-save-status-dot {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981; /* Green */
+  vertical-align: middle;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+#project-save-status-dot.status-saving {
+  color: var(--accent-base, #7c5cff); /* Purple */
+  filter: drop-shadow(0 0 2px var(--accent-base, #7c5cff));
+  animation: save-dot-pulse 1s infinite alternate;
+}
+
+#project-save-status-dot.status-unsaved {
+  color: #f59e0b; /* Amber */
+}
+
+#project-save-status-dot.status-error {
+  color: #ef4444; /* Red */
+  filter: drop-shadow(0 0 2px #ef4444);
+}
+
+@keyframes save-dot-pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+
+#project-name-display {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-bright);
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+  vertical-align: middle;
+  -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%);
+  mask-image: linear-gradient(to right, black 85%, transparent 100%);
+}
+
+#project-name-display[contenteditable="true"] {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--accent-base);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-base) 25%, transparent);
+  cursor: text;
+  max-width: none;
+  min-width: 60px;
+  outline: none;
+}
+
+
+@keyframes save-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.6; }
+}
+
+@keyframes save-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes save-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes save-dot-pulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.5; }
+  50% { transform: scale(1.25); opacity: 1; }
+}
+
+@keyframes save-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-2px); }
+  40%, 80% { transform: translateX(2px); }
+}
+
+.save-icon, .status-indicator {
+  transform-origin: center;
+  flex-shrink: 0;
+}
+
+.status-indicator.loading {
+  animation: save-spin 1s linear infinite;
+}
+
+.canvas-notification {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translate(-50%, -20px);
+  z-index: 100000;
+  pointer-events: none;
+  visibility: hidden;
+  background: rgba(30, 27, 75, 0.85); /* Dark Indigo theme-aware styling */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in srgb, var(--accent-base) 30%, transparent);
+  color: #f1f5f9;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease, visibility 0.3s;
+}
+
+.canvas-notification.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.canvas-notification.warning {
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.canvas-notification.warning .icon {
+  color: #f59e0b;
+}
+
+.canvas-notification.error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+.canvas-notification.error .icon {
+  color: #ef4444;
+}
+
+.canvas-notification.info {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+.canvas-notification.info .icon {
+  color: #3b82f6;
+}
+
+.canvas-notification .toast-btn {
+  background: var(--accent-base);
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.2s, transform 0.1s;
+  outline: none;
+}
+.canvas-notification .toast-btn:hover {
+  background: var(--accent-hover);
+}
+.canvas-notification .toast-btn:active {
+  transform: scale(0.95);
+}
+
+.canvas-notification .icon {
+  color: #a78bfa;
+  display: flex;
+  align-items: center;
+}
+
+.layer-hover-outline {
+  position: absolute;
+  border: calc(1.5px / var(--z, 1)) dashed #22d3ee; /* Distinct dashed cyan outline */
+  pointer-events: none;
+  z-index: 1000000;
+  box-shadow: 0 0 3px rgba(34, 211, 238, 0.3);
+  border-radius: 1px;
+}
+
+/* Image Preview Hover Overlay */
+.img-preview-container:hover .img-preview-overlay {
+  opacity: 1 !important;
+}
+
+#asset-list {
+  padding-right: 4px;
+}
+
+
+/* Custom Live-link Mode Toggle Button */
+.live-link-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  margin-top: 0;
+  margin-bottom: 0;
+  color: var(--text-muted);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.live-link-toggle-btn:hover,
+.live-link-toggle-btn.active:hover {
+  border-color: transparent !important;
+  background: color-mix(in srgb, var(--accent-base) 8%, transparent);
+  color: var(--text-main);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--accent-base) 15%, transparent);
+}
+
+.live-link-toggle-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0.5px;
+  pointer-events: none;
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 2;
+}
+
+.live-link-toggle-btn:hover::after {
+  opacity: 1;
+  background-image:
+    linear-gradient(90deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(90deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(0deg, var(--accent-base) 50%, transparent 50%),
+    linear-gradient(0deg, var(--accent-base) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 10px 1.5px, 10px 1.5px, 1.5px 10px, 1.5px 10px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  animation: btn-marching-ants 0.8s linear infinite;
+}
+
+@keyframes btn-marching-ants {
+  0% {
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+  }
+  100% {
+    background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px;
+  }
+}
+
+.live-link-toggle-btn svg {
+  color: var(--text-muted);
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.live-link-toggle-btn:hover svg {
+  color: var(--accent-hover);
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* Styled switch container */
+.live-link-toggle-btn .toggle-slider {
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--bg-btn);
+  border: 1px solid var(--border-light);
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  flex-shrink: 0;
+}
+
+/* Styled switch knob */
+.live-link-toggle-btn .toggle-slider .toggle-knob {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #5a6178;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Active states matching the active class */
+.live-link-toggle-btn.active {
+  border-color: var(--accent-base);
+  background: color-mix(in srgb, var(--accent-base) 8%, transparent);
+  color: var(--text-bright);
+  font-weight: 600;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent-base) 15%, transparent);
+}
+
+.live-link-toggle-btn.active:hover {
+  border-color: var(--accent-hover);
+  background: color-mix(in srgb, var(--accent-base) 12%, transparent);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-base) 25%, transparent);
+}
+
+.live-link-toggle-btn.active .toggle-slider {
+  background: var(--accent-base);
+  border-color: var(--accent-base);
+}
+
+.live-link-toggle-btn.active .toggle-slider .toggle-knob {
+  transform: translateX(14px);
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.live-link-toggle-btn.active svg {
+  color: var(--accent-base) !important;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent-base) 60%, transparent));
+  animation: bolt-glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes bolt-glow {
+  from {
+    filter: drop-shadow(0 0 2px color-mix(in srgb, var(--accent-base) 40%, transparent));
+  }
+  to {
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--accent-base) 80%, transparent));
+  }
+}
+
+/* Custom Checkbox styles for all checkboxes */
+input[type="checkbox"] {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 14px !important;
+  height: 14px !important;
+  border: 1px solid var(--border-light) !important;
+  border-radius: 3px !important;
+  background: var(--bg-body) !important;
+  outline: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+  margin: 0 !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+  vertical-align: middle !important;
+}
+
+input[type="checkbox"]:hover {
+  border-color: var(--accent-base) !important;
+  background: color-mix(in srgb, var(--accent-base) 8%, transparent) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 25%, transparent) !important;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--accent-base) !important;
+  border-color: var(--accent-base) !important;
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 35%, transparent) !important;
+}
+
+input[type="checkbox"]:checked::after {
+  content: '' !important;
+  width: 8px !important;
+  height: 4px !important;
+  border-left: 1.5px solid #ffffff !important;
+  border-bottom: 1.5px solid #ffffff !important;
+  transform: rotate(-45deg) translate(0.5px, -0.5px) !important;
+  display: block !important;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  border-color: var(--border-light) !important;
+  background: var(--bg-input) !important;
+}
+
+
+.link-group-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.link-group-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.link-group-row.selected {
+  background: var(--accent-dark);
+  border-left: 3px solid var(--text-accent);
+  padding-left: 3px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+body.theme-light .link-group-row {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+body.theme-light .link-group-row:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+
+/* Link Group Row Action Button Styling */
+.link-group-row .icon-btn {
+  color: var(--text-muted) !important;
+  transition: color 0.2s ease, transform 0.2s ease !important;
+}
+
+.link-group-row .icon-btn:hover {
+  color: var(--text-bright) !important;
+  transform: scale(1.15) !important;
+}
+
+.link-group-row .icon-btn.lg-live-btn.active {
+  color: var(--accent-base) !important;
+}
+
+.link-group-row .icon-btn.lg-live-btn.active:hover {
+  color: var(--accent-hover) !important;
+}
+
+.link-group-row .icon-btn.lg-eye-btn.active {
+  color: var(--text-bright) !important;
+}
+
+.link-group-row .icon-btn.lg-delete-btn {
+  color: var(--text-muted) !important;
+}
+
+.link-group-row .icon-btn.lg-delete-btn:hover {
+  color: #f87171 !important; /* Soft Red */
+}
+
+/* Data & Versions sheet — subtle row + column zebra striping. Intersecting
+   even-row × even-data-column cells get a slightly stronger tint for a soft
+   additive feel. The active-row highlight (set inline) still wins. */
+#dm-panel {
+  --table-zebra-1: rgba(255, 255, 255, 0.035);
+  --table-zebra-2: rgba(255, 255, 255, 0.06);
+}
+body.theme-light #dm-panel {
+  --table-zebra-1: rgba(0, 0, 0, 0.045);
+  --table-zebra-2: rgba(0, 0, 0, 0.08);
+}
+#dm-panel .dm-row:nth-child(even) > td { background-color: var(--table-zebra-1); }
+#dm-panel .dm-row > td:nth-child(2n+4) { background-color: var(--table-zebra-1); }
+#dm-panel .dm-row:nth-child(even) > td:nth-child(2n+4) { background-color: var(--table-zebra-2); }
+
+/* Sticky table headers when scrolling the versions sheet */
+#dm-panel th {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--bg-panel);
+}
+
+/* Name-key column highlight — accent tint to call out which column is used
+   for export folder names. Sits after the zebra rules so it wins at equal
+   specificity. The header gets a stronger tint than body cells. */
+/* Name-key column highlight — bold the text instead of background tint */
+#dm-panel .dm-col-th.dm-key-col .dm-col-name {
+  font-weight: 700;
+}
+#dm-panel .dm-row > td.dm-key-col input.dm-cell {
+  font-weight: 700;
+}
+
+/* Column highlighting on slot mapping dropdown interaction */
+#dm-panel .dm-col-th.dm-col-highlight {
+  background-color: color-mix(in srgb, var(--accent-base) 28%, var(--bg-panel)) !important;
+  box-shadow: inset 0 -2px 0 var(--text-accent);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+#dm-panel .dm-row > td.dm-col-highlight {
+  background-color: color-mix(in srgb, var(--accent-base) 14%, transparent) !important;
+  transition: background-color 0.15s ease;
+}
+#dm-panel .dm-row:nth-child(even) > td.dm-col-highlight {
+  background-color: color-mix(in srgb, var(--accent-base) 18%, transparent) !important;
+  transition: background-color 0.15s ease;
+}
+
+/* Workspace footer — static strip at the bottom of the right panel,
+   holding the zoom and version pills (left + right). */
+.panel.right { position: relative; }
+.panel.right > .panel-scroll { flex: 1 1 0; min-height: 0; }
+.workspace-footer {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-panel);
+}
+.workspace-footer-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  user-select: none;
+  transition: color .12s ease, background-color .12s ease;
+}
+.workspace-footer-btn:hover {
+  color: var(--text-bright);
+  background: var(--overlay-hover);
+}
+
+/* Documentation modal — sidebar navigation with sections + collapsible subs. */
+#docs-panel .docs-section { border-bottom: 1px solid transparent; }
+#docs-panel .docs-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 6px;
+  padding: 9px 16px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-bright);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color .12s ease;
+}
+#docs-panel .docs-section-head:hover { background-color: var(--overlay-hover); }
+#docs-panel .docs-section.open .docs-section-head { color: var(--accent-base); }
+#docs-panel .docs-subs { padding: 2px 0 8px; }
+#docs-panel .docs-sub {
+  padding: 6px 16px 6px 28px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  transition: background-color .12s ease, color .12s ease, border-color .12s ease;
+}
+#docs-panel .docs-sub:hover { background-color: var(--overlay-hover-subtle); color: var(--text-main); }
+#docs-panel .docs-sub.active {
+  color: var(--text-bright);
+  background-color: color-mix(in srgb, var(--accent-base) 12%, transparent);
+  border-left-color: var(--accent-base);
+  font-weight: 500;
+}
+#docs-panel .docs-body p { margin: 0 0 12px; }
+#docs-panel .docs-body ul,
+#docs-panel .docs-body ol { padding-left: 22px; margin: 0 0 12px; color: var(--text-muted); }
+#docs-panel .docs-body li { margin-bottom: 6px; }
+#docs-panel .docs-body li b,
+#docs-panel .docs-body p b { color: var(--text-bright); font-weight: 600; }
+#docs-panel .docs-body code {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--text-bright);
+}
+/* Documentation screenshots (data/docs/*.png, regenerated by
+   scripts/build-docs-screenshots.mjs).
+   .doc-shot    — full/region captures, fill the column width
+   .doc-shot-sm — element captures taken at 2×; give them an inline
+                  width:min(<css px>,100%) so they render 1:1 crisp */
+#docs-panel .docs-body img.doc-shot,
+#docs-panel .docs-body img.doc-shot-sm {
+  display: block;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  margin: 12px 0 4px;
+  background: #0d0e14;
+}
+#docs-panel .docs-body img.doc-shot { width: 100%; }
+#docs-panel .docs-body img.doc-shot-sm { max-width: 100%; }
+#docs-panel .docs-body .doc-caption {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin: 0 0 14px;
+}
+/* Scrollbars here use the global thin style defined near the top of this file. */
+
+
+/* ============================================================================
+   Auto-resize anchor — pinned to the bottom of the left panel column.
+   ============================================================================
+   Lives outside .panel-scroll so it stays visible while the sections above
+   scroll. Styled as a prominent accent-purple button (a "more prominent
+   version of a regular button") rather than a floating FAB — no resting
+   animation, only hover + click feedback. */
+
+.panel-anchor-bottom {
+  flex-shrink: 0;                     /* never collapse when scroll grows */
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-body);         /* slightly darker than the panel */
+}
+
+.ar-btn-main,
+.ar-btn-settings {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.14s ease,
+    filter 0.14s ease;
+}
+
+.ar-btn-main {
+  flex: 1;
+  padding: 7px 14px;
+  border-radius: 7px;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  background: linear-gradient(135deg, var(--accent-base) 0%, var(--accent-hover) 100%);
+  color: var(--text-on-accent);
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--accent-base) 28%, transparent),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 rgba(255, 255, 255, 0.16) inset;
+}
+
+.ar-btn-main .ar-btn-label {
+  white-space: nowrap;
+}
+
+.ar-btn-main:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 4px 16px color-mix(in srgb, var(--accent-base) 55%, transparent),
+    0 0 22px color-mix(in srgb, var(--accent-base) 30%, transparent),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 1px 0 rgba(255, 255, 255, 0.22) inset;
+}
+
+.ar-btn-main:active {
+  transform: translateY(0) scale(0.97);
+  filter: brightness(0.95);
+  box-shadow:
+    0 1px 6px color-mix(in srgb, var(--accent-base) 45%, transparent),
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+  transition-duration: 0.07s;
+}
+
+.ar-btn-settings {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-light, #272c3a);
+  color: var(--text-main, #d6d6e0);
+}
+
+.ar-btn-settings svg {
+  width: 14px;
+  height: 14px;
+}
+
+.ar-btn-settings:hover {
+  border-color: var(--accent-base);
+  color: var(--accent-base);
+  background: var(--bg-btn);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-base) 30%, transparent);
+}
+
+.ar-btn-settings:active {
+  transform: scale(0.95);
+  transition-duration: 0.07s;
+}
+
+/* Workspace Isolation Outline */
+.workspace-isolation-outline {
+  grid-column: 2;
+  grid-row: 1;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border: 2px solid var(--accent-base);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1000;
+  box-sizing: border-box;
+}
+
+body.fullscreen-mode .workspace-isolation-outline {
+  grid-column: 1 !important;
+}
+
+.workspace-isolation-label {
+  position: absolute;
+  top: -8px;
+  left: 20px;
+  background: var(--bg-body);
+  padding: 0 8px;
+  color: var(--accent-base);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  user-select: none;
+}
+
+.custom-select-item:hover {
+  background: var(--accent-base) !important;
+  color: var(--text-bright) !important;
+}
+/* Small rounded outline badge after preset names (e.g. "text" on text-only
+   presets). Accent-coloured at rest; flips to white on the accent hover bg
+   so it stays readable. */
+.preset-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--accent-base);
+  border: 1px solid var(--accent-base);
+  border-radius: 999px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+.custom-select-item:hover .preset-badge {
+  color: var(--text-bright);
+  border-color: var(--text-bright);
+}
+
+/* Scrollbar here uses the global thin style defined near the top of this file. */
+
+/* Settings tabbed interface style rules */
+.settings-tab-btn {
+  transition: all 0.15s ease;
+}
+.settings-tab-btn:hover {
+  background: var(--bg-input) !important;
+  color: var(--text-bright) !important;
+}
+.settings-tab-btn.active:hover {
+  background: none !important;
+}
+.settings-row {
+  transition: background 0.15s ease;
+}
+.settings-row:hover {
+  background: var(--bg-input) !important;
+}
+
+/* Export Dialog Click Tag column horizontal scroll adjustments */
+.exp-clicktag div::-webkit-scrollbar {
+  display: none;
+}
+
+/* Validator buttons custom style variables */
+:root {
+  --btn-val-purple-bg: linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(124, 92, 255, 0.05));
+  --btn-val-purple-border: rgba(124, 92, 255, 0.35);
+  --btn-val-purple-color: var(--accent-light, #b5a9ff);
+
+  --btn-val-teal-bg: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(20, 184, 166, 0.05));
+  --btn-val-teal-border: rgba(20, 184, 166, 0.35);
+  --btn-val-teal-color: #2dd4bf;
+
+  --btn-val-green-bg: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+  --btn-val-green-border: rgba(16, 185, 129, 0.35);
+  --btn-val-green-color: #34d399;
+}
+
+body.theme-light {
+  --text-accent: var(--accent-base);
+
+  --btn-val-purple-bg: linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(124, 92, 255, 0.04));
+  --btn-val-purple-border: rgba(124, 92, 255, 0.45);
+  --btn-val-purple-color: #5b21b6; /* High-contrast purple */
+
+  --btn-val-teal-bg: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(13, 148, 136, 0.04));
+  --btn-val-teal-border: rgba(13, 148, 136, 0.45);
+  --btn-val-teal-color: #0f766e; /* High-contrast teal */
+
+  --btn-val-green-bg: linear-gradient(135deg, rgba(5, 150, 105, 0.12), rgba(5, 150, 105, 0.04));
+  --btn-val-green-border: rgba(5, 150, 105, 0.45);
+  --btn-val-green-color: #047857; /* High-contrast green */
+}
+
+
+.btn-val-purple-export {
+  background: var(--btn-val-purple-bg);
+  border: 1px solid var(--btn-val-purple-border);
+  color: var(--btn-val-purple-color);
+  font-weight: 600;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+.btn-val-purple-export:hover {
+  background: var(--btn-val-purple-border);
+  color: var(--text-bright);
+}
+
+.btn-val-teal-export {
+  background: var(--btn-val-teal-bg);
+  border: 1px solid var(--btn-val-teal-border);
+  color: var(--btn-val-teal-color);
+  font-weight: 600;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+.btn-val-teal-export:hover {
+  background: var(--btn-val-teal-border);
+  color: var(--text-bright);
+}
+
+.btn-val-green-export {
+  background: var(--btn-val-green-bg);
+  border: 1px solid var(--btn-val-green-border);
+  color: var(--btn-val-green-color);
+  font-weight: 600;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+.btn-val-green-export:hover {
+  background: var(--btn-val-green-border);
+  color: var(--text-bright);
+}
+
+/* ============================================================================
+   Outline Mode (Illustrator style)
+   ============================================================================ */
+body.outline-mode #workspace-canvas {
+  background-color: #0b0c10 !important;
+}
+
+body.outline-mode #workspace-canvas .canvas {
+  background: transparent !important;
+  border: 1px dashed rgba(255, 255, 255, 0.25) !important;
+  box-shadow: none !important;
+}
+
+body.outline-mode #workspace-canvas .el {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  outline-offset: -1px;
+}
+
+body.outline-mode #workspace-canvas .el div {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+body.outline-mode #workspace-canvas .el svg rect,
+body.outline-mode #workspace-canvas .el svg circle,
+body.outline-mode #workspace-canvas .el svg path,
+body.outline-mode #workspace-canvas .el svg line,
+body.outline-mode #workspace-canvas .el svg polyline {
+  fill: none !important;
+  stroke-width: 1px !important;
+}
+
+body.outline-mode #workspace-canvas .el.text span,
+body.outline-mode #workspace-canvas .el.text h1,
+body.outline-mode #workspace-canvas .el.text h2,
+body.outline-mode #workspace-canvas .el.text h3,
+body.outline-mode #workspace-canvas .el.text div,
+body.outline-mode #workspace-canvas .el.button span {
+  background: transparent !important;
+}
+
+body.outline-mode #workspace-canvas .el.button {
+  background: transparent !important;
+  outline-offset: -1px;
+  border-color: transparent !important;
+}
+
+body.outline-mode #workspace-canvas .el.image img {
+  opacity: 0 !important;
+}
+
+body.outline-mode #workspace-canvas .el.image::before,
+body.outline-mode #workspace-canvas .el.image::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* --- Color Coding (Dark Mode): Standard Elements (Cyan) --- */
+body.outline-mode #workspace-canvas .el,
+body.outline-mode #workspace-canvas .el.button {
+  outline: 1px solid #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el svg rect,
+body.outline-mode #workspace-canvas .el svg circle,
+body.outline-mode #workspace-canvas .el svg path,
+body.outline-mode #workspace-canvas .el svg line,
+body.outline-mode #workspace-canvas .el svg polyline {
+  stroke: #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el.text span,
+body.outline-mode #workspace-canvas .el.text h1,
+body.outline-mode #workspace-canvas .el.text h2,
+body.outline-mode #workspace-canvas .el.text h3,
+body.outline-mode #workspace-canvas .el.text div,
+body.outline-mode #workspace-canvas .el.button span {
+  color: #00f0ff !important;
+}
+body.outline-mode #workspace-canvas .el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #00f0ff, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Mapped Dynamic Data Elements (Amber) --- */
+body.outline-mode #workspace-canvas .el.dynamic-el,
+body.outline-mode #workspace-canvas .el.dynamic-el.button {
+  outline: 1px solid #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el svg rect,
+body.outline-mode #workspace-canvas .el.dynamic-el svg circle,
+body.outline-mode #workspace-canvas .el.dynamic-el svg path,
+body.outline-mode #workspace-canvas .el.dynamic-el svg line,
+body.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
+  stroke: #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.text span,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h1,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h2,
+body.outline-mode #workspace-canvas .el.dynamic-el.text h3,
+body.outline-mode #workspace-canvas .el.dynamic-el.text div,
+body.outline-mode #workspace-canvas .el.dynamic-el.button span {
+  color: #f59e0b !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #f59e0b, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #f59e0b, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Animated Elements (Pink) --- */
+body.outline-mode #workspace-canvas .el.animated-el,
+body.outline-mode #workspace-canvas .el.animated-el.button {
+  outline: 1px solid #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el svg rect,
+body.outline-mode #workspace-canvas .el.animated-el svg circle,
+body.outline-mode #workspace-canvas .el.animated-el svg path,
+body.outline-mode #workspace-canvas .el.animated-el svg line,
+body.outline-mode #workspace-canvas .el.animated-el svg polyline {
+  stroke: #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.text span,
+body.outline-mode #workspace-canvas .el.animated-el.text h1,
+body.outline-mode #workspace-canvas .el.animated-el.text h2,
+body.outline-mode #workspace-canvas .el.animated-el.text h3,
+body.outline-mode #workspace-canvas .el.animated-el.text div,
+body.outline-mode #workspace-canvas .el.animated-el.button span {
+  color: #ec4899 !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #ec4899, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #ec4899, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Dark Mode): Both Mapped & Animated Elements (Purple) --- */
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
+  outline: 1px solid #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
+  stroke: #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
+  color: #a855f7 !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #a855f7, transparent calc(50% + 0.5px)) !important;
+}
+body.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #a855f7, transparent calc(50% + 0.5px)) !important;
+}
+
+body.outline-mode #workspace-canvas .selection-outline {
+  border-color: #ff0055 !important;
+}
+body.outline-mode #workspace-canvas .handle {
+  background-color: #ff0055 !important;
+}
+
+/* ============================================================================
+   Light Outline Mode
+   ============================================================================ */
+body.theme-light.outline-mode #workspace-canvas {
+  background-color: #f1f5f9 !important; /* Light slate bg */
+}
+
+body.theme-light.outline-mode #workspace-canvas .canvas {
+  background: transparent !important;
+  border: 1px dashed rgba(15, 23, 42, 0.35) !important;
+  box-shadow: none !important;
+}
+
+body.theme-light.outline-mode #workspace-canvas .el div {
+  background: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+/* --- Color Coding (Light Mode): Standard Elements (Dark Slate) --- */
+body.theme-light.outline-mode #workspace-canvas .el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.button {
+  outline: 1px solid #1e293b !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el svg polyline {
+  stroke: #1e293b !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.button span {
+  color: #1e293b !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #1e293b, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Mapped Dynamic Elements (Dark Amber) --- */
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.button {
+  outline: 1px solid #d97706 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el svg polyline {
+  stroke: #d97706 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.button span {
+  color: #d97706 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #d97706, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Animated Elements (Dark Pink) --- */
+body.theme-light.outline-mode #workspace-canvas .el.animated-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.button {
+  outline: 1px solid #db2777 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el svg polyline {
+  stroke: #db2777 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.button span {
+  color: #db2777 !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #db2777, transparent calc(50% + 0.5px)) !important;
+}
+
+/* --- Color Coding (Light Mode): Both Dynamic & Animated Elements (Dark Purple) --- */
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el,
+
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button {
+  outline: 1px solid #7c3aed !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg rect,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg circle,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg path,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg line,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el svg polyline {
+  stroke: #7c3aed !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text span,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h1,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h2,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text h3,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.text div,
+
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.button span {
+  color: #7c3aed !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::before {
+  background: linear-gradient(to top right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
+}
+body.theme-light.outline-mode #workspace-canvas .el.dynamic-el.animated-el.image::after {
+  background: linear-gradient(to bottom right, transparent calc(50% - 0.5px), #7c3aed, transparent calc(50% + 0.5px)) !important;
+}
+
+/* ============================================================================
+   Canvas Viewport & Outline Mode Legend Overlay
+   ============================================================================ */
+.canvas-viewport {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+body.fullscreen-mode .canvas-viewport {
+  grid-column: 1 !important;
+}
+
+body.preview-active .canvas-viewport {
+  height: 100vh;
+}
+
+.canvas-viewport .canvas-area {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.outline-legend {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  background: rgba(18, 20, 25, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light, #2a2f3e);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  user-select: none;
+}
+
+body.outline-mode .outline-legend {
+  display: flex;
+}
+
+.outline-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-main, #d6d6e0);
+}
+
+.outline-legend-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 1.5px;
+  display: inline-block;
+}
+
+.outline-color-standard {
+  background-color: #00f0ff;
+  box-shadow: 0 0 4px rgba(0, 240, 255, 0.4);
+}
+.outline-color-dynamic {
+  background-color: #f59e0b;
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.4);
+}
+.outline-color-animated {
+  background-color: #ec4899;
+  box-shadow: 0 0 4px rgba(236, 72, 153, 0.4);
+}
+.outline-color-hybrid {
+  background-color: #a855f7;
+  box-shadow: 0 0 4px rgba(168, 85, 247, 0.4);
+}
+
+/* Light mode overrides for legend container */
+body.theme-light .outline-legend {
+  background: rgba(248, 250, 252, 0.92);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+body.theme-light .outline-legend-item {
+  color: #1e293b;
+}
+
+body.theme-light .outline-color-standard {
+  background-color: #1e293b;
+  box-shadow: none;
+}
+body.theme-light .outline-color-dynamic {
+  background-color: #d97706;
+  box-shadow: none;
+}
+body.theme-light .outline-color-animated {
+  background-color: #db2777;
+  box-shadow: none;
+}
+body.theme-light .outline-color-hybrid {
+  background-color: #7c3aed;
+  box-shadow: none;
+}
+
+/* Zoom anchor selector styles */
+.anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 14px);
+  grid-template-rows: repeat(3, 14px);
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-input, #1b2130);
+  border: 1px solid var(--border-light, #2e374a);
+  border-radius: 6px;
+  width: fit-content;
+}
+
+.anchor-dot-btn {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  transition: transform 0.1s ease;
+}
+
+.anchor-dot-btn div {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+  transition: all 0.15s ease;
+}
+
+.anchor-dot-btn:hover div {
+  background: var(--text-bright, #fff) !important;
+  transform: scale(1.3);
+}
+
+.anchor-dot-btn.active div {
+  background: var(--accent-base, #7c5cff);
+  box-shadow: 0 0 6px var(--accent-base, #7c5cff);
+  transform: scale(1.3);
+}
+
+.anchor-dot-btn.active:hover div {
+  background: var(--accent-base, #7c5cff) !important;
+}
+
+/* Dragover placeholder highlight overlay */
+.placeholder-highlight-overlay {
+  border: 2px dashed var(--accent-base);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-base) 80%, transparent), inset 0 0 10px color-mix(in srgb, var(--accent-base) 40%, transparent);
+  border-radius: 4px;
+  box-sizing: border-box;
+  animation: placeholder-glow-once 0.6s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-hint-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-bright, #fff);
+  background: var(--accent-base);
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: none;
+  pointer-events: none;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@keyframes placeholder-glow-once {
+  0% {
+    box-shadow: 0 0 0px transparent, inset 0 0 0px transparent;
+    border-color: color-mix(in srgb, var(--accent-base) 30%, transparent);
+  }
+  30% {
+    box-shadow: 0 0 24px var(--accent-base), inset 0 0 24px color-mix(in srgb, var(--accent-base) 60%, transparent);
+    border-color: var(--accent-base);
+  }
+  100% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--accent-base) 40%, transparent), inset 0 0 8px color-mix(in srgb, var(--accent-base) 20%, transparent);
+    border-color: color-mix(in srgb, var(--accent-base) 70%, transparent);
+  }
+}
+
+/* --- Collapsed Canvases Status Header Styling --- */
+.canvases-header-status {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.panel-section.collapsed .canvases-header-status {
+  display: inline-flex;
+}
+
+.canvas-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  line-height: 1;
+  user-select: none;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.canvas-status-tag:hover {
+  filter: brightness(1.2);
+  transform: scale(1.04);
+}
+
+.canvas-status-tag:active {
+  transform: scale(0.96);
+}
+
+.canvas-status-tag svg {
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.canvas-status-tag.error {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.canvas-status-tag.warning {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.canvas-status-tag.pass {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.canvas-status-tag.pending {
+  background: rgba(90, 97, 120, 0.15);
+  color: var(--text-muted);
+}
+
+/* Move FX Guide Overlay Animations */
+.move-guide-path-anim {
+  animation: move-guide-dashed 0.8s linear infinite;
+}
+@keyframes move-guide-dashed {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+/* Hide marching ants / selection outlines during hover preview animations */
+body.previewing-animation-hover .selection-outline,
+body.previewing-animation-hover .link-group-highlight-overlay {
+  display: none !important;
+}
+body.previewing-animation-hover .el.link-highlight::after,
+body.previewing-animation-hover .el.link-highlight-live::after,
+body.previewing-animation-hover .el.link-highlight-hover::after,
+body.previewing-animation-hover .el.link-highlight-hover-live::after {
+  display: none !important;
+}
+
+/* Preset dropdown outlining and glow styling */
+.preset-select-trigger {
+  border: 1.5px solid var(--accent-base) !important;
+  box-shadow: 0 0 3px color-mix(in srgb, var(--accent-base) 20%, transparent);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s !important;
+}
+.preset-select-trigger:hover {
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 40%, transparent);
+  transform: translateY(-0.5px);
+}
+.preset-select-trigger:active {
+  transform: translateY(0.5px);
+}
+
+
+/* ============================================================================
+   Animation Sequencer (v0.25.0) — collapsible timeline anchored to the bottom
+   of the canvas viewport. One row per element of the active canvas + frame;
+   IN / OUT / FX bars on a 0.1s-snappable grid. Fully optional — mirrors the
+   props panel's animation sub-panels and stays in sync with them.
+   ========================================================================== */
+#sequencer-panel {
+  /* Static flex child of .canvas-viewport (not an overlay): the canvas area —
+     including its rulers and scrollbars — shrinks to make room, so nothing is
+     ever covered by the timeline. */
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 60;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: var(--text-main);
+}
+body.preview-active #sequencer-panel,
+body.fullscreen-mode #sequencer-panel { display: none; }
+
+#sequencer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  flex-shrink: 0;
+  user-select: none;
+  cursor: pointer; /* whole bar toggles open/collapse */
+}
+#sequencer-header:hover .seq-toggle-arrow { color: var(--text-bright); }
+.seq-toggle-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 22px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.seq-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.seq-info {
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.seq-btn {
+  background: var(--bg-input);
+  border: 1px solid var(--border-light);
+  color: var(--text-main);
+  border-radius: 4px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: inherit;
+}
+.seq-btn:hover { border-color: var(--accent-base); color: var(--text-bright); }
+.seq-btn.seq-playing { background: var(--accent-base); color: #fff; border-color: var(--accent-base); }
+/* Prominent accent-filled Play CTA, anchored at the far right of the bar. */
+.seq-btn.seq-play-cta {
+  background: var(--accent-base);
+  color: #fff;
+  border-color: transparent;
+  font-weight: 700;
+  height: 24px;
+  padding: 0 12px;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--accent-base) 45%, transparent);
+}
+.seq-btn.seq-play-cta:hover { filter: brightness(1.12); color: #fff; border-color: transparent; }
+.seq-btn.seq-play-cta.seq-playing { background: #e0653a; box-shadow: 0 1px 6px rgba(224, 101, 58, 0.45); }
+.seq-spacer { flex: 1; }
+
+#sequencer-body {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border-light);
+  overflow: hidden;
+}
+#sequencer-panel.sequencer-collapsed #sequencer-body { display: none; }
+
+.seq-scroll {
+  overflow: auto;
+  max-height: 260px;
+  padding-bottom: 12px;
+}
+.seq-grid {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  min-width: 100%;
+  width: max-content;
+  position: relative; /* anchors the playback playhead */
+}
+/* Non-interactive playhead that sweeps across the tracks during Play. */
+.seq-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--accent-base);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--accent-base) 70%, transparent);
+  opacity: .8;
+  pointer-events: none;
+  z-index: 4;
+  transition: opacity .4s ease;
+}
+.seq-playhead.seq-playhead-done { opacity: 0; }
+/* Dashed canvas outline while hovering a timeline row. */
+.el.seq-hover-outline {
+  outline: 1.5px dashed var(--accent-base) !important;
+  outline-offset: 2px;
+}
+.seq-ruler-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.seq-ruler {
+  position: relative;
+  height: 20px;
+  border-bottom: 1px solid var(--border-light);
+}
+.seq-tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  height: 5px;
+  background: var(--border-light);
+}
+.seq-tick.major { height: 9px; background: var(--text-muted); }
+.seq-tick-label {
+  position: absolute;
+  top: 1px;
+  font-size: 8.5px;
+  color: var(--text-muted);
+  transform: translateX(-50%);
+}
+.seq-row-label {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 34px;
+  cursor: pointer;
+  overflow: hidden;
+}
+/* Row hover + selection. Label and track are separate grid cells, so a shared
+   .seq-row-hover / .seq-selected class is toggled on BOTH via JS (CSS :hover
+   can't span the two cells). */
+.seq-row-label.seq-row-hover,
+.seq-track.seq-row-hover { background: var(--bg-input); }
+.seq-row-label.seq-selected,
+.seq-track.seq-selected { background: color-mix(in srgb, var(--accent-base) 14%, var(--bg-panel)); }
+.seq-row-label.seq-selected { box-shadow: inset 3px 0 0 var(--accent-base); font-weight: 600; }
+.seq-track.seq-selected { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-base) 35%, transparent); }
+/* Bars in the selected row read stronger. */
+.seq-track.seq-selected .seq-bar { filter: brightness(1.12); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25); }
+/* The FX bar is an invisible hit target — suppress the selected-row highlight
+   so it doesn't draw a stray white ring. Its veil carries the highlight. */
+.seq-track.seq-selected .seq-bar-fx { filter: none; box-shadow: none; }
+.seq-track.seq-selected .seq-fx-veil { border-color: rgba(47, 158, 143, 1); }
+/* Row index before the layer name — numbers the timeline's own display order
+   (so it follows drag-reordering and the animated-only filter). Tabular digits
+   + fixed width keep every name left-aligned. */
+.seq-row-num {
+  flex: 0 0 auto;
+  min-width: 11px;
+  text-align: right;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  opacity: .8;
+  user-select: none;
+}
+.seq-row-label.seq-selected .seq-row-num { color: var(--accent-base); opacity: 1; }
+.seq-row-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-size: 10.5px;
+}
+.seq-row-name-inner { display: inline-block; white-space: nowrap; }
+/* Truncated names: fade both ends and slowly ping-pong the text so the full
+   name is readable without widening the column. --seq-scroll-dist/-dur are
+   set per row after measuring. */
+.seq-row-name.seq-name-truncated {
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 16px), transparent 100%);
+}
+/* Only scroll the full name while the row is hovered; parks at the start
+   otherwise. --seq-scroll-dist/-dur are measured per row in JS. */
+.seq-row-label:hover .seq-row-name.seq-name-truncated .seq-row-name-inner {
+  animation: seq-name-scroll var(--seq-scroll-dur, 5s) linear 0.4s infinite alternate;
+}
+@keyframes seq-name-scroll {
+  0%, 8% { transform: translateX(0); }
+  92%, 100% { transform: translateX(var(--seq-scroll-dist, 0px)); }
+}
+.seq-chip {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  border-radius: 3px;
+  padding: 1px 4px;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  background: transparent;
+  flex-shrink: 0;
+}
+.seq-chip.on { color: #fff; border-color: transparent; }
+.seq-chip.on.seq-chip-in { background: var(--accent-base); }
+.seq-chip.on.seq-chip-out { background: #e0653a; }
+.seq-chip.on.seq-chip-fx { background: #2f9e8f; }
+.seq-chip.seq-chip-disabled { opacity: .35; cursor: not-allowed; }
+.seq-track {
+  position: relative;
+  height: 34px;
+  border-bottom: 1px solid var(--border-light);
+  background-image:
+    repeating-linear-gradient(90deg, var(--border-light) 0 1px, transparent 1px var(--seq-grid-px, 8px));
+  background-position: 0 0;
+  background-size: 100% 40%;
+  background-repeat: repeat-x;
+  background-position-y: 60%;
+}
+.seq-overrun {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(224, 74, 58, 0.07) 6px 12px);
+  pointer-events: none;
+}
+.seq-bar {
+  position: absolute;
+  top: 5px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: grab;
+  z-index: 3;
+  box-sizing: border-box;
+}
+.seq-bar:active { cursor: grabbing; }
+.seq-bar.seq-bar-in  { background: color-mix(in srgb, var(--accent-base) 85%, transparent); }
+.seq-bar.seq-bar-out { background: rgba(224, 101, 58, 0.85); }
+/* FX bars often span the whole row. The bar element itself stays invisible and
+   sits UNDER the solid IN/OUT bars so those remain draggable where they
+   overlap; all FX visuals are painted by .seq-fx-veil on top instead. */
+.seq-bar.seq-bar-fx {
+  background: transparent;
+  border: none;
+  z-index: 1;
+}
+/* Pointer-interactive overlay carrying the FX outline + stripes. */
+.seq-fx-veil {
+  position: absolute;
+  top: 5px;
+  height: 24px;
+  border: 2px solid #2f9e8f;
+  background: rgba(47, 158, 143, 0.32);
+  border-radius: 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 3;
+  pointer-events: auto;
+  cursor: pointer;
+  --seq-stripe: 12px; /* stripe pattern period, measured along the 135deg axis */
+}
+.seq-fx-veil:active {
+  cursor: grabbing;
+}
+.seq-fx-veil::before {
+  content: '';
+  position: absolute;
+  /* Overhang so the diagonal stripes don't reveal a seam as they translate. */
+  top: -6px;
+  bottom: -6px;
+  left: -28px;
+  right: -28px;
+  background: repeating-linear-gradient(135deg,
+    rgba(255, 255, 255, 0.35) 0 calc(var(--seq-stripe) / 2.4),
+    transparent calc(var(--seq-stripe) / 2.4) var(--seq-stripe));
+}
+
+/* --- Hover affordance ------------------------------------------------------
+   A resting FX bar is a static striped outline that looks painted on, and the
+   click that opens focus mode was discoverable only by trying it. Hovering now
+   lifts the bar and names what the click will do, so the interaction announces
+   itself instead of waiting to be found. */
+.seq-fx-veil {
+  /* Lets the label below query THIS bar's width rather than the viewport's.
+     Safe here because the veil is sized by left/width (or left/right), never by
+     its contents, which is the one thing inline-size containment takes away. */
+  container-type: inline-size;
+  transition: background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.seq-fx-veil:hover {
+  background: rgba(47, 158, 143, 0.46);
+  border-color: #46c4b2;
+  box-shadow: 0 0 0 1px rgba(70, 196, 178, 0.45), 0 2px 8px -2px rgba(0, 0, 0, 0.45);
+}
+.seq-fx-veil::after {
+  /* Honest about the two-step: a click on an unselected row selects the layer,
+     and only a click on the row that is ALREADY the sole selection isolates it
+     (see the wasSelected check in seqBarMouseDown). */
+  content: 'Click to select';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .6);
+  background: rgba(10, 30, 28, 0.45);
+  opacity: 0;
+  transition: opacity .12s ease;
+  pointer-events: none;
+}
+.seq-track.seq-selected .seq-fx-veil::after { content: 'Click to edit'; }
+/* Over a buried IN/OUT end (set by the veil's mousemove): the cursor already
+   says ew-resize, so the label must not still be offering something else. */
+.seq-fx-veil.seq-fx-veil-over-edge::after,
+.seq-track.seq-selected .seq-fx-veil.seq-fx-veil-over-edge::after { content: 'Drag to resize'; }
+/* Already in focus mode — the bar is doing the thing, so stop offering it. */
+.seq-track.seq-fx-edit .seq-fx-veil::after { content: none; }
+/* Short bars can't hold the label without clipping it mid-word, and a truncated
+   instruction is worse than none. The veil is its own query container, so each
+   bar decides for itself based on its own width. */
+@container (min-width: 84px) {
+  .seq-fx-veil:hover::after { opacity: 1; }
+}
+
+/* --- FX isolation ("edit mode") ------------------------------------------- */
+/* Clicking an already-selected layer's FX bar isolates it: IN/OUT recede and
+   the whole FX bar becomes draggable and resizable. */
+.seq-track.seq-fx-edit .seq-bar-in,
+.seq-track.seq-fx-edit .seq-bar-out {
+  opacity: 0.2;
+  filter: saturate(0.4);
+  pointer-events: none;
+}
+.seq-track.seq-fx-edit .seq-fx-veil {
+  z-index: 4;
+  pointer-events: auto;
+  cursor: grab;
+  border-color: #2f9e8f;
+  background: rgba(47, 158, 143, 0.5);
+  box-shadow: none;
+}
+.seq-track.seq-fx-edit .seq-fx-veil:active { cursor: grabbing; }
+.seq-track.seq-fx-edit .seq-fx-veil::before {
+  background: repeating-linear-gradient(135deg,
+    rgba(255, 255, 255, 0.45) 0 calc(var(--seq-stripe) / 2.4),
+    transparent calc(var(--seq-stripe) / 2.4) var(--seq-stripe));
+  /* Crawling stripes are the badge of focus mode, and only of focus mode. They
+     used to run on any selected row, which meant the timeline was in motion for
+     a state the user had not asked to enter — and made the one bar that IS
+     editable look no different from the rest. Now the motion marks it. */
+  animation: seq-fx-stripe 1.8s linear infinite;
+}
+/* Resize handles only exist while isolated, so they can't be buried by IN/OUT. */
+.seq-fx-veil .seq-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  pointer-events: auto;
+  cursor: ew-resize;
+}
+.seq-fx-veil .seq-handle-l { left: 0; border-left: 2.5px solid #2f9e8f; }
+.seq-fx-veil .seq-handle-r { right: 0; border-right: 2.5px solid #2f9e8f; }
+@keyframes seq-fx-stripe {
+  /* One full period horizontally = period / cos(45deg). */
+  to { transform: translateX(calc(var(--seq-stripe) * 1.41421)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seq-track.seq-fx-edit .seq-fx-veil::before { animation: none; }
+}
+.seq-fx-veil-infinite {
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 14px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 14px), transparent);
+}
+.seq-bar .seq-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+}
+.seq-bar .seq-handle-l { left: 0; border-left: 2px solid rgba(255,255,255,.55); }
+.seq-bar .seq-handle-r { right: 0; border-right: 2px solid rgba(255,255,255,.55); }
+.seq-drag-tip {
+  position: fixed;
+  z-index: 10001;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-base);
+  color: var(--text-bright);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.seq-popover {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  min-width: 130px;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.seq-popover-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-muted);
+  padding: 4px 8px 4px;
+}
+.seq-popover-item {
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-main);
+}
+.seq-popover-item:hover { background: var(--bg-input); color: var(--text-bright); }
+.seq-popover-item.seq-popover-active { color: var(--accent-base); font-weight: 600; }
+.seq-popover-check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.seq-popover-divider { height: 1px; background: var(--border-light); margin: 4px 2px; }
+.seq-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* ============================================================================
+   New-version available banner (v0.30.0) — persistent, non-blocking notice
+   shown when a newer deploy is detected while the app is open. Stays until the
+   user refreshes; never force-reloads.
+   ========================================================================== */
+#app-update-banner {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 99990;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--accent-base);
+  color: var(--text-main);
+  font-size: 12px;
+  padding: 8px 10px 8px 15px;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 0 0 4px color-mix(in srgb, var(--accent-base) 12%, transparent);
+  opacity: 0;
+  transition: opacity .3s ease, transform .3s ease;
+}
+#app-update-banner.show { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); }
+body.preview-active #app-update-banner,
+body.fullscreen-mode #app-update-banner { display: none !important; }
+#app-update-banner .aub-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex: none;
+  background: var(--accent-base);
+  box-shadow: 0 0 8px var(--accent-base);
+  animation: aub-pulse 1.8s ease-in-out infinite;
+}
+@keyframes aub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+#app-update-banner .aub-refresh {
+  background: var(--accent-base);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+#app-update-banner .aub-refresh:hover { filter: brightness(1.12); }

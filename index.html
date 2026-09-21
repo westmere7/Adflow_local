@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RMIT Adflow</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
+  <!-- Vendored libraries (lib/) — no CDN, so the app runs with no internet access. -->
+  <script src="lib/jszip.min.js?v=0.61.0"></script>
+  <script src="lib/iro.min.js?v=0.61.0"></script>
+  <link rel="stylesheet" href="styles.css?v=0.61.0" />
+  <style>
+    /* Splash screen — shown on initial load, faded out by initApp.
+       Inlined so it paints before styles.css finishes parsing. */
+    #app-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-panel, #121419);
+      opacity: 1;
+      filter: blur(0px);
+      transition: opacity .6s cubic-bezier(0.16, 1, 0.3, 1),
+                  filter .6s cubic-bezier(0.16, 1, 0.3, 1),
+                  transform .6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #app-splash::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 38%, var(--accent-base, #7c5cff) 0%, transparent 55%);
+      opacity: .14;
+      animation: app-splash-glow 6s ease-in-out infinite;
+      pointer-events: none;
+    }
+    #app-splash.app-splash-out {
+      opacity: 0;
+      transform: scale(1.05);
+      filter: blur(16px);
+      pointer-events: none;
+    }
+    .app-splash-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+      transform: translateY(-12px);
+    }
+    .app-splash-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+    }
+    .app-splash-logo img {
+      display: block;
+      width: auto;
+      height: 44px;
+      user-select: none;
+      -webkit-user-drag: none;
+      animation: app-splash-logo-pulse 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .app-splash-version {
+      font-size: 10px;
+      color: var(--text-muted, #8b8f9c);
+      border: 1px solid rgba(139, 143, 156, 0.4);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      margin-top: 2px;
+    }
+    .app-splash-status {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--text-muted, #8b8f9c);
+      font-weight: 500;
+      min-height: 14px;
+      transition: opacity .22s cubic-bezier(0.16, 1, 0.3, 1), transform .22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .app-splash-status.app-splash-status-fade {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+    .app-splash-bar {
+      width: 300px;
+      height: 4px;
+      background: rgba(255,255,255,.05);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.4), 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .app-splash-bar-fill {
+      height: 100%;
+      width: 4%;
+      background: linear-gradient(90deg, var(--accent-base, #7c5cff), #a855f7);
+      border-radius: 4px;
+      transition: width .5s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      box-shadow: 0 0 10px rgba(124, 92, 255, 0.5);
+      overflow: hidden;
+    }
+    .app-splash-bar-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent);
+      transform: translateX(-100%);
+      animation: app-splash-sheen 1.6s linear infinite;
+    }
+    @keyframes app-splash-logo-pulse {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 2px 8px rgba(124, 92, 255, 0.15)); }
+      50%      { transform: scale(1.03); filter: drop-shadow(0 8px 24px rgba(124, 92, 255, 0.35)); }
+    }
+    @keyframes app-splash-glow {
+      0%, 100% { opacity: .10; transform: scale(1) translate(0, 0); }
+      33%      { opacity: .18; transform: scale(1.05) translate(-10px, 8px); }
+      66%      { opacity: .14; transform: scale(0.96) translate(12px, -6px); }
+    }
+    @keyframes app-splash-sheen {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(220%); }
+    }
+
+    /* Size warning — reuses the splash visual language but is static
+       (no logo pulse, no progress bar). Below-min-resolution clients land
+       here instead of on the app. */
+    #size-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999998;
+      background: var(--bg-body, #0b0c0f);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+    }
+    #size-overlay::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 38%, var(--accent-base, #7c5cff) 0%, transparent 55%);
+      opacity: .14;
+      animation: app-splash-glow 4.2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .size-overlay-inner {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 28px;
+      max-width: 540px;
+      transform: translateY(-10px);
+    }
+    .size-overlay-logo {
+      width: 320px;
+      max-width: 60vw;
+      filter: drop-shadow(0 8px 30px rgba(0,0,0,.45));
+    }
+    .size-overlay-logo img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+    #size-overlay h2 {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+      color: var(--text-bright, #f1f5f9);
+      line-height: 1.3;
+    }
+    #size-overlay p {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--text-muted, #8b8f9c);
+      max-width: 460px;
+    }
+    .size-overlay-spec {
+      margin-top: -10px;
+      font-size: 10.5px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--accent-base, #7c5cff);
+      opacity: .85;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-splash" aria-hidden="true">
+    <div class="app-splash-inner">
+      <div class="app-splash-logo">
+        <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
+        <span class="app-splash-version">v0.61.0</span>
+      </div>
+      <div class="app-splash-status" id="app-splash-status">Warming up…</div>
+      <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
+    </div>
+  </div>
+  <div id="size-overlay">
+    <div class="size-overlay-inner">
+      <div class="size-overlay-logo"><img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo /></div>
+      <h2>Get a real work equipment</h2>
+      <p>Adflow is a desktop-class workspace — the canvas, panels, rulers, and timeline need real estate to breathe. Please open it on a larger monitor with a mouse and keyboard.</p>
+    </div>
+  </div>
+  <div id="ctx-menu"></div>
+  <div class="app">
+    <div id="save-progress-bar" title="Save Progress"></div>
+
+    <!-- ============== TOP BAR ============== -->
+    <div class="topbar">
+      <div class="menu-item hamburger" title="Main Menu" style="margin-right: 8px; padding: 4px; display:flex; align-items:center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <div class="dropdown" style="top: 100%; left: 0; min-width: 220px; padding: 8px 0;">
+          <!-- FILE — project lifecycle (new / open / save / export) -->
+          <div
+            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
+            File</div>
+          <div class="dropdown-item" id="menu-file-new">New Project…</div>
+          <!-- Open ▶ — a .flow file from disk. -->
+          <div class="dropdown-item has-sub" id="menu-file-open-sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span>Open</span>
+            <span style="font-size: 8px; color: var(--text-muted);">▶</span>
+            <div class="sub-dropdown" style="min-width: 180px;">
+              <div class="dropdown-item" id="menu-file-open">From File…</div>
+            </div>
+          </div>
+          <!-- Open Recent ▶ — kept at the File top level (rather than
+               nested inside Open) so the list is one hover deep, not two.
+               The submenu content is populated by updateRecentProjectsMenu()
+               in project-io.js. -->
+          <div class="dropdown-item has-sub" id="menu-file-recent" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span>Open Recent</span>
+            <span style="font-size: 8px; color: var(--text-muted);">▶</span>
+            <div class="sub-dropdown" id="recent-projects-list" style="max-height: 320px; overflow-y: auto; min-width: 200px;">
+              <div class="dropdown-item" style="color:var(--text-muted); cursor:default; pointer-events:none;">(No recent projects)</div>
+            </div>
+          </div>
+          <div class="dropdown-item" id="menu-file-clear-recent" style="color:#ef4444; font-weight:500;">Clear Recent</div>
+          <!-- Save ▶ — browser database, a .flow file on disk, or a template. -->
+          <div class="dropdown-item has-sub" id="menu-file-save-sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span>Save</span>
+            <span style="font-size: 8px; color: var(--text-muted);">▶</span>
+            <div class="sub-dropdown" style="min-width: 200px;">
+              <div class="dropdown-item" id="menu-file-save-browser">Save to Browser <span class="kbd"
+                  style="background:transparent;border:none;padding:0">Ctrl+Shift+S</span></div>
+              <div class="dropdown-item" id="menu-file-save-file">Save to File (.flow) <span class="kbd"
+                  style="background:transparent;border:none;padding:0">Ctrl+S</span></div>
+              <div class="dropdown-item" id="menu-file-save-template">Save template</div>
+            </div>
+          </div>
+
+          <div class="dropdown-divider"></div>
+
+          <!-- EXPORT — opens the export dialogue (per-canvas selection,
+               filename, format, skip-frames toggle). Separated from FILE
+               because exporting is its own destination, not a save. -->
+          <div
+            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
+            Export</div>
+          <div class="dropdown-item" id="menu-file-export">Export…</div>
+          <div class="dropdown-item" id="menu-file-preview" title="Open the preview portal on its own — review a .flow project, or a standalone HTML5 ad zip from outside Adflow" onclick="window.open('preview.html', '_blank')">Preview Portal…</div>
+          <div class="dropdown-item" id="menu-file-batch" title="Portal for other teams: load a certified template, import a data sheet, export all versions" onclick="window.open('batch.html', '_blank')">Batch Operation…</div>
+
+          <div class="dropdown-divider"></div>
+
+          <!-- PROJECT — settings + data versioning for the active project -->
+          <div
+            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
+            Project</div>
+          <div class="dropdown-item" id="menu-project-settings">Project Settings…</div>
+          <div class="dropdown-item" id="menu-file-data">Data &amp; Versions…</div>
+
+          <div class="dropdown-divider"></div>
+
+          <!-- EDIT — undo/redo. -->
+          <div
+            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
+            Edit</div>
+          <div class="dropdown-item" id="menu-edit-undo">Undo <span class="kbd"
+              style="background:transparent;border:none;padding:0">Ctrl+Z</span></div>
+          <div class="dropdown-item" id="menu-edit-redo">Redo <span class="kbd"
+              style="background:transparent;border:none;padding:0">Ctrl+Shift+Z</span></div>
+
+          <div class="dropdown-divider"></div>
+
+          <!-- VIEW — workspace overlays. -->
+          <div
+            style="padding:4px 16px; font-size:10px; color:var(--text-muted); text-transform:uppercase; font-weight:600; letter-spacing:.05em;">
+            View</div>
+          <div class="dropdown-item" id="menu-view-clear-guides">Clear All Guides</div>
+          <div class="dropdown-item" id="menu-view-outline">Outline Mode <span class="kbd"
+              style="background:transparent;border:none;padding:0">Ctrl+Y</span></div>
+
+
+
+          <!-- HELP ▶ — collapsed into a submenu now that there's more than
+               two entries' worth of File items competing for vertical space. -->
+          <div class="dropdown-item has-sub" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span>Help</span>
+            <span style="font-size: 8px; color: var(--text-muted);">▶</span>
+            <div class="sub-dropdown" style="min-width: 160px;">
+              <div class="dropdown-item" id="menu-help-shortcuts">Shortcuts</div>
+              <div class="dropdown-item" id="menu-help-documentation">Documentation</div>
+            </div>
+          </div>
+
+          <div class="dropdown-divider"></div>
+
+          <!-- App-level — settings and about. -->
+          <div class="dropdown-item" id="menu-open-settings">Settings…</div>
+          <div class="dropdown-item" id="menu-about">About</div>
+        </div>
+      </div>
+      <div class="title" style="display:flex; align-items:center;">
+        <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo style="height:24px; margin-right: 8px;" />
+        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
+        <div id="project-meta-container" style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; border-radius:4px; padding:2px 6px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.06)'" onmouseout="this.style.backgroundColor='transparent'" title="Click to open project settings / Double-click to rename">
+          <span id="project-name-display" style="font-size:12px; font-weight:600; color:var(--text-bright); outline:none; white-space:nowrap;">RMIT_ad</span>
+          <span id="project-save-status-dot" title="All changes saved">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+          </span>
+        </div>
+        <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
+      </div>
+      <!-- Toolbar System (Select / Zoom / Text) -->
+      <div id="toolbar-container" style="display:flex; align-items:center; gap:4px; margin-right:10px; border-right:1px solid var(--border-light); padding-right:10px;">
+        <button class="btn ghost icon active" id="tool-select" title="Select Tool (V)" style="padding:4px 6px; display:flex; align-items:center; justify-content:center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 3 10 21 13 13 21 10 3 3"></polygon>
+          </svg>
+        </button>
+        <button class="btn ghost icon" id="tool-zoom" title="Zoom Tool (Z)" style="padding:4px 6px; display:flex; align-items:center; justify-content:center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            <line x1="11" y1="8" x2="11" y2="14"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
+        <button class="btn ghost icon" id="tool-text" title="Text Tool (T)" style="padding:4px 6px; display:flex; align-items:center; justify-content:center;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 7 4 4 20 4 20 7"></polyline>
+            <line x1="9" y1="20" x2="15" y2="20"></line>
+            <line x1="12" y1="4" x2="12" y2="20"></line>
+          </svg>
+        </button>
+      </div>
+      <div id="frame-controls-wrap"
+        style="position:relative; display:flex; align-items:center; min-width:0; margin-right:12px; border-right:1px solid var(--border-light); padding-right:12px;">
+      <button class="frame-scroll-arrow" id="frame-controls-arrow-left" type="button" title="More controls" aria-label="Scroll controls left">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      </button>
+      <div
+        style="display:flex;align-items:center;gap:4px;overflow:hidden;min-width:0;"
+        id="frame-controls-container">
+        <label>Frame</label>
+        <button class="btn ghost icon" id="btn-prev-frame" title="Previous Frame"
+          style="padding:4px 6px;margin-right:-2px">&lsaquo;</button>
+        <select id="frame-select" title="Current Frame"
+          style="background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-main);border-radius:6px;padding:4px 6px;font-size:11px;outline:none;font-family:inherit;width:80px;"></select>
+        <button class="btn ghost icon" id="btn-next-frame" title="Next Frame"
+          style="padding:4px 6px;margin-left:-2px">&rsaquo;</button>
+        <div style="width:4px"></div>
+        <button class="btn ghost icon" id="btn-add-frame" title="Add Frame" style="padding:4px 6px">+</button>
+        <button class="btn ghost icon" id="btn-remove-frame" title="Remove Frame" style="padding:4px 6px">-</button>
+        <button class="btn ghost" id="btn-skip-frame" title="Skip this frame in play/export (Max 1 skipped frame)" style="padding:4px 8px; font-size:11px; margin-left:8px;" disabled>Skip Frame</button>
+        <label style="margin-left:8px">Duration (s)</label>
+        <input type="number" id="frame-duration" title="Frame Duration (seconds)" value="2" min="0.1" step="0.1"
+          onkeydown="if(['e','E','+','-'].includes(event.key)) event.preventDefault();"
+          style="width:60px;background:var(--bg-input);border:1px solid var(--border-light);color:var(--text-main);border-radius:6px;padding:4px 6px;font-size:11px;outline:none;" />
+        <div class="checkbox-row" style="margin-left:12px; display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="project-loop-ad" title="Loop animation in preview/export" style="margin:0;" />
+          <label for="project-loop-ad" title="Loop animation in preview/export" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer;">Loop</label>
+        </div>
+        <div class="checkbox-row" style="margin-left:12px; display:flex; align-items:center; gap:4px;">
+          <input type="checkbox" id="project-preview-current-only" title="Preview only the currently selected frame and its transition if applied" style="margin:0;" />
+          <label for="project-preview-current-only" title="Preview only the currently selected frame and its transition if applied" style="margin:0; font-size:11px; color:var(--text-main); cursor:pointer; white-space:nowrap;">Preview current only</label>
+        </div>
+      </div>
+      <button class="frame-scroll-arrow" id="frame-controls-arrow-right" type="button" title="More controls" aria-label="Scroll controls right">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      </button>
+      </div>
+      <div class="spacer"></div>
+      <div style="display:flex; align-items:center; gap:8px; margin-right:12px;">
+        <span id="version-switcher" style="display:none; align-items:center; gap:6px; margin-right:4px; border-right:1px solid var(--border-light); padding-right:12px;">
+          <svg viewBox="0 0 24 24" width="15" height="15" style="flex-shrink:0;fill:var(--accent-base);" title="Contains dynamic data"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <label style="font-size:11px;color:var(--text-muted);">Version</label>
+          <button class="btn ghost icon" id="btn-version-prev" title="Previous Version" style="padding:4px 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <div id="version-select-container" style="position:relative; width:170px; z-index:1000;"></div>
+          <button class="btn ghost icon" id="btn-version-next" title="Next Version" style="padding:4px 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+          </button>
+          <button class="btn ghost icon" id="btn-data-lock" title="Data lock — make dynamic slots read-only" style="padding:4px 6px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </button>
+        </span>
+        <!-- Full preview + its hover-preview toggle read as one segmented control
+             (see #preview-btn-wrap in styles.css). -->
+        <span id="preview-btn-wrap">
+          <button class="btn" id="btn-preview" title="Preview the interactive banner animation" style="width:100px;">Full preview</button>
+          <!-- Hover preview: when armed, pointing at "Full preview" plays every canvas
+               in place — same iframes as full preview, but the camera, zoom and panels
+               stay exactly where they are. -->
+          <!-- A pointer with a motion arc: the control is about what happens when you
+               point at something. Deliberately NOT a lightning bolt, which means
+               "dynamic data" everywhere else in the app (canvas badge, Layers row,
+               Link Groups lock, Version label). Filled paths inheriting currentColor,
+               so they follow the button's muted / armed states — no stroke attributes.
+               512 viewBox is the source artwork's; only width/height are set to 13. -->
+          <button class="btn" id="btn-hover-preview" aria-pressed="false" title="Hover preview — play canvases in place when you point at Full preview, or at a canvas's own Preview link">
+            <svg width="13" height="13" viewBox="0 0 512 512" fill="currentColor"><path d="m282.308 512c-16.027 0-31.094-6.241-42.427-17.574-5.789-5.789-10.259-12.559-13.284-20.122-.038-.094-.075-.188-.11-.282l-105.09-274.721c-8.84-22.285-3.61-47.612 13.348-64.57 16.959-16.958 42.287-22.188 64.571-13.348l274.72 105.091c.095.036.189.073.284.111 7.563 3.026 14.333 7.496 20.122 13.285 23.393 23.393 23.393 61.458-.001 84.852-5.183 5.184-11.182 9.327-17.83 12.312l-89.372 40.148c-2.201.989-4.198 2.371-5.936 4.108s-3.119 3.734-4.108 5.935l-40.149 89.375c-2.984 6.644-7.126 12.643-12.311 17.828-11.333 11.331-26.4 17.572-42.427 17.572zm-18.525-52.438c1.001 2.458 2.475 4.671 4.383 6.579 3.778 3.779 8.801 5.859 14.143 5.859s10.364-2.081 14.142-5.858c1.737-1.738 3.119-3.734 4.107-5.933l40.15-89.376c2.986-6.646 7.127-12.645 12.311-17.828 5.184-5.184 11.182-9.326 17.829-12.312l89.374-40.149c2.202-.989 4.198-2.37 5.934-4.107 7.799-7.799 7.799-20.487.001-28.285-1.907-1.907-4.12-3.381-6.579-4.383l-274.676-105.073c-.094-.036-.188-.072-.281-.11-7.447-2.979-15.921-1.239-21.592 4.429-5.669 5.669-7.408 14.145-4.429 21.592.038.094.074.188.11.281z"/><path d="m61.631 256.015c-38.582-26.111-61.617-69.481-61.617-116.015 0-77.196 62.804-140 140-140 46.539 0 89.912 23.039 116.023 61.628 6.19 9.148 3.792 21.583-5.356 27.772-9.148 6.188-21.583 3.792-27.772-5.356-18.662-27.579-49.65-44.044-82.895-44.044-55.14 0-100 44.86-100 100 0 33.241 16.462 64.227 44.036 82.888 9.148 6.191 11.545 18.625 5.354 27.773-6.19 9.147-18.624 11.545-27.773 5.354z"/></svg>
+          </button>
+        </span>
+        <button class="btn primary" id="btn-export-top" title="Export banner to HTML package" style="width:100px;">Export</button>
+      </div>
+    </div>
+
+    <!-- ============== WORKSPACES ============== -->
+    <div class="workspace">
+
+      <!-- LEFT PANEL -->
+      <div class="panel">
+        <!-- Pinned Top Area -->
+        <div style="flex-shrink: 0; display: flex; flex-direction: column;">
+          <!-- Validation and Audit trigger button -->
+          <div style="padding: 12px 14px 2px 14px;">
+            <button id="btn-validator-dashboard-trigger" class="btn primary" style="width: 100%; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; padding: 6px 12px; font-size: 12px;" title="Open Validation and Audit">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Validation and Audit
+            </button>
+          </div>
+
+          <!-- Canvases list panel section (pinned, collapsible) -->
+          <div class="panel-section" id="panel-section-canvases" data-permanent="true">
+            <h3 class="panel-header-collapsible" id="header-canvases" style="cursor: pointer; user-select: none;">
+              <span>Canvases</span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <div id="canvases-header-status" class="canvases-header-status"></div>
+              <button id="btn-add-canvas" title="Add canvas">+</button>
+            </h3>
+            <div id="canvases-list"></div>
+          </div>
+        </div>
+
+        <div class="panel-scroll">
+
+          <div class="panel-section" id="panel-section-add-elements">
+            <h3 class="panel-header-collapsible" id="header-add-elements" style="cursor: pointer; user-select: none;">
+              <span>Add element</span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; margin-top: 2px;">
+              <input type="checkbox" id="chk-add-all-arrange" title="Add the layer to every canvas at once and auto-arrange it on each, instead of just this one" style="margin: 0;" />
+              <label for="chk-add-all-arrange" style="font-size: 11px; color: var(--text-main); cursor: pointer; user-select: none;">Add to all canvases and auto-arrange</label>
+            </div>
+            <div class="add-grid">
+              <button class="add-btn" data-add="text" title="Add text layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 7V5h16v2M9 19h6M12 5v14" />
+                </svg>Text
+              </button>
+              <button class="add-btn" data-add="image" title="Add image layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="9" cy="9" r="2" />
+                  <path d="m21 15-3.5-3.5L11 18" />
+                </svg>Image
+              </button>
+              <button class="add-btn" data-add="rect" title="Add rectangle layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="4" y="4" width="16" height="16" rx="2" />
+                </svg>Rectangle
+              </button>
+              <button class="add-btn" data-add="circle" title="Add circle layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="8" />
+                </svg>Circle
+              </button>
+              <button class="add-btn" data-add="line" title="Add line layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="5" y1="19" x2="19" y2="5" />
+                </svg>Line
+              </button>
+              <button class="add-btn" data-add="button" title="Add CTA button layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="8" width="18" height="8" rx="4" />
+                </svg>Button
+              </button>
+              <button class="add-btn brand-dropdown-btn" id="btn-add-brand" title="Open Brand Elements library">
+                <svg viewBox="0 0 578.52 556.76" fill="currentColor" style="width: 16px; height: 16px;">
+                  <path d="M290.78,0h-74.15v60.23h-123.75v125.78H0v184.74h92.88v125.78h123.5v60.23h65.55c152.85,0,287.74-123.5,287.74-277.62S444.14,0,290.78,0"/>
+                </svg>
+                <span style="display: flex; align-items: center; gap: 4px;">
+                  Brand Elements
+                  <span style="font-size: 7px; opacity: 0.8; transform: translateY(0.5px);">▼</span>
+                </span>
+              </button>
+              <button class="add-btn brand-dropdown-btn" id="btn-add-brandset" title="Open Brand Sets library">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <span style="display: flex; align-items: center; gap: 4px;">
+                  Brand Sets
+                  <span style="font-size: 7px; opacity: 0.8; transform: translateY(0.5px);">▼</span>
+                </span>
+              </button>
+              <button class="add-btn" data-add="background" title="Add canvas background layer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="2" width="20" height="20" rx="4" />
+                  <line x1="2" y1="12" x2="22" y2="12" stroke-dasharray="2 2" />
+                </svg>Background
+              </button>
+            </div>
+          </div>
+
+
+          <div class="panel-section" id="panel-section-layers">
+            <h3 class="panel-header-collapsible" id="header-layers" style="cursor: pointer; user-select: none;">
+              <span>Layers</span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div id="layers"></div>
+          </div>
+
+          <div class="panel-section" id="panel-section-link-groups">
+            <h3 class="panel-header-collapsible" id="header-link-groups" style="cursor: pointer; user-select: none;">
+              <span>Link groups</span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div id="link-control"></div>
+          </div>
+
+          <div class="panel-section" id="panel-section-assets">
+            <h3 class="panel-header-collapsible" id="header-assets" style="cursor: pointer; user-select: none;">
+              <span>Assets</span>
+              <span style="display:flex; align-items:center; gap:6px;">
+                <button id="btn-asset-folder" title="New folder" style="display:inline-flex; align-items:center;">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h5l2 3h9v11H4z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                </button>
+                <button id="btn-asset-add" title="Save the current selection to Assets">+</button>
+              </span>
+              <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </h3>
+            <div id="asset-list"></div>
+          </div>
+
+          <!-- Tools panel removed in v0.16.0. Clear all moved to the canvas
+               context menu and the canvas Properties panel. Auto-resize is
+               anchored at the bottom of this panel, outside the scroll area,
+               so it's always visible regardless of scroll position. -->
+        </div>
+
+
+      </div>
+
+      <!-- CANVAS VIEWPORT -->
+      <div class="canvas-viewport" id="canvas-viewport">
+        <div class="canvas-area" id="canvas-area">
+          <div class="workspace-canvas" id="workspace-canvas">
+            <!-- canvases rendered here -->
+          </div>
+        </div>
+        <!-- Outline Mode Legend (only visible in outline mode) -->
+        <div class="outline-legend" id="outline-legend">
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-standard"></span>Static</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-dynamic"></span>Dynamic</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-animated"></span>Animated</div>
+          <div class="outline-legend-item"><span class="outline-legend-color outline-color-hybrid"></span>Dynamic + animated</div>
+        </div>
+        <!-- Animation sequencer — collapsible timeline anchored to the bottom
+             of the canvas viewport. Entirely optional: everything it edits is
+             also editable from the props panel (the two stay in sync).
+             Populated + wired by sequencer.js. -->
+        <div id="sequencer-panel" class="sequencer-collapsed">
+          <div id="sequencer-header"></div>
+          <div id="sequencer-body"></div>
+        </div>
+      </div>
+
+      <!-- WORKSPACE ISOLATION OUTLINE -->
+      <div class="workspace-isolation-outline" id="workspace-isolation-outline" style="display: none;">
+        <span class="workspace-isolation-label">Isolation mode</span>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="panel right">
+
+        <div class="panel-scroll" id="props">
+          <div class="prop-empty">Select an element to edit its properties.</div>
+        </div>
+        <div class="workspace-footer" id="workspace-footer">
+          <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.61.0</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="color-picker-modal" class="cp-modal" style="display:none;">
+    <div class="cp-header">
+      <button class="cp-tab active" data-tab="solid" title="Use solid color">Solid</button>
+      <button class="cp-tab" data-tab="gradient" title="Use gradient color">Gradient</button>
+    </div>
+    <div class="cp-body">
+      <div id="cp-iro-container" style="display:flex; justify-content:center; margin-bottom:12px;"></div>
+      <div class="cp-row">
+        <div style="position:relative; flex:1; display:flex; align-items:center;">
+          <input type="text" id="cp-hex-input" class="cp-input" title="Hex color code" style="width:100%; padding-right:24px;" />
+          <button id="cp-hex-copy" style="position:absolute; right:4px; background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px; display:flex; align-items:center; outline:none;" title="Copy hex">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <!-- Gradient Specific Controls -->
+      <div id="cp-gradient-controls" style="display:none;">
+        <!-- Preview bar (click empty space to add a stop) + draggable markers -->
+        <div id="cp-grad-bar" title="Click to add a stop" style="position:relative; height:18px; border-radius:4px; margin-top:12px; border:1px solid var(--border-light); background-clip:padding-box; cursor:copy;"></div>
+        <div id="cp-grad-track" style="position:relative; height:14px; margin-top:3px;"></div>
+        <!-- Stop color swatches (dynamic, 2-5) + add/remove -->
+        <div class="cp-row" style="margin-top:8px; gap:6px; align-items:center;">
+          <div id="cp-grad-swatches" style="display:flex; flex:1; min-width:0; gap:6px;"></div>
+          <button id="cp-grad-add" class="cp-btn" title="Add stop (max 5)" style="padding:0 10px; cursor:pointer;">+</button>
+          <button id="cp-grad-remove" class="cp-btn" title="Remove stop" style="padding:0 10px; cursor:pointer;">&minus;</button>
+        </div>
+        <!-- Active stop: angle + opacity + reverse -->
+        <div class="cp-row" style="margin-top:8px; gap:8px; align-items:flex-end;">
+          <div style="flex:1; min-width:0;">
+            <label style="font-size:10px; color:var(--text-label); display:block; margin-bottom:3px;">Angle</label>
+            <input type="number" id="cp-grad-angle" class="cp-input" data-wheel-plain title="Gradient angle in degrees" value="90" style="width:100%;" />
+          </div>
+          <div style="flex:1; min-width:0;">
+            <label style="font-size:10px; color:var(--text-label); display:block; margin-bottom:3px;">Opacity %</label>
+            <input type="number" id="cp-grad-opacity" class="cp-input" data-wheel-plain title="Stop opacity percentage" value="100" min="0" max="100" style="width:100%;" />
+          </div>
+          <button id="cp-grad-reverse" class="cp-btn" title="Reverse gradient" style="padding:0 10px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="cp-divider"></div>
+      <div class="cp-palettes">
+        <div id="cp-gradient-palette-section" style="margin-bottom:10px;">
+          <div
+            style="font-size:10px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; display:flex; justify-content:space-between;">
+            <span>Saved Gradients</span>
+            <button id="cp-add-gradient" title="Save current gradient (only while editing one)"
+              style="background:none;border:none;color:var(--accent-base);cursor:pointer;font-size:16px;line-height:10px;">+</button>
+          </div>
+          <div id="cp-gradients" class="cp-grad-swatch-row"></div>
+        </div>
+        <div
+          style="font-size:10px; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; display:flex; justify-content:space-between;">
+          <span>Saved Palette</span>
+          <button id="cp-add-swatch" title="Save current color to palette"
+            style="background:none;border:none;color:var(--accent-base);cursor:pointer;font-size:16px;line-height:10px;">+</button>
+        </div>
+        <div id="cp-swatches" class="cp-swatch-grid"></div>
+      </div>
+    </div>
+    <!-- Edits apply live while the picker is open; these commit or roll them back.
+         Discard restores whatever the property held when the picker was opened. -->
+    <div class="cp-foot">
+      <button id="cp-discard" class="cp-foot-btn" title="Revert to the colour this was when the picker opened (Esc)">Discard</button>
+      <button id="cp-save" class="cp-foot-btn cp-foot-primary" title="Keep this colour and close">Save</button>
+    </div>
+  </div>
+
+  <!-- ?v= is bumped with each release (part of the version/changelog workflow)
+       so browsers and the local python server never serve stale JS. -->
+  <script src="scripts/numeric-wheel.js?v=0.61.0"></script>
+  <script src="scripts/render-runtime.js?v=0.61.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.61.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.61.0"></script>
+  <script src="scripts/docs-content.js?v=0.61.0"></script>
+  <script src="scripts/data-merge.js?v=0.61.0"></script>
+  <script src="scripts/font-subset.js?v=0.61.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.61.0"></script>
+  <script src="scripts/video-export.js?v=0.61.0"></script>
+  <script src="scripts/color-picker.js?v=0.61.0"></script>
+  <!-- script.js was split into the 13 files below (v0.19.16 refactor). They are
+       plain scripts sharing globals — load order matters and must be preserved. -->
+  <script src="scripts/core-state.js?v=0.61.0"></script>
+  <script src="scripts/autosave.js?v=0.61.0"></script>
+  <script src="scripts/local-library.js?v=0.61.0"></script>
+  <script src="scripts/link-system.js?v=0.61.0"></script>
+  <script src="scripts/canvas-render.js?v=0.61.0"></script>
+  <script src="scripts/interactions.js?v=0.61.0"></script>
+  <script src="scripts/canvases-panel.js?v=0.61.0"></script>
+  <script src="scripts/layers-assets.js?v=0.61.0"></script>
+  <script src="scripts/props-panel.js?v=0.61.0"></script>
+  <script src="scripts/sequencer.js?v=0.61.0"></script>
+  <script src="scripts/toolbar-import.js?v=0.61.0"></script>
+  <script src="scripts/project-io.js?v=0.61.0"></script>
+  <script src="scripts/project-dialogs.js?v=0.61.0"></script>
+  <script src="scripts/modals.js?v=0.61.0"></script>
+  <script src="scripts/app-boot.js?v=0.61.0"></script>
+</body>
+
+</html>

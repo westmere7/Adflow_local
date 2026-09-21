@@ -1,0 +1,30 @@
+# RMIT Adflow — one-command local / intranet deployment.
+#
+#   docker compose up -d --build     build the image and start it
+#   docker compose logs -f           follow nginx access/error logs
+#   docker compose down              stop and remove the container
+#
+# Then open http://localhost:8080/ (or the host's address on port 8080).
+#
+# The app is static and keeps every project in the browser that made it, so the
+# container holds no state: no volumes, nothing to back up, safe to recreate.
+services:
+  adflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rmit-adflow:local
+    container_name: rmit-adflow
+    ports:
+      # host:container — change the left side to move it to another host port.
+      - "8080:8080"
+    restart: unless-stopped
+    # Harden: the image runs as uid 101 already; these remove the remaining
+    # write paths and Linux capabilities nginx does not need.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

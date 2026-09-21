@@ -1,0 +1,44 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
+  "outputDirectory": ".",
+  "installCommand": "",
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/data/Elements/RMIT_White.svg", "destination": "/data/Elements/RMIT_white.svg" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "same-origin" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(html|txt|json)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(wasm|mjs)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=2592000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(woff2|woff|ttf|otf|png|jpg|jpeg|gif|svg|webp|ico|mp4)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=2592000" }
+      ]
+    }
+  ]
+}

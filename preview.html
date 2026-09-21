@@ -1,0 +1,2462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ad Preview Portal - RMIT Adflow</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
+  
+  <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.61.0" />
+  
+  <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
+  <script src="lib/jszip.min.js?v=0.61.0"></script>
+
+  <!-- The app's real stylesheet, so this portal shares the editor's palette,
+       themes, buttons and dialogs instead of maintaining a parallel look.
+       Loaded BEFORE the page-specific block below so the portal's own layout
+       rules can still override where they must. -->
+  <link rel="stylesheet" href="styles.css?v=0.61.0" />
+
+  <style>
+    /* This page's layout was written against its own palette names. Rather than
+       rewrite every rule, alias those names onto the app's real tokens
+       (styles.css) so the chrome matches the editor — and so the app's themes
+       carry over for free.
+
+       These MUST sit on `body`, not `:root`: the app's themes override tokens on
+       `body.theme-*`, and a var() alias resolves against the element it is
+       declared on. Declared on :root, the aliases would freeze the default dark
+       values and every theme would only half-apply. */
+    body {
+      --bg-app: var(--bg-body);
+      --bg-sidebar: var(--bg-panel);
+      --bg-card: var(--bg-panel);
+      --border-color: var(--border-light);
+      --success-base: #10b981;
+      --warning-base: #f59e0b;
+      --danger-base: #ef4444;
+      --sidebar-width: 320px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg-body);
+      color: var(--text-main);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      transition: background 0.3s ease;
+    }
+    
+    /* Sidebar Styles */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      flex-shrink: 0;
+      z-index: 10;
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+    
+    .sidebar-header {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .sidebar-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-bright);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .sidebar-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 2px;
+    }
+    
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 13px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-bright);
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+    }
+    
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-base);
+    }
+    
+    select:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      border-color: var(--border-color);
+    }
+    
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-main);
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 0;
+    }
+    
+    .checkbox-item input[type="checkbox"] {
+      accent-color: var(--accent-base);
+      cursor: pointer;
+    }
+    
+    .size-check-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .list-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    
+    .btn-link {
+      font-size: 11px;
+      color: var(--accent-light);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .btn-link:hover {
+      text-decoration: underline;
+    }
+    
+    .swatches {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .swatch {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: transform 0.1s ease;
+    }
+    
+    .swatch:hover {
+      transform: scale(1.1);
+    }
+    
+    .swatch.active {
+      border-color: var(--accent-base);
+    }
+    
+    /* Swatch previews. Each now maps to a REAL app theme from styles.css
+       (the old bespoke "slate" palette had no app equivalent, so it became
+       Nordic), keeping this page inside the editor's design system. */
+    .swatch-adflow   { background: #0b0c0f; }
+    .swatch-light    { background: #f1f5f9; }
+
+    .swatch-chess {
+      background-color: #f1f1f1;
+      background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+                        linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+                        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+      background-size: 8px 8px;
+      background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
+    }
+    
+    .playback-row {
+      display: flex;
+      gap: 8px;
+    }
+    
+    /* Colour, hover, :disabled and .primary all come from styles.css so this
+       portal's buttons ARE the editor's buttons. These rules add only the
+       flex/gap layout the sidebar rows need.
+
+       Scoped, and LAYOUT ONLY, on purpose: an unscoped `.btn` that also set
+       colour would either lose to `.btn.primary` or (once scoped, becoming
+       specificity-equal and later in the cascade) beat it and silently strip
+       the accent fill off every primary button. `flex: none` because these sit
+       in column containers — a growable basis lets flex dictate their height;
+       the side-by-side rows set `flex:1` inline, which still wins. */
+    .sidebar .btn,
+    .main-header .btn {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    /* Empty state — takes the grid's place until something is loaded. */
+    #pv-empty {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 32px;
+      text-align: center;
+      overflow: auto;
+    }
+    #pv-empty.visible { display: flex; }
+    #pv-empty-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin-top: 2px;
+    }
+    #pv-empty-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 420px;
+      line-height: 1.5;
+    }
+    #pv-empty-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    #pv-empty .btn.pv-hero {
+      flex: none;
+      height: 38px;
+      padding: 0 18px;
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+    #pv-empty .btn.pv-hero.primary {
+      box-shadow: 0 2px 14px color-mix(in srgb, var(--accent-base) 42%, transparent);
+    }
+    #pv-empty-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: .85;
+    }
+    /* In-place error, so a rejected file never parks the user on a dead screen. */
+    #pv-empty-error {
+      display: none;
+      align-items: flex-start;
+      gap: 7px;
+      max-width: 440px;
+      margin-top: 4px;
+      padding: 9px 12px;
+      text-align: left;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-main);
+      background: color-mix(in srgb, var(--danger-base) 12%, transparent);
+      border: 1px solid color-mix(in srgb, var(--danger-base) 45%, transparent);
+      border-radius: 6px;
+    }
+    #pv-empty-error.visible { display: flex; }
+    #pv-empty-error svg { color: var(--danger-base); }
+
+    /* Main Content Area */
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    .main-header {
+      height: 64px;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    
+    .project-name-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-bright);
+    }
+    
+    .canvas-grid {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+      position: relative;
+    }
+    
+    /* Card Styles */
+    .card {
+      position: absolute;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .card-header {
+      padding: 0 0 10px 0;
+      border-bottom: none;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      background: transparent;
+      height: 24px;
+    }
+    
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-bright);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    
+    .badge.info {
+      background: rgba(124, 92, 255, 0.15);
+      color: var(--accent-light);
+    }
+    
+    .badge.success {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success-base);
+    }
+    
+    .badge.warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning-base);
+      cursor: pointer;
+    }
+    
+    .badge.danger {
+      background: rgba(239, 104, 104, 0.15);
+      color: var(--danger-base);
+    }
+    
+    .card-body {
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      min-height: auto;
+    }
+    
+    /* Checkered banner backdrop, now driven off one body class so cards rebuilt
+       by renderCanvases inherit it instead of silently losing the per-card
+       class. Dark by default; the app's Light theme gets the light checker. */
+    body.preview-checkered .card-body {
+      background-color: #161b22;
+      background-image: linear-gradient(45deg, #21262d 25%, transparent 25%),
+                        linear-gradient(-45deg, #21262d 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #21262d 75%),
+                        linear-gradient(-45deg, transparent 75%, #21262d 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+    body.preview-checkered.theme-light .card-body {
+      background-color: #f1f1f1;
+      background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
+                        linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
+                        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+                        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+    }
+    
+    .iframe-wrapper {
+      position: relative;
+      box-shadow: none;
+      border: none;
+      background: transparent;
+    }
+    
+    iframe.preview-iframe {
+      border: none;
+      display: block;
+      overflow: hidden;
+    }
+    
+    .card-audit {
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 10px 16px;
+      background: var(--bg-card);
+      font-size: 11px;
+      display: none;
+      margin-top: 8px;
+    }
+    
+    .card-audit.visible {
+      display: block;
+    }
+    
+    .audit-item {
+      font-size: 11.5px;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    
+    .audit-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .audit-bullet {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    
+    .audit-bullet.warning { background: var(--warning-base); }
+    .audit-bullet.a11y { background: var(--accent-light); }
+    
+    /* Drag & Drop Overlay */
+    .drag-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(11, 15, 23, 0.9);
+      border: 4px dashed var(--accent-base);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      gap: 16px;
+    }
+    
+    .drag-overlay.active {
+      display: flex;
+    }
+    
+    .drag-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-bright);
+    }
+    
+    /* Full Portal Loader */
+    .portal-loader {
+      position: fixed;
+      inset: 0;
+      background: #0b0f17;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      gap: 16px;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--accent-base);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  
+  <!-- Empty mock elements to absorb editor script listeners -->
+  <div style="display:none;">
+    <div id="btn-ai-resize"></div>
+    <div id="btn-ai-resize-settings"></div>
+    <div id="menu-file-export"></div>
+    <div id="btn-export-top"></div>
+    <div id="menu-file-data"></div>
+    <div id="btn-open-data"></div>
+    <div id="btn-version-prev"></div>
+    <div id="btn-version-next"></div>
+    <div id="btn-data-lock"></div>
+    <div id="props"></div>
+  </div>
+</head>
+<!-- Default Adflow theme; the sidebar swatches switch it at runtime. -->
+<body>
+
+  <!-- PORTAL LOADING OVERLAY -->
+  <div class="portal-loader" id="portal-loader">
+    <div class="spinner"></div>
+    <h2 id="loader-title" style="font-family:'Outfit',sans-serif; color:#fff; font-size:18px;">Loading preview...</h2>
+    <p id="loader-subtitle" style="color:var(--text-muted); font-size:13px;">Downloading project package</p>
+  </div>
+
+  <!-- DRAG & DROP OVERLAY -->
+  <div class="drag-overlay" id="drag-overlay">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent-base)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <div class="drag-title">Drop your .flow file here</div>
+    <p style="color:var(--text-muted);">This will load the project locally inside your browser</p>
+  </div>
+
+  <!-- SIDEBAR CONTROLS -->
+  <div class="sidebar">
+    <div class="sidebar-header" style="display:flex; flex-direction:column; align-items:flex-start; padding:24px 20px; border-bottom:1px solid var(--border-color);">
+      <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" style="height:26px; display:block;" />
+    </div>
+    
+    <div class="sidebar-content">
+      
+      <!-- EXTERNAL HTML5 AD CONTROLS — only shown for a non-Adflow ad zip,
+           where all we can do is re-mount the ad and optionally replay it.
+           Adflow's own timeline/frame/version controls can't reach inside a
+           third-party ad, so they're hidden in that mode. -->
+      <div class="control-group" id="external-controls" style="display:none;">
+        <div class="control-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span>HTML5 Ads</span>
+          <span id="ext-count" style="font-size:10px; font-weight:normal; text-transform:none; color:var(--text-muted);">0 / 10</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
+          <button class="btn" id="btn-ext-restart" style="width:100%;" title="Reload every ad from the start">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Restart All</span>
+          </button>
+          <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="chk-ext-loop" title="Restart this ad automatically so you can watch it more than once" style="margin:0; cursor:pointer;">
+            <span>Loop</span>
+          </label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:10.5px; color:var(--text-muted);">Replay every</span>
+            <input type="number" id="ext-loop-secs" title="How long to let the ad run before restarting it" min="1" max="600" step="1" value="30"
+                   style="width:58px; margin:0; height:24px; font-size:11px; padding:2px 6px;" />
+            <span style="font-size:10.5px; color:var(--text-muted);">sec</span>
+          </div>
+          <div style="font-size:10px; color:var(--text-muted); line-height:1.35; font-style:italic;">
+            Adflow can't read a third-party ad's own timeline, so Loop simply
+            reloads them on this interval.
+          </div>
+          <!-- One row per loaded ad: name, size override, remove. -->
+          <div id="ext-list" style="display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
+          <button class="btn" id="btn-ext-add" style="width:100%;" title="Add another zipped HTML5 ad">+ Add Ad (.zip)</button>
+        </div>
+      </div>
+
+      <!-- TIMELINE CONTROLS -->
+      <div class="control-group" id="adflow-playback-group">
+        <div class="control-label">Playback Controls</div>
+        <div class="playback-row" style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; gap:8px; width:100%;">
+            <button class="btn primary" id="btn-play" style="flex:1;" title="Play banner animations">Animated</button>
+            <button class="btn" id="btn-static" style="flex:1;" title="Freeze animations as static images">Static only</button>
+          </div>
+          <button class="btn" id="btn-replay" style="width:100%;" title="Restart timeline">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Restart Timeline</span>
+          </button>
+          <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+            <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+              <input type="checkbox" id="chk-loop-ad" title="Loop the timeline in this preview only. The exported ad keeps its own loop setting" style="margin:0; cursor:pointer;">
+              <span>Loop timeline</span>
+            </label>
+            <div style="font-size:10px; color:var(--text-muted); line-height:1.3; font-style:italic;">
+              Preview override only; does not affect exported ad loop settings.
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- FRAME BY FRAME SWITCHER -->
+      <div class="control-group" id="adflow-frame-group">
+        <div class="control-label">Frame Select</div>
+        <div style="display:flex; align-items:center; gap:4px; width:100%;">
+          <button type="button" class="btn" id="btn-prev-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Frame">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <select id="select-frame" title="Show all frames in sequence, or jump to one frame and play it across every size" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;">
+            <option value="play" selected>All frames</option>
+          </select>
+          <button type="button" class="btn" id="btn-next-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Frame">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- DATA VERSION -->
+      <div class="control-group" id="version-control-group" style="display:none;">
+        <div class="control-label">Data Version</div>
+        <div style="display:flex; align-items:center; gap:4px; width:100%;">
+          <button type="button" class="btn" id="btn-prev-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Version">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <select id="select-version" title="Switch which row of the data sheet every size is showing" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;"></select>
+          <button type="button" class="btn" id="btn-next-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Version">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- CANVAS CHECKLIST -->
+      <div class="control-group" id="adflow-sizes-group">
+        <div class="control-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <span>Banners Sizes</span>
+          <span id="ad-count" style="font-size:10px; font-weight:normal; text-transform:none; color:var(--text-muted);">0 sizes</span>
+        </div>
+        <div class="size-check-list" id="size-check-list"></div>
+        <div class="list-actions">
+          <button class="btn-link" id="btn-select-all" title="Show every banner size">Select All</button>
+          <button class="btn-link" id="btn-select-none" title="Hide every banner size">Clear All</button>
+        </div>
+      </div>
+      
+
+      
+      <!-- PRESENTATION THEME -->
+      <div class="control-group">
+        <div class="control-label">Presentation Grid / BG</div>
+        <div class="swatches">
+          <div class="swatch swatch-adflow active" data-theme="default" title="Adflow (default)"></div>
+          <div class="swatch swatch-light" data-theme="light" title="Light"></div>
+          <div class="swatch swatch-chess" data-theme="chess" title="Checkered banner backdrop"></div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- MAIN VIEWPORT -->
+  <div class="main-viewport">
+    <div class="main-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:nowrap; gap:12px; overflow:hidden;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; flex-shrink:1;">
+        <div class="project-name-title" id="project-name" style="margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No Project Loaded</div>
+        <span id="portal-mode-badge" style="font-size:10px; font-weight:700; text-transform:uppercase; border:1px solid var(--border-color); color:var(--text-muted); padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:0.04em;">Preview</span>
+      </div>
+      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; flex-shrink:0;">
+        <button class="btn primary" id="btn-download-all" title="Download every visible size as HTML5 zips in one archive" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download All (.zip)</span>
+        </button>
+        <button class="btn-link" id="btn-drag-trigger" title="Choose a file from your computer" style="font-size: 12px; white-space: nowrap; flex-shrink:0;">Load Local File...</button>
+      </div>
+    </div>
+    
+    <!-- EMPTY STATE — the portal now opens standalone from the File menu, so
+         when nothing is loaded the banner area itself offers the two ways in.
+         Sibling of the grid so renderCanvases/layoutCards never see it. -->
+    <div id="pv-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-muted); opacity:.75;"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <div id="pv-empty-title">Nothing loaded yet</div>
+      <div id="pv-empty-sub">Open an Adflow project to review every banner size, or drop in a standalone HTML5 ad zip from outside Adflow.</div>
+      <div id="pv-empty-actions">
+        <button class="btn primary pv-hero" id="btn-empty-flow" title="Open an Adflow project (.flow) to review every size, frame and data version">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>Open Adflow Project…</span>
+        </button>
+        <button class="btn pv-hero" id="btn-empty-ext" title="Open an HTML5 ad zip built outside Adflow and play it here">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+          <span>Open HTML5 Ad (.zip)…</span>
+        </button>
+      </div>
+      <div id="pv-empty-hint">Adflow projects are <b>.flow</b> files — or drop either kind anywhere on this page.</div>
+      <div id="pv-empty-error" role="alert">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="pv-empty-error-msg"></span>
+      </div>
+    </div>
+
+    <!-- GRID CONTAINER -->
+    <div class="canvas-grid" id="canvas-grid"></div>
+  </div>
+
+  <!-- ENGINE STUBS & LOGIC BEFORE LOADING ENGINES -->
+  <script>
+    // Stubs for Adflow editor variables/functions required by auto-arrange and export-pipeline
+    var state = {
+      canvases: [],
+      frames: [],
+      linkGroups: {},
+      assets: {},
+      loopAd: true,
+      activeFrameId: 0,
+      zoom: 1.0
+    };
+    
+    // Declared in core-state.js, which this page doesn't load. export-pipeline's
+    // addCanvasAssetsToZip writes to it while packing `data/Elements/` assets
+    // (the RMIT logo); without it that write threw inside a catch, so the asset
+    // was silently left OUT of exported ads.
+    var urlSizeCache = {};
+
+    function getActiveCanvas() {
+      return state.canvases ? state.canvases[0] : null;
+    }
+    
+    function getCanvasBg(c, frameId) {
+      if (!c) return '#000';
+      if (frameId != null && c.bgByFrame && c.bgByFrame[frameId] !== undefined) {
+        return c.bgByFrame[frameId];
+      }
+      return c.bgColor || '#000';
+    }
+    
+    // isActiveMask() now provided by scripts/render-runtime.js
+
+    
+    // findMaskAbove() now provided by scripts/render-runtime.js
+
+    
+    function showCanvasNotification(msg, opts) {
+      console.log('Adflow Portal Notice:', msg, opts);
+    }
+    
+
+    
+    // isLineHeightAuto() / getResolvedLineHeight() now provided by scripts/render-runtime.js
+    // (along with the Auto-size fitter: calculateAutoSize / measureTextFits), so the
+    // size baked into an exported ad here matches the editor's canvas exactly.
+
+
+    // strokeOverlayHTML() now provided by scripts/render-runtime.js
+
+    
+    // getElementAnimationCSS() now provided by scripts/render-runtime.js
+
+    
+    // getInverseElementAnimationCSS() now provided by scripts/render-runtime.js
+
+    
+    // hexToRgba() now provided by scripts/render-runtime.js
+
+    // setupTextLineBgs() now provided by scripts/render-runtime.js
+
+    
+    // parseColorToRGB() now provided by scripts/render-runtime.js
+
+    
+    // getLuminance() now provided by scripts/render-runtime.js
+
+    
+    // getContrastRatio() now provided by scripts/render-runtime.js
+
+    
+    // baseLayerLabel() now provided by scripts/render-runtime.js
+
+    
+    function runAuditChecks(c) {
+      if (!c) return;
+      c._valA11y = [];
+      c._valBrand = [];
+      const settings = state.validationSettings || {};
+      
+      // Accessibility checks
+      c.elements.forEach(el => {
+        if (el.type === 'text') {
+          // Color contrast check
+          const textRGB = parseColorToRGB(el.color || '#ffffff');
+          const bgRGB = parseColorToRGB(el.hasBg ? (el.bg || '#000000') : (c.bgColor || '#0f172a'));
+          if (textRGB && bgRGB) {
+            const ratio = getContrastRatio(textRGB, bgRGB);
+            const size = el.fontSize || 14;
+            const required = size >= 18 ? 3.0 : 4.5;
+            if (ratio < required) {
+              c._valA11y.push({
+                message: `Low text contrast on '${el.customName || el.text.slice(0, 15)}' (${ratio.toFixed(1)}:1). WCAG AA requires ${required.toFixed(1)}:1.`
+              });
+            }
+          }
+          // Tiny size check
+          const size = el.fontSize || 14;
+          if (size < 6) {
+            c._valA11y.push({
+              message: `Text '${el.customName || el.text.slice(0, 15)}' is tiny (${size}px). May be illegible.`
+            });
+          }
+        } else if (el.type === 'button') {
+          const textRGB = parseColorToRGB(el.textColor || '#ffffff');
+          const bgRGB = parseColorToRGB(el.bg || '#7c5cff');
+          if (textRGB && bgRGB) {
+            const ratio = getContrastRatio(textRGB, bgRGB);
+            const required = 4.5;
+            if (ratio < required) {
+              c._valA11y.push({
+                message: `Button '${el.customName || el.text}' has low contrast (${ratio.toFixed(1)}:1). WCAG AA requires ${required.toFixed(1)}:1.`
+              });
+            }
+          }
+        }
+      });
+      
+      // Infinite looping check
+      c.elements.forEach(el => {
+        if (el.effectType && el.effectType !== 'none' && el.effOnce === false) {
+          c._valA11y.push({
+            message: `Layer '${baseLayerLabel(el)}' loops infinitely. Consider 'Perform once' to avoid user distraction.`
+          });
+        }
+      });
+    }
+  </script>
+  
+  <!-- LOAD WORKSPACE ENGINE SCRIPTS
+       ?v= is bumped with each release (same as index.html) so reviewers'
+       browsers never pair stale engine scripts with new inline portal code. -->
+  <script src="scripts/numeric-wheel.js?v=0.61.0"></script>
+  <script src="scripts/render-runtime.js?v=0.61.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.61.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.61.0"></script>
+  <script src="scripts/data-merge.js?v=0.61.0"></script>
+  <script src="scripts/font-subset.js?v=0.61.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.61.0"></script>
+
+  <!-- MAIN PREVIEW ENGINE PORTAL -->
+  <script>
+    // Elements references
+    const loader = document.getElementById('portal-loader');
+    const loaderTitle = document.getElementById('loader-title');
+    const loaderSubtitle = document.getElementById('loader-subtitle');
+    const dragOverlay = document.getElementById('drag-overlay');
+    const projectNameEl = document.getElementById('project-name');
+    const adCountEl = document.getElementById('ad-count');
+    const gridContainer = document.getElementById('canvas-grid');
+    const selectVersion = document.getElementById('select-version');
+    const selectFrame = document.getElementById('select-frame');
+    const sizeCheckList = document.getElementById('size-check-list');
+    const playBtn = document.getElementById('btn-play');
+    const staticBtn = document.getElementById('btn-static');
+    const replayBtn = document.getElementById('btn-replay');
+    const chkLoopAd = document.getElementById('chk-loop-ad');
+    const versionGroup = document.getElementById('version-control-group');
+    
+    // Cycle select helpers
+    const btnPrevFrame = document.getElementById('btn-prev-frame');
+    const btnNextFrame = document.getElementById('btn-next-frame');
+    const btnPrevVersion = document.getElementById('btn-prev-version');
+    const btnNextVersion = document.getElementById('btn-next-version');
+
+    function cycleSelect(selectEl, direction) {
+      const len = selectEl.options.length;
+      if (len <= 1) return;
+      let newIdx = selectEl.selectedIndex + direction;
+      if (newIdx < 0) newIdx = len - 1;
+      if (newIdx >= len) newIdx = 0;
+      selectEl.selectedIndex = newIdx;
+      selectEl.dispatchEvent(new Event('change'));
+    }
+
+    if (btnPrevFrame) btnPrevFrame.onclick = () => cycleSelect(selectFrame, -1);
+    if (btnNextFrame) btnNextFrame.onclick = () => cycleSelect(selectFrame, 1);
+    if (btnPrevVersion) btnPrevVersion.onclick = () => cycleSelect(selectVersion, -1);
+    if (btnNextVersion) btnNextVersion.onclick = () => cycleSelect(selectVersion, 1);
+    
+    let isPlaying = true;
+    let selectedCanvasIds = new Set();
+
+    // Repopulate options based on play state (shows or hides "All frames")
+    function repopulateFrameSelect() {
+      const currentVal = selectFrame.value;
+      selectFrame.innerHTML = '';
+      
+      const playable = (state.frames || []).filter(f => !f.skip);
+      
+      if (isPlaying) {
+        selectFrame.innerHTML += '<option value="play">All frames</option>';
+      }
+      
+      playable.forEach((f) => {
+        const i = state.frames.indexOf(f);
+        selectFrame.innerHTML += `<option value="${f.id}">Frame ${i + 1} (${f.duration}s)</option>`;
+      });
+      
+      // Restore previous selection if valid
+      if (currentVal && selectFrame.querySelector(`option[value="${currentVal}"]`)) {
+        selectFrame.value = currentVal;
+      } else {
+        if (isPlaying) {
+          selectFrame.value = 'play';
+        } else {
+          selectFrame.value = playable.length ? playable[0].id : '';
+        }
+      }
+    }
+
+    if (chkLoopAd) {
+      chkLoopAd.onchange = () => {
+        state.loopAd = chkLoopAd.checked;
+        reloadAllBanners();
+      };
+    }
+    
+    // Theme Management
+    // Presentation swatches. The first two are real app themes applied exactly
+    // the way the editor applies them (canvas-render.js sets body.className to
+    // the single theme class), so this page can't drift from the editor's look.
+    // "Chess" is not a theme — it's a checkered banner backdrop layered over
+    // whichever theme is active, driven by a body class so cards rebuilt by
+    // renderCanvases keep it.
+    let previewTheme = 'default';
+    let previewCheckered = false;
+
+    function applyPreviewAppearance() {
+      document.body.className = (previewTheme && previewTheme !== 'default') ? 'theme-' + previewTheme : '';
+      if (previewCheckered) document.body.classList.add('preview-checkered');
+    }
+
+    document.querySelectorAll('.swatch').forEach(swatch => {
+      swatch.onclick = () => {
+        const theme = swatch.dataset.theme;
+        if (theme === 'chess') {
+          // Toggles independently of the theme swatches.
+          previewCheckered = !previewCheckered;
+          swatch.classList.toggle('active', previewCheckered);
+        } else {
+          previewTheme = theme;
+          document.querySelectorAll('.swatch').forEach(s => {
+            if (s.dataset.theme !== 'chess') s.classList.remove('active');
+          });
+          swatch.classList.add('active');
+        }
+        applyPreviewAppearance();
+      };
+    });
+    
+    // Play / Static only state control
+    function setPlayState(playing, triggerReload = true) {
+      isPlaying = playing;
+      
+      // Repopulate options based on play state (shows or hides "All frames")
+      repopulateFrameSelect();
+      
+      // Frame select stays enabled at all times (jump-and-play model).
+      selectFrame.disabled = false;
+      
+      if (isPlaying) {
+        playBtn.classList.add('primary');
+        staticBtn.classList.remove('primary');
+        
+        if (triggerReload) {
+          reloadAllBanners();
+        } else {
+          // Remove static overrides to let timer run
+          document.querySelectorAll('iframe').forEach(iframe => {
+            if (!iframe.contentDocument) return;
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            const style = doc.getElementById('preview-state-override-style');
+            if (style) style.remove();
+            
+            // Resume animations
+            const animStyle = doc.getElementById('preview-playback-pause-style');
+            if (animStyle) animStyle.remove();
+            
+            // If a specific frame is selected, loop it
+            const cw = iframe.contentWindow;
+            const val = selectFrame.value;
+            if (val && val !== 'play' && cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+              const idx = cw.frames.findIndex(f => f.id === parseInt(val));
+              if (idx !== -1) cw.adflowPlayFrom(idx, true);
+            }
+          });
+        }
+      } else {
+        playBtn.classList.remove('primary');
+        staticBtn.classList.add('primary');
+        
+        // Pause animations & clear internal loops to prevent background timeline jumps
+        document.querySelectorAll('iframe').forEach(iframe => {
+          if (iframe.contentWindow) {
+            try {
+              const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
+              for (let id = 0; id <= maxId; id++) {
+                iframe.contentWindow.clearTimeout(id);
+              }
+            } catch (err) {
+              console.warn('Failed to clear timeouts on pause:', err);
+            }
+          }
+          
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          if (!doc) return;
+          let style = doc.getElementById('preview-playback-pause-style');
+          if (!style) {
+            style = doc.createElement('style');
+            style.id = 'preview-playback-pause-style';
+            style.textContent = `
+              #ad * {
+                animation-play-state: paused !important;
+              }
+            `;
+            doc.head.appendChild(style);
+          }
+        });
+        
+        // Freeze on the selected frame
+        const val = selectFrame.value;
+        if (val && val !== 'play') {
+          freezeFrame(parseInt(val));
+        }
+      }
+    }
+    
+    playBtn.onclick = () => setPlayState(true);
+
+    // Inject a static-freeze stylesheet into every banner so it shows `frameId`
+    // with all animations stopped. Used by the Static-only button.
+    function freezeFrame(frameId) {
+      document.querySelectorAll('iframe').forEach(iframe => {
+        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        if (!doc) return;
+        let style = doc.getElementById('preview-state-override-style');
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'preview-state-override-style';
+          doc.head.appendChild(style);
+        }
+        style.textContent = `
+          #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
+          #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
+          #ad * {
+            animation-duration: 0s !important;
+            animation-delay: 0s !important;
+            animation-play-state: paused !important;
+            transition-duration: 0s !important;
+            transition-delay: 0s !important;
+          }
+        `;
+        // Repaint ad background to match this frame
+        const card = iframe.closest('.card');
+        const canvasObj = card && state.canvases.find(c => c.id === card.dataset.canvasId);
+        if (canvasObj) {
+          const adEl = doc.getElementById('ad');
+          if (adEl) adEl.style.background = getCanvasBg(canvasObj, frameId);
+        }
+        if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
+          const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
+          if (idx !== -1) iframe.contentWindow.updatePersistentLayersVisibility(idx);
+        }
+      });
+    }
+
+    staticBtn.onclick = () => {
+      // Freeze every banner on the first playable frame for static inspection.
+      const playable = (state.frames || []).filter(f => !f.skip);
+      const firstFrameId = playable.length ? playable[0].id : null;
+      setPlayState(false, false);
+      if (firstFrameId !== null) {
+        freezeFrame(firstFrameId);
+        selectFrame.value = firstFrameId;
+      }
+    };
+
+    // Replay timelines
+    replayBtn.onclick = () => {
+      reloadAllBanners();
+    };
+
+    // Frame Selection — jump-and-play: picking a frame jumps every banner to it
+    // and plays forward (looping just that frame if playing); "All frames" restarts the full loop.
+    selectFrame.onchange = () => {
+      const val = selectFrame.value;
+      if (val === 'play') {
+        if (!isPlaying) {
+          setPlayState(true);
+        } else {
+          reloadAllBanners();
+        }
+        return;
+      }
+      const frameId = parseInt(val);
+      if (isPlaying) {
+        // Animated mode: play and loop just this frame
+        document.querySelectorAll('iframe').forEach(iframe => {
+          const cw = iframe.contentWindow;
+          const doc = iframe.contentDocument || (cw && cw.document);
+          if (doc) {
+            ['preview-state-override-style', 'preview-playback-pause-style'].forEach(id => {
+              const s = doc.getElementById(id);
+              if (s) s.remove();
+            });
+          }
+          if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+            const idx = cw.frames.findIndex(f => f.id === frameId);
+            if (idx !== -1) cw.adflowPlayFrom(idx, true);
+          }
+        });
+      } else {
+        // Static mode: freeze on this frame
+        freezeFrame(frameId);
+      }
+    };
+    
+    // Helper to construct state-specific stylesheets to inject before rendering
+    function getPreparedHtml(c, htmlContent) {
+      let extraStyle = '';
+      
+      // 1. Playback state
+      if (!isPlaying) {
+        const val = selectFrame.value;
+        if (val !== 'play') {
+          const frameId = parseInt(val);
+          extraStyle += `
+            <style id="preview-state-override-style">
+              #ad .frame { display: none !important; animation: none !important; z-index: 1 !important; }
+              #ad #frame-${frameId} { display: block !important; animation: none !important; z-index: 2 !important; }
+              #ad * {
+                animation-duration: 0s !important;
+                animation-delay: 0s !important;
+                animation-play-state: paused !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+              }
+            </style>
+          `;
+        } else {
+          extraStyle += `
+            <style id="preview-playback-pause-style">
+              #ad * {
+                animation-play-state: paused !important;
+              }
+            </style>
+          `;
+        }
+      }
+      
+      if (extraStyle) {
+        htmlContent = htmlContent.replace('</head>', extraStyle + '</head>');
+      }
+      
+      return htmlContent;
+    }
+    
+
+    
+    // Version switching
+    selectVersion.onchange = () => {
+      const val = selectVersion.value;
+      if (state.dataMerge) {
+        state.dataMerge.activeVersion = (val === 'default') ? null : parseInt(val);
+      }
+      reloadAllBanners();
+    };
+    
+    // Size check list actions
+    document.getElementById('btn-select-all').onclick = () => {
+      selectedCanvasIds = new Set(state.canvases.map(c => c.id));
+      document.querySelectorAll('#size-check-list input').forEach(input => input.checked = true);
+      updateCanvasGridVisibility();
+    };
+    
+    document.getElementById('btn-select-none').onclick = () => {
+      selectedCanvasIds.clear();
+      document.querySelectorAll('#size-check-list input').forEach(input => input.checked = false);
+      updateCanvasGridVisibility();
+    };
+    
+    // Scaled state for speed toggle
+    function getScaledState(speed) {
+      if (speed === 1) return state;
+      const cloned = JSON.parse(JSON.stringify(state));
+      if (cloned.frames) {
+        cloned.frames.forEach(f => {
+          f.duration = f.duration / speed;
+          f.transitionDuration = (f.transitionDuration !== undefined ? f.transitionDuration : 0.5) / speed;
+        });
+      }
+      if (cloned.canvases) {
+        cloned.canvases.forEach(c => {
+          c.elements.forEach(el => {
+            if (el.animDuration) el.animDuration = el.animDuration / speed;
+            if (el.animDelay) el.animDelay = el.animDelay / speed;
+            if (el.effectDuration) el.effectDuration = el.effectDuration / speed;
+          });
+        });
+      }
+      return cloned;
+    }
+
+    // Calculate compressed ZIP size for a canvas (matching export & app weight calculation)
+    async function calculateCanvasZipSize(c) {
+      if (typeof JSZip === 'undefined') return 0;
+      const zip = new JSZip();
+      
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+      
+      const dm = state.dataMerge;
+      const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+      
+      try {
+        if (typeof dmRunExport === 'function') {
+          await dmRunExport(activeVersionIdx, async () => {
+            await addCanvasAssetsToZip(c, zip);
+            zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+          });
+        } else {
+          await addCanvasAssetsToZip(c, zip);
+          zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+        }
+      } catch (e) {
+        console.error('Failed to calculate canvas ZIP size:', e);
+      } finally {
+        window.state = originalState;
+      }
+      
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      return parseFloat((blob.size / 1024).toFixed(1));
+    }
+
+    // Update the size badge in the UI asynchronously
+    async function updateSizeBadge(c) {
+      const badge = document.getElementById('size-badge-' + c.id);
+      if (!badge) return;
+      
+      const kbSize = await calculateCanvasZipSize(c);
+      const sizeLimit = state.adSizeLimit || 150;
+      
+      badge.className = kbSize > sizeLimit ? 'badge danger' : 'badge success';
+      badge.textContent = `${kbSize} KB`;
+    }
+    
+    // Render canvases
+    function renderCanvases() {
+      gridContainer.innerHTML = '';
+      
+      state.canvases.forEach(c => {
+        runAuditChecks(c);
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.canvasId = c.id;
+        
+        // Calculate file weight estimate (raw HTML)
+        const speed = 1;
+        const originalState = window.state;
+        window.state = getScaledState(speed);
+        
+        let htmlContent = '';
+        try {
+          htmlContent = generateExportHTML(c, null, false, { previewControls: true });
+        } catch (e) {
+          console.error(e);
+        } finally {
+          window.state = originalState;
+        }
+        
+        const kbSize = (new Blob([htmlContent]).size / 1024).toFixed(1);
+        const sizeLimit = state.adSizeLimit || 150;
+        const sizeClass = parseFloat(kbSize) > sizeLimit ? 'badge danger' : 'badge success';
+        
+        // Audit Warnings Badge
+        const totalWarnings = (c._valA11y ? c._valA11y.length : 0) + (c._valBrand ? c._valBrand.length : 0);
+        const warningBadge = totalWarnings > 0
+          ? `<span class="badge warning" onclick="toggleAuditLog('${c.id}')">${totalWarnings} Warning${totalWarnings > 1 ? 's' : ''}</span>`
+          : '';
+        
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title" style="display:flex; align-items:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.04em;">
+              <span style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span>
+              <span style="margin-left:8px; margin-right:8px; color:var(--text-muted);">&bull;</span>
+              <span class="${sizeClass}" id="size-badge-${c.id}" style="font-size:11px; font-weight:700; color:var(--accent-base); padding:0; background:transparent; text-transform:none;">${kbSize} KB</span>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <div class="iframe-wrapper" style="width:${c.width}px; height:${c.height}px;">
+              <iframe class="preview-iframe" id="iframe-${c.id}" style="width:${c.width}px; height:${c.height}px;" scrolling="no"></iframe>
+            </div>
+          </div>
+
+          <div class="card-footer" style="display:flex; justify-content:flex-start; margin-top:10px; gap:8px; align-items:center;">
+            <button class="banner-footer-btn" title="Restart this banner" onclick="restartBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8; transition:color 0.1s;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="banner-footer-btn" title="Download HTML5" onclick="downloadSingleBanner('${c.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8; transition:color 0.1s;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+            ${totalWarnings > 0 ? `<span class="badge warning" onclick="toggleAuditLog('${c.id}')" style="margin-left:4px; font-size:9px; padding:1px 4px; border-radius:3px; cursor:pointer;">${totalWarnings} Warning${totalWarnings > 1 ? 's' : ''}</span>` : ''}
+          </div>
+          
+          <div class="card-audit" id="audit-${c.id}">
+            <h4 style="font-size:12px; margin-bottom:8px; font-weight:600; color:var(--text-bright);">Audit Logs</h4>
+            <div class="audit-list">
+              ${c._valA11y ? c._valA11y.map(x => `
+                <div class="audit-item">
+                  <span class="audit-bullet a11y"></span>
+                  <span>${x.message}</span>
+                </div>
+              `).join('') : ''}
+              ${c._valBrand ? c._valBrand.map(x => `
+                <div class="audit-item">
+                  <span class="audit-bullet warning"></span>
+                  <span>${x.message}</span>
+                </div>
+              `).join('') : ''}
+            </div>
+          </div>
+        `;
+        
+        gridContainer.appendChild(card);
+        
+        // Load content into iframe using srcdoc with prepared dynamic styles
+        const iframe = card.querySelector('iframe');
+        iframe.onload = () => {
+          if (!isPlaying) {
+            const val = selectFrame.value;
+            if (val !== 'play') {
+              const frameId = parseInt(val);
+              if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
+                const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
+                if (idx !== -1) {
+                  iframe.contentWindow.updatePersistentLayersVisibility(idx);
+                }
+              }
+            }
+          } else {
+            const val = selectFrame.value;
+            if (val !== 'play') {
+              const frameId = parseInt(val);
+              const cw = iframe.contentWindow;
+              if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+                const idx = cw.frames.findIndex(f => f.id === frameId);
+                if (idx !== -1) cw.adflowPlayFrom(idx, true);
+              }
+            }
+          }
+        };
+        iframe.srcdoc = getPreparedHtml(c, htmlContent);
+        
+        // Asynchronously update size badge with the accurate compressed ZIP size
+        updateSizeBadge(c);
+      });
+      
+      updateCanvasGridVisibility();
+      setTimeout(layoutCards, 50);
+    }
+    
+    function toggleAuditLog(id) {
+      const element = document.getElementById('audit-' + id);
+      if (element) {
+        element.classList.toggle('visible');
+        layoutCards();
+      }
+    }
+    
+    // Reload (restart) a single banner: rebuilds its iframe from scratch so the
+    // timeline and all animations start fresh from frame 1. Used by the per-size
+    // restart icon and by reloadAllBanners().
+    function reloadBanner(c) {
+      const iframe = document.getElementById('iframe-' + c.id);
+      if (!iframe) return;
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+
+      let htmlContent = '';
+      try {
+        htmlContent = generateExportHTML(c, null, false, { previewControls: true });
+      } catch(e) {
+        console.error(e);
+      } finally {
+        window.state = originalState;
+      }
+
+      // Clear timeouts of the old iframe window before replacing it to prevent ghost execution
+      if (iframe.contentWindow) {
+        try {
+          const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
+          for (let id = 0; id <= maxId; id++) {
+            iframe.contentWindow.clearTimeout(id);
+          }
+        } catch (err) {
+          console.warn('Failed to clear timeouts on reload:', err);
+        }
+      }
+
+      // Re-create the iframe to completely discard the old document context and loops
+      const parent = iframe.parentElement;
+      const newIframe = document.createElement('iframe');
+      newIframe.className = 'preview-iframe';
+      newIframe.id = 'iframe-' + c.id;
+      newIframe.style.width = c.width + 'px';
+      newIframe.style.height = c.height + 'px';
+      newIframe.setAttribute('scrolling', 'no');
+
+      parent.replaceChild(newIframe, iframe);
+
+      // Sync persistent layers once loaded
+      newIframe.onload = () => {
+        if (!isPlaying) {
+          const val = selectFrame.value;
+          if (val !== 'play') {
+            const frameId = parseInt(val);
+            if (newIframe.contentWindow && newIframe.contentWindow.frames && newIframe.contentWindow.updatePersistentLayersVisibility) {
+              const idx = newIframe.contentWindow.frames.findIndex(f => f.id === frameId);
+              if (idx !== -1) {
+                newIframe.contentWindow.updatePersistentLayersVisibility(idx);
+              }
+            }
+          }
+        } else {
+          const val = selectFrame.value;
+          if (val !== 'play') {
+            const frameId = parseInt(val);
+            const cw = newIframe.contentWindow;
+            if (cw && typeof cw.adflowPlayFrom === 'function' && cw.frames) {
+              const idx = cw.frames.findIndex(f => f.id === frameId);
+              if (idx !== -1) cw.adflowPlayFrom(idx, true);
+            }
+          }
+        }
+      };
+
+      newIframe.srcdoc = getPreparedHtml(c, htmlContent);
+      
+      // Update size badge with the accurate compressed ZIP size
+      updateSizeBadge(c);
+    }
+
+    // Reload all canvases
+    function reloadAllBanners() {
+      state.canvases.forEach(reloadBanner);
+
+      // Reset play state controls without triggering infinite recursion
+      setPlayState(true, false);
+    }
+
+    // Restart a single banner's timeline (per-size restart icon).
+    window.restartBanner = (id) => {
+      const c = state.canvases.find(x => x.id === id);
+      if (c) reloadBanner(c);
+    };
+
+    window.downloadSingleBanner = async (id) => {
+      const c = state.canvases.find(x => x.id === id);
+      if (!c) return;
+      if (typeof JSZip === 'undefined') {
+        alert('JSZip is not loaded.');
+        return;
+      }
+      const zip = new JSZip();
+      const projName = state.projectName || 'Ad';
+      const safeName = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+      
+      const speed = 1;
+      const originalState = window.state;
+      window.state = getScaledState(speed);
+      
+      const dm = state.dataMerge;
+      const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+      
+      try {
+        if (typeof dmRunExport === 'function') {
+          await dmRunExport(activeVersionIdx, async () => {
+            await addCanvasAssetsToZip(c, zip);
+            zip.file('index.html', generateExportHTML(c, zip));
+          });
+        } else {
+          await addCanvasAssetsToZip(c, zip);
+          zip.file('index.html', generateExportHTML(c, zip));
+        }
+      } catch (e) {
+        console.error('Failed to export single banner:', e);
+        alert('Failed to export single banner.');
+        return;
+      } finally {
+        window.state = originalState;
+      }
+      
+      const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(content);
+      a.download = `${safeName}_${c.width}x${c.height}.zip`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+    
+    // Update visibility based on checklists selection
+    function updateCanvasGridVisibility() {
+      state.canvases.forEach(c => {
+        const card = document.querySelector(`.card[data-canvas-id="${c.id}"]`);
+        if (card) {
+          card.style.display = selectedCanvasIds.has(c.id) ? 'flex' : 'none';
+        }
+      });
+      layoutCards();
+    }
+    
+    function packRectangles(rectangles, viewportWidth, gap) {
+      const placed = [];
+      
+      for (const rect of rectangles) {
+        const w = rect.width;
+        const h = rect.height;
+        
+        const candidateX = [0];
+        const candidateY = [0];
+        for (const p of placed) {
+          candidateX.push(p.x + p.width + gap);
+          candidateY.push(p.y + p.height + gap);
+        }
+        
+        const validX = candidateX.filter(x => x + w <= viewportWidth);
+        if (validX.length === 0) {
+          validX.push(0);
+        }
+        
+        let bestX = 0;
+        let bestY = Infinity;
+        
+        for (const x of validX) {
+          for (const y of candidateY) {
+            let overlaps = false;
+            for (const p of placed) {
+              if (x < p.x + p.width + gap && x + w + gap > p.x &&
+                  y < p.y + p.height + gap && y + h + gap > p.y) {
+                overlaps = true;
+                break;
+              }
+            }
+            
+            if (!overlaps) {
+              if (y + h < bestY || (y + h === bestY && x < bestX)) {
+                bestY = y + h;
+                bestX = x;
+              }
+            }
+          }
+        }
+        
+        if (bestY === Infinity) {
+          let maxY = 0;
+          for (const p of placed) {
+            maxY = Math.max(maxY, p.y + p.height + gap);
+          }
+          bestX = 0;
+          bestY = maxY;
+        } else {
+          bestY = bestY - h;
+        }
+        
+        placed.push({
+          id: rect.id,
+          x: bestX,
+          y: bestY,
+          width: w,
+          height: h
+        });
+      }
+      
+      return placed;
+    }
+    
+    function layoutCards() {
+      const cards = Array.from(gridContainer.children).filter(card => card.classList.contains('card'));
+      const visibleCards = cards.filter(card => card.style.display !== 'none');
+      
+      let spacer = document.getElementById('canvas-grid-spacer');
+      if (!spacer) {
+        spacer = document.createElement('div');
+        spacer.id = 'canvas-grid-spacer';
+        spacer.style.cssText = 'position: absolute; left: 0; top: 0; pointer-events: none;';
+        gridContainer.appendChild(spacer);
+      }
+      
+      if (visibleCards.length === 0) {
+        spacer.style.width = '0px';
+        spacer.style.height = '0px';
+        return;
+      }
+      
+      const padding = 32;
+      const gap = 40;
+      const viewportWidth = Math.max(300, gridContainer.clientWidth - 2 * padding);
+      
+      const rectangles = visibleCards.map(card => {
+        return {
+          id: card.dataset.canvasId,
+          card: card,
+          width: card.offsetWidth || 280,
+          height: card.offsetHeight || 300
+        };
+      });
+      
+      const packed = packRectangles(rectangles, viewportWidth, gap);
+      
+      let maxBottom = 0;
+      let maxRight = 0;
+      packed.forEach(p => {
+        const item = rectangles.find(r => r.id === p.id);
+        if (item) {
+          item.card.style.left = (p.x + padding) + 'px';
+          item.card.style.top = (p.y + padding) + 'px';
+          maxBottom = Math.max(maxBottom, p.y + p.height + padding);
+          maxRight = Math.max(maxRight, p.x + p.width + padding);
+        }
+      });
+      
+      spacer.style.width = maxRight + 'px';
+      spacer.style.height = maxBottom + 'px';
+    }
+    
+    // Populate controls based on loaded state
+    function populateControls() {
+      // 1. Project Title
+      projectNameEl.textContent = state.projectName || 'Adflow Ad Pack';
+      adCountEl.textContent = `${state.canvases.length} size${state.canvases.length > 1 ? 's' : ''}`;
+      
+      const downloadAllBtn = document.getElementById('btn-download-all');
+      if (downloadAllBtn) {
+        downloadAllBtn.style.display = (state.canvases && state.canvases.length > 0) ? 'inline-flex' : 'none';
+      }
+      
+      
+      // 2. Timeline Selector
+      repopulateFrameSelect();
+      if (chkLoopAd) {
+        chkLoopAd.checked = !!state.loopAd;
+      }
+      
+      // 3. Data Version Switcher
+      selectVersion.innerHTML = '';
+      if (state.dataMerge && state.dataMerge.rows && state.dataMerge.rows.length > 0) {
+        versionGroup.style.display = 'flex';
+        selectVersion.innerHTML += '<option value="default" selected>Template Default</option>';
+        
+        const keyCol = state.dataMerge.versionNameKey || state.dataMerge.columns[0];
+        state.dataMerge.rows.forEach((row, i) => {
+          const label = row[keyCol] || `Version ${i + 1}`;
+          selectVersion.innerHTML += `<option value="${i}">${i + 1}. ${label}</option>`;
+        });
+      } else {
+        versionGroup.style.display = 'none';
+      }
+      
+      // 4. Checklist Checklist Sizes
+      sizeCheckList.innerHTML = '';
+      selectedCanvasIds = new Set(state.canvases.map(c => c.id));
+      state.canvases.forEach(c => {
+        const id = `chk-${c.id}`;
+        sizeCheckList.innerHTML += `
+          <label class="checkbox-item">
+            <input type="checkbox" id="${id}" checked onchange="toggleSizeSelection('${c.id}', this.checked)">
+            <span>${c.name} (${c.width} &times; ${c.height})</span>
+          </label>
+        `;
+      });
+    }
+    
+    window.toggleSizeSelection = (id, checked) => {
+      if (checked) selectedCanvasIds.add(id);
+      else selectedCanvasIds.delete(id);
+      updateCanvasGridVisibility();
+    };
+    
+    // --- RMIT stock image library -------------------------------------------
+    // Data-sheet Images columns reference stock art BY FILENAME (e.g.
+    // "2026_Health.jpg"), and dmResolveImage maps that name to an asset via
+    // state.assets / state.assetNames / state.assetLibrary. The editor fills
+    // those in with syncRmitAssets() on load; this page had no equivalent, so
+    // an unresolved name fell through to a bare relative path and rendered
+    // broken — while the file's own baked-in assets were fine, which is why
+    // only the default version looked right.
+    //
+    // Regular .flow projects DO carry the library (buildFlowBlob only strips
+    // assetLibrary for templates), so this is gated on an actual resolution
+    // failure — a share-link reviewer shouldn't re-download the whole stock
+    // library for a project that already has it. Mirrors project-io.js's id
+    // scheme so ids stay interchangeable.
+    let _rmitAssetsPromise = null;
+    function preloadRmitAssets() {
+      if (_rmitAssetsPromise) return _rmitAssetsPromise; // fetch once per session
+      _rmitAssetsPromise = (async () => {
+        let files = [];
+        try {
+          const r = await fetch('data/assets/manifest.json');
+          if (r.ok) files = await r.json();
+        } catch (e) { console.warn('RMIT asset manifest unavailable:', e); }
+        const loaded = await Promise.all((files || []).map(async (filename) => {
+          try {
+            const r = await fetch('data/assets/' + encodeURIComponent(filename));
+            if (!r.ok) return null;
+            const blob = await r.blob();
+            const dataUrl = await new Promise((res, rej) => {
+              const fr = new FileReader();
+              fr.onload = () => res(fr.result);
+              fr.onerror = () => rej(fr.error);
+              fr.readAsDataURL(blob);
+            });
+            return { filename, dataUrl };
+          } catch (e) { return null; }
+        }));
+        return loaded.filter(Boolean);
+      })();
+      return _rmitAssetsPromise;
+    }
+
+    // True when the loaded project maps any Images column whose values don't
+    // already resolve to a real asset — i.e. the stock library is missing.
+    function needsStockLibrary() {
+      const dm = state && state.dataMerge;
+      if (!dm || !dm.mappings || !Array.isArray(dm.rows) || !dm.rows.length) return false;
+      const imgCols = Object.keys(dm.mappings)
+        .filter(k => k.endsWith('::image'))
+        .map(k => dm.mappings[k])
+        .filter(Boolean);
+      if (!imgCols.length) return false;
+      for (const row of dm.rows) {
+        for (const col of imgCols) {
+          const val = row && row[col];
+          if (!val) continue;
+          // dmResolveImage returns the raw value back when nothing matched.
+          const hit = dmResolveImage(val);
+          if (!hit || !(state.assets && state.assets[hit])) return true;
+        }
+      }
+      return false;
+    }
+
+    // Merge the stock library into the freshly loaded project. Never overwrites
+    // an asset the file already carries.
+    async function attachRmitAssets() {
+      const items = await preloadRmitAssets();
+      if (!items.length) return 0;
+      if (!state.assets) state.assets = {};
+      if (!state.assetNames) state.assetNames = {};
+      if (!Array.isArray(state.assetLibrary)) state.assetLibrary = [];
+      items.forEach(({ filename, dataUrl }) => {
+        const imgId = 'img_rmit_' + filename;
+        if (!state.assets[imgId]) state.assets[imgId] = dataUrl;
+        // Exact-filename lookup (dmResolveImage step 2).
+        if (!state.assetNames[imgId]) state.assetNames[imgId] = filename;
+        // Extension-insensitive lookup (dmResolveImage step 3).
+        const libId = 'as_rmit_' + filename;
+        if (!state.assetLibrary.some(a => a && a.id === libId)) {
+          state.assetLibrary.push({
+            id: libId,
+            name: filename.substring(0, filename.lastIndexOf('.')) || filename,
+            kind: 'element', iconType: 'image', folderId: 'af_rmit', readOnly: true,
+            elements: [{ id: 'el_' + libId, type: 'image', name: filename,
+                         assetId: imgId, width: 120, height: 90, x: 0, y: 0 }]
+          });
+        }
+      });
+      return items.length;
+    }
+
+    // Process raw file buffer
+    async function processProjectFile(buffer) {
+      loader.style.opacity = '1';
+      loader.style.display = 'flex';
+      loaderTitle.textContent = 'Processing file...';
+      loaderSubtitle.textContent = 'Reading zip archives';
+      
+      try {
+        const zip = await JSZip.loadAsync(buffer);
+        const projFile = zip.file('project.json');
+        if (!projFile) throw new Error('Invalid project file (missing project.json)');
+        
+        const jsonStr = await projFile.async('string');
+        const loadedState = JSON.parse(jsonStr);
+        
+        
+        loaderSubtitle.textContent = 'Extracting assets';
+        const newAssets = {};
+        if (loadedState.assets) {
+          const entries = Object.entries(loadedState.assets);
+          const total = entries.length;
+          let count = 0;
+          for (const [assetId, path] of entries) {
+            count++;
+            loaderSubtitle.textContent = `Extracting asset ${count} of ${total}`;
+            if (path.startsWith('images/')) {
+              const imgFile = zip.file(path);
+              if (imgFile) {
+                const base64 = await imgFile.async('base64');
+                const ext = path.split('.').pop();
+                const mime = ext === 'jpg' ? 'jpeg' : (ext === 'svg' ? 'svg+xml' : ext);
+                newAssets[assetId] = `data:image/${mime};base64,${base64}`;
+              }
+            } else {
+              newAssets[assetId] = path;
+            }
+          }
+        }
+        loadedState.assets = newAssets;
+        
+        // Save state globally
+        window.state = loadedState;
+
+        // Stock image library must be in place BEFORE the first render, or
+        // version rows that reference stock art by filename paint broken.
+        // No-op for files that already carry it (see needsStockLibrary).
+        if (needsStockLibrary()) {
+          loaderSubtitle.textContent = 'Loading image library';
+          await attachRmitAssets();
+        }
+
+        loaderSubtitle.textContent = 'Rendering canvases';
+        externalAds = [];
+        if (extLoopTimer) { clearInterval(extLoopTimer); extLoopTimer = null; }
+        applyPortalMode('adflow');
+        showPvEmpty(false);
+        populateControls();
+        renderCanvases();
+
+        // Fade loader
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+      } catch (err) {
+        console.error(err);
+        // Report in place — never leave the user on a screen they can't exit.
+        loader.style.opacity = '0';
+        loader.style.display = 'none';
+        const msg = err.message || String(err);
+        if (portalMode) showCanvasNotification(msg, { type: 'error' });
+        else { showPvEmpty(true); showPvError(msg); }
+      }
+    }
+    
+    // Drag & Drop event handling
+    window.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      dragOverlay.classList.add('active');
+    });
+    
+    dragOverlay.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    
+    dragOverlay.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget === null || e.relatedTarget.nodeName === 'HTML') {
+        dragOverlay.classList.remove('active');
+      }
+    });
+    
+    function clearUrlQuery() {
+      if (window.location.search) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
+    // A dropped/picked file goes down one of two paths. `.flow` is always an
+    // Adflow project; a `.zip` is ambiguous, so peek inside — a project.json
+    // means it's an Adflow export, anything else is treated as a standalone
+    // HTML5 ad.
+    async function openPreviewFiles(files) {
+      const list = [...files].filter(f => /\.(flow|zip)$/i.test(f.name));
+      if (!list.length) return;
+      clearUrlQuery();
+      clearPvError();
+      // A .flow is always a project and is exclusive; several zips can stack.
+      const flow = list.find(f => /\.flow$/i.test(f.name));
+      if (flow) { await openAsFlow(flow); return; }
+      try {
+        // Peek at the first zip: a project.json means it's an Adflow export.
+        const zip = await JSZip.loadAsync(list[0]);
+        if (zip.file('project.json')) await openAsFlow(list[0]);
+        else await loadExternalAds(list);
+      } catch (err) {
+        console.error(err);
+        const msg = 'That file isn\'t a readable zip. Expected an Adflow .flow project or a zipped HTML5 ad.';
+        if (portalMode) showCanvasNotification(msg, { type: 'error' });
+        else { showPvEmpty(true); showPvError(msg); }
+      }
+    }
+
+    async function openAsFlow(file) {
+      const buf = await file.arrayBuffer();
+      await processProjectFile(buf);
+    }
+
+    dragOverlay.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dragOverlay.classList.remove('active');
+      if (e.dataTransfer.files.length) openPreviewFiles(e.dataTransfer.files);
+    });
+
+    // Load local file selector triggers — one per kind so the picker filters
+    // sensibly. The HTML5-ad picker is `multiple` so several can be stacked.
+    const fileSelector = document.createElement('input');
+    fileSelector.type = 'file';
+    fileSelector.accept = '.flow,.zip';
+    fileSelector.onchange = (e) => {
+      if (e.target.files.length) openPreviewFiles(e.target.files);
+      fileSelector.value = '';
+    };
+    const extSelector = document.createElement('input');
+    extSelector.type = 'file';
+    extSelector.accept = '.zip';
+    extSelector.multiple = true;
+    extSelector.onchange = (e) => {
+      if (e.target.files.length) openPreviewFiles(e.target.files);
+      extSelector.value = '';
+    };
+    document.getElementById('btn-drag-trigger').onclick = () => fileSelector.click();
+    document.getElementById('btn-empty-flow')?.addEventListener('click', () => fileSelector.click());
+    document.getElementById('btn-empty-ext')?.addEventListener('click', () => extSelector.click());
+    
+    // Download All Banners package
+    const downloadAllBtn = document.getElementById('btn-download-all');
+    if (downloadAllBtn) {
+      downloadAllBtn.onclick = async () => {
+        if (!state.canvases || state.canvases.length === 0) return;
+        if (typeof JSZip === 'undefined') {
+          alert('JSZip is not loaded.');
+          return;
+        }
+        
+        const span = downloadAllBtn.querySelector('span');
+        const originalText = span.textContent;
+        span.textContent = 'Zipping...';
+        downloadAllBtn.disabled = true;
+        
+        try {
+          const zip = new JSZip();
+          const projName = state.projectName || 'Ads';
+          const safePrefix = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
+          
+          const speed = 1;
+          const originalState = window.state;
+          window.state = getScaledState(speed);
+          
+          const dm = state.dataMerge;
+          const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
+          
+          if (typeof dmRunExport === 'function') {
+            await dmRunExport(activeVersionIdx, async () => {
+              for (const c of state.canvases) {
+                const adZip = new JSZip();
+                await addCanvasAssetsToZip(c, adZip);
+                adZip.file('index.html', generateExportHTML(c, adZip));
+                const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+                zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+              }
+            });
+          } else {
+            for (const c of state.canvases) {
+              const adZip = new JSZip();
+              await addCanvasAssetsToZip(c, adZip);
+              adZip.file('index.html', generateExportHTML(c, adZip));
+              const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+              zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+            }
+          }
+          
+          window.state = originalState;
+          
+          const content = await zip.generateAsync({ type: 'blob' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(content);
+          a.download = `${safePrefix}_HTML5_Ads.zip`;
+          a.click();
+          URL.revokeObjectURL(a.href);
+        } catch (err) {
+          console.error('Download all failed:', err);
+          alert('Failed to pack banners.');
+        } finally {
+          span.textContent = originalText;
+          downloadAllBtn.disabled = false;
+        }
+      };
+    }
+    
+
+    // =====================================================================
+    // Empty state + portal modes
+    //
+    // The portal opens standalone from the File menu, so it has to be usable
+    // with nothing loaded. Two modes once something IS loaded:
+    //   'adflow'   — a .flow project: full timeline / frame / version controls
+    //   'external' — a standalone HTML5 ad zip from outside Adflow. We can only
+    //                mount it in an iframe, so everything that reaches into
+    //                Adflow's own render pipeline is hidden.
+    // =====================================================================
+    let portalMode = null;               // null until something loads
+    const pvEmpty = document.getElementById('pv-empty');
+
+    function showPvEmpty(show) {
+      if (pvEmpty) pvEmpty.classList.toggle('visible', !!show);
+      if (gridContainer) gridContainer.style.display = show ? 'none' : '';
+    }
+
+    function showPvError(msg) {
+      const box = document.getElementById('pv-empty-error');
+      const txt = document.getElementById('pv-empty-error-msg');
+      if (box && txt) { txt.textContent = msg; box.classList.add('visible'); }
+    }
+    function clearPvError() {
+      const box = document.getElementById('pv-empty-error');
+      if (box) box.classList.remove('visible');
+    }
+
+    // Show only the controls that can actually do something in this mode.
+    function applyPortalMode(mode) {
+      portalMode = mode;
+      const ext = mode === 'external';
+      const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
+      show('external-controls', ext);
+      show('adflow-playback-group', !ext);
+      show('adflow-frame-group', !ext);
+      show('adflow-sizes-group', !ext);
+      if (ext) {
+        const vg = document.getElementById('version-control-group');
+        if (vg) vg.style.display = 'none';
+      }
+      const dl = document.getElementById('btn-download-all');
+      if (dl) dl.style.display = ext ? 'none' : dl.style.display;
+      const badge = document.getElementById('portal-mode-badge');
+      if (badge) badge.textContent = ext ? 'HTML5 Ad' : 'Preview';
+    }
+
+    // =====================================================================
+    // Standalone (non-Adflow) HTML5 ad support
+    //
+    // A delivered HTML5 ad is a zip of index.html plus relative assets. An
+    // iframe can't resolve those relative paths from a blob, so everything is
+    // folded into one self-contained document: text assets are inlined, binary
+    // assets become data URLs, and every textual reference to them is
+    // rewritten. Rewriting by filename (not just parsing tags) is deliberate —
+    // it also catches assets that the ad's own JavaScript loads by name.
+    // =====================================================================
+    const EXT_MIME = {
+      png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif',
+      webp:'image/webp', avif:'image/avif', svg:'image/svg+xml', ico:'image/x-icon',
+      woff:'font/woff', woff2:'font/woff2', ttf:'font/ttf', otf:'font/otf', eot:'application/vnd.ms-fontobject',
+      mp4:'video/mp4', webm:'video/webm', ogg:'video/ogg', mp3:'audio/mpeg', wav:'audio/wav',
+      json:'application/json', txt:'text/plain'
+    };
+    const extOf = (p) => (p.split('.').pop() || '').toLowerCase();
+    const isTextAsset = (p) => ['css','js','json','txt','svg'].includes(extOf(p));
+
+    // Up to EXT_MAX ads can be open at once, laid out side by side by
+    // layoutCards() just like Adflow banner sizes.
+    const EXT_MAX = 10;
+    let externalAds = [];    // [{ id, name, html, width, height, sizeSource, entry }]
+    let extSeq = 0;
+
+    // Unzip + inline ONE ad. Pure: returns the ad object, renders nothing, so
+    // several files can be parsed before a single re-render.
+    async function parseExternalAd(file) {
+      {
+        const zip = await JSZip.loadAsync(file);
+        const names = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+        if (!names.length) throw new Error('That zip is empty.');
+
+        // Entry document: shallowest index.html, else shallowest .html.
+        const htmls = names.filter(n => /\.html?$/i.test(n) && !n.split('/').pop().startsWith('.'));
+        if (!htmls.length) {
+          throw new Error('No HTML file in this zip. A standalone HTML5 ad should contain an index.html plus its assets.');
+        }
+        const depth = (p) => p.split('/').length;
+        htmls.sort((a, b) =>
+          depth(a) - depth(b) ||
+          (/(^|\/)index\.html?$/i.test(b) ? 1 : 0) - (/(^|\/)index\.html?$/i.test(a) ? 1 : 0) ||
+          a.localeCompare(b));
+        const entry = htmls[0];
+        const baseDir = entry.includes('/') ? entry.slice(0, entry.lastIndexOf('/') + 1) : '';
+
+        loaderSubtitle.textContent = 'Inlining assets';
+        let html = await zip.file(entry).async('string');
+
+        // Collect every other file, keyed by the paths an author might use.
+        const assets = [];
+        for (const name of names) {
+          if (name === entry) continue;
+          const rel = name.startsWith(baseDir) ? name.slice(baseDir.length) : name;
+          if (!rel) continue;
+          const f = zip.file(name);
+          if (!f) continue;
+          let payload;
+          if (isTextAsset(name) && extOf(name) !== 'svg') {
+            payload = { text: await f.async('string') };
+          } else {
+            const b64 = await f.async('base64');
+            const mime = EXT_MIME[extOf(name)] || 'application/octet-stream';
+            payload = { dataUrl: `data:${mime};base64,${b64}` };
+          }
+          assets.push({ name, rel, base: rel.split('/').pop(), ...payload });
+        }
+        // Longest paths first so "img/a.png" is replaced before a bare "a.png".
+        assets.sort((a, b) => b.rel.length - a.rel.length);
+        const baseCounts = {};
+        assets.forEach(a => { baseCounts[a.base] = (baseCounts[a.base] || 0) + 1; });
+
+        const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Every replacement uses a FUNCTION, never a string: ad code and base64
+        // can contain `$&` / `$1`, which String.replace would expand.
+        const substitute = (text, a, value) => {
+          const variants = [a.rel, './' + a.rel, '/' + a.rel];
+          if (baseCounts[a.base] === 1 && a.base !== a.rel) variants.push(a.base);
+          let out = text;
+          for (const v of variants) out = out.replace(new RegExp(esc(v), 'g'), () => value);
+          return out;
+        };
+
+        // Built by concatenation so this file's own inline script isn't cut
+        // short — an HTML parser ends a <script> at the first literal closing
+        // tag, even inside a string.
+        const CLOSE_SCRIPT = '<' + '/script>';
+        const CLOSE_STYLE = '<' + '/style>';
+
+        // 1) Inline stylesheets and scripts (their own asset refs get rewritten
+        //    in step 2, since by then they are part of the document text).
+        for (const a of assets) {
+          if (a.text === undefined) continue;
+          const ext = extOf(a.name);
+          if (ext === 'css') {
+            const tag = new RegExp(`<link[^>]+href=["']?(?:\\./|/)?${esc(a.rel)}["']?[^>]*>`, 'gi');
+            if (tag.test(html)) html = html.replace(tag, () => `<style>\n${a.text}\n${CLOSE_STYLE}`);
+          } else if (ext === 'js') {
+            const tag = new RegExp(`<script[^>]+src=["']?(?:\\./|/)?${esc(a.rel)}["']?[^>]*>\\s*<\\/script>`, 'gi');
+            if (tag.test(html)) html = html.replace(tag, () => `<script>\n${a.text}\n${CLOSE_SCRIPT}`);
+          }
+        }
+        // 2) Point every remaining reference at a data URL.
+        for (const a of assets) {
+          if (a.dataUrl) html = substitute(html, a, a.dataUrl);
+        }
+
+        // --- Size: IAB/Google ad.size meta, else a WxH hint in a path/filename.
+        let width = 0, height = 0, sizeSource = '';
+        const meta = html.match(/<meta[^>]+name=["']ad\.size["'][^>]*content=["']([^"']+)["']/i);
+        if (meta) {
+          const w = meta[1].match(/width\s*=\s*(\d+)/i), h = meta[1].match(/height\s*=\s*(\d+)/i);
+          if (w && h) { width = +w[1]; height = +h[1]; sizeSource = 'ad.size meta tag'; }
+        }
+        if (!width) {
+          const hint = (file.name + ' ' + entry).match(/(\d{2,4})\s*[x×]\s*(\d{2,4})/i);
+          if (hint) { width = +hint[1]; height = +hint[2]; sizeSource = 'size in the file name'; }
+        }
+        if (!width) { width = 300; height = 250; sizeSource = 'no size found — defaulted, please set it'; }
+
+        return { id: 'ext' + (++extSeq), name: file.name.replace(/\.zip$/i, ''),
+                 html, width, height, sizeSource, entry };
+      }
+    }
+
+    // Add one or more ad zips to whatever is already open.
+    async function loadExternalAds(files) {
+      const list = [...files].filter(f => /\.zip$/i.test(f.name));
+      if (!list.length) return;
+      loader.style.opacity = '1';
+      loader.style.display = 'flex';
+      loader.querySelector('.spinner').style.display = 'block';
+      loaderTitle.textContent = list.length > 1 ? `Opening ${list.length} HTML5 ads…` : 'Opening HTML5 ad…';
+      clearPvError();
+
+      // Leaving Adflow mode: drop the project so the two never mix.
+      if (portalMode !== 'external') externalAds = [];
+
+      const room = EXT_MAX - externalAds.length;
+      const accepted = list.slice(0, Math.max(0, room));
+      const skippedForSpace = list.length - accepted.length;
+      const failed = [];
+
+      for (let i = 0; i < accepted.length; i++) {
+        loaderSubtitle.textContent = `Reading ${accepted[i].name} (${i + 1} of ${accepted.length})`;
+        try {
+          externalAds.push(await parseExternalAd(accepted[i]));
+        } catch (err) {
+          console.error('Could not open ' + accepted[i].name, err);
+          failed.push(accepted[i].name + ' — ' + (err.message || err));
+        }
+      }
+
+      if (!externalAds.length) {
+        loader.style.opacity = '0';
+        loader.style.display = 'none';
+        const msg = failed.length ? failed[0] : 'Nothing could be opened from that zip.';
+        if (portalMode) showCanvasNotification(msg, { type: 'error' });
+        else { showPvEmpty(true); showPvError(msg); }
+        return;
+      }
+
+      window.state = { canvases: [], frames: [], linkGroups: {}, assets: {}, loopAd: false, zoom: 1 };
+      applyPortalMode('external');
+      renderExternalAds();
+      showPvEmpty(false);
+      loader.style.opacity = '0';
+      setTimeout(() => loader.style.display = 'none', 400);
+
+      if (failed.length) showCanvasNotification(`${failed.length} file(s) couldn't be opened: ${failed[0]}`, { type: 'error' });
+      if (skippedForSpace > 0) {
+        showCanvasNotification(`Only ${EXT_MAX} ads can be open at once — ${skippedForSpace} skipped.`, { type: 'warning' });
+      }
+    }
+
+    const extEsc = (s) => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+    function renderExternalAds() {
+      projectNameEl.textContent = externalAds.length === 1
+        ? externalAds[0].name
+        : `${externalAds.length} HTML5 ads`;
+      adCountEl.textContent = externalAds.length + (externalAds.length === 1 ? ' ad' : ' ads');
+
+      gridContainer.innerHTML = '';
+      externalAds.forEach(ad => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.canvasId = ad.id;
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title" style="display:flex; align-items:center; gap:8px; min-width:0; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.04em;">
+              <span style="font-weight:600; color:var(--text-bright); flex-shrink:0;">${ad.width} &times; ${ad.height}</span>
+              <span style="flex-shrink:0;">&bull;</span>
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${extEsc(ad.name)}">${extEsc(ad.name)}</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="iframe-wrapper" style="width:${ad.width}px; height:${ad.height}px;">
+              <iframe class="preview-iframe" id="iframe-${ad.id}" style="width:${ad.width}px; height:${ad.height}px;"
+                      scrolling="no" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+            </div>
+          </div>
+          <div class="card-footer" style="display:flex; justify-content:flex-start; margin-top:10px; gap:8px; align-items:center;">
+            <button class="banner-footer-btn" title="Restart this ad" onclick="restartExternal('${ad.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="banner-footer-btn" title="Remove this ad" onclick="removeExternalAd('${ad.id}')" style="background:transparent; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; padding:2px; border-radius:3px; opacity:0.8;" onmouseover="this.style.color='var(--danger-base)';" onmouseout="this.style.color='var(--text-muted)';">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+            </button>
+          </div>`;
+        gridContainer.appendChild(card);
+      });
+      externalAds.forEach(ad => mountExternalIframe(ad.id));
+      renderExtList();
+      // Deferred like renderCanvases does: packRectangles measures offsetWidth,
+      // which is still 0 for cards appended in this same tick — packing them
+      // synchronously collapsed every ad into one column.
+      setTimeout(layoutCards, 50);
+    }
+
+    // Sidebar roster: name, per-ad size override, remove.
+    function renderExtList() {
+      const box = document.getElementById('ext-list');
+      const count = document.getElementById('ext-count');
+      if (count) count.textContent = `${externalAds.length} / ${EXT_MAX}`;
+      const addBtn = document.getElementById('btn-ext-add');
+      if (addBtn) addBtn.disabled = externalAds.length >= EXT_MAX;
+      if (!box) return;
+      box.innerHTML = '';
+      externalAds.forEach(ad => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; flex-direction:column; gap:3px; padding:6px 7px; background:var(--bg-input); border-radius:5px;';
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="flex:1; min-width:0; font-size:10.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${extEsc(ad.name)}">${extEsc(ad.name)}</span>
+            <button class="btn-link" data-act="restart" title="Replay this banner from the first frame" style="flex:none; font-size:10px;">Restart</button>
+            <button class="btn-link" data-act="remove" title="Remove this banner from the preview. The project file is untouched" style="flex:none; font-size:10px; color:var(--danger-base);">Remove</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:5px;">
+            <input type="number" data-act="w" min="1" max="4000" title="Width this ad is displayed at, in pixels" value="${ad.width}"
+                   style="width:58px; margin:0; height:22px; font-size:10.5px; padding:1px 5px;" />
+            <span style="font-size:10px; color:var(--text-muted);">&times;</span>
+            <input type="number" data-act="h" min="1" max="4000" title="Height this ad is displayed at, in pixels" value="${ad.height}"
+                   style="width:58px; margin:0; height:22px; font-size:10.5px; padding:1px 5px;" />
+            <span style="font-size:9.5px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${extEsc(ad.sizeSource)}">${extEsc(ad.sizeSource)}</span>
+          </div>`;
+        row.querySelector('[data-act="restart"]').onclick = () => restartExternal(ad.id);
+        row.querySelector('[data-act="remove"]').onclick = () => removeExternalAd(ad.id);
+        const commitSize = () => {
+          const w = Math.max(1, Number(row.querySelector('[data-act="w"]').value) || ad.width);
+          const h = Math.max(1, Number(row.querySelector('[data-act="h"]').value) || ad.height);
+          ad.width = w; ad.height = h; ad.sizeSource = 'manual override';
+          renderExternalAds();
+        };
+        row.querySelector('[data-act="w"]').onchange = commitSize;
+        row.querySelector('[data-act="h"]').onchange = commitSize;
+        box.appendChild(row);
+      });
+    }
+
+    function mountExternalIframe(id) {
+      const ad = externalAds.find(a => a.id === id);
+      const f = document.getElementById('iframe-' + id);
+      if (ad && f) f.srcdoc = ad.html;
+    }
+    function mountAllExternal() { externalAds.forEach(a => mountExternalIframe(a.id)); }
+
+    // Exposed for the per-card footer buttons.
+    window.restartExternal = (id) => { mountExternalIframe(id); };
+    window.removeExternalAd = (id) => {
+      externalAds = externalAds.filter(a => a.id !== id);
+      if (!externalAds.length) {
+        if (extLoopTimer) { clearInterval(extLoopTimer); extLoopTimer = null; }
+        portalMode = null;
+        gridContainer.innerHTML = '';
+        projectNameEl.textContent = 'No Project Loaded';
+        adCountEl.textContent = '0 sizes';
+        applyPortalMode('adflow');   // restore the default control set
+        portalMode = null;           // ...but nothing is loaded
+        showPvEmpty(true);
+        renderExtList();
+        return;
+      }
+      renderExternalAds();
+    };
+
+    // --- External controls ---------------------------------------------------
+    let extLoopTimer = null;
+    function syncExtLoop() {
+      const on = document.getElementById('chk-ext-loop')?.checked;
+      const secs = Math.max(1, Number(document.getElementById('ext-loop-secs')?.value) || 30);
+      if (extLoopTimer) { clearInterval(extLoopTimer); extLoopTimer = null; }
+      if (on && portalMode === 'external') extLoopTimer = setInterval(mountAllExternal, secs * 1000);
+    }
+    document.getElementById('btn-ext-restart')?.addEventListener('click', () => {
+      mountAllExternal();
+      syncExtLoop(); // restart the cycle from now
+    });
+    document.getElementById('chk-ext-loop')?.addEventListener('change', syncExtLoop);
+    document.getElementById('ext-loop-secs')?.addEventListener('change', syncExtLoop);
+    document.getElementById('btn-ext-add')?.addEventListener('click', () => extSelector.click());
+
+    // Boot: open on the prompt. The local edition has no share links, so there
+    // is no ?url= snapshot path any more — files come in by drop or Open.
+    async function bootPortal() {
+      loader.style.display = 'none';
+      loader.style.opacity = '0';
+      showPvEmpty(true);
+    }
+
+    // Canvas grid panning logic
+    let isPanning = false;
+    let startX, startY;
+    let scrollLeftStart, scrollTopStart;
+    let isSpaceDown = false;
+    
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !isSpaceDown) {
+        if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'SELECT' && document.activeElement.tagName !== 'TEXTAREA') {
+          isSpaceDown = true;
+          gridContainer.style.cursor = 'grab';
+          e.preventDefault();
+        }
+      }
+    });
+    
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        isSpaceDown = false;
+        gridContainer.style.cursor = 'default';
+      }
+    });
+    
+    gridContainer.addEventListener('mousedown', (e) => {
+      const isLeftClickOnBackground = e.button === 0 && (e.target === gridContainer || e.target.classList.contains('card-header') || e.target.classList.contains('card-body') || e.target.closest('.card-header') || e.target.closest('.card-body'));
+      const isMiddleClick = e.button === 1;
+      const isSpacePan = isSpaceDown && e.button === 0;
+      
+      if (e.target.closest('button') || e.target.closest('select') || e.target.closest('input') || e.target.closest('a')) {
+        return;
+      }
+      
+      if (isLeftClickOnBackground || isMiddleClick || isSpacePan) {
+        isPanning = true;
+        gridContainer.style.cursor = 'grabbing';
+        startX = e.clientX;
+        startY = e.clientY;
+        scrollLeftStart = gridContainer.scrollLeft;
+        scrollTopStart = gridContainer.scrollTop;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    
+    window.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      gridContainer.scrollLeft = scrollLeftStart - dx;
+      gridContainer.scrollTop = scrollTopStart - dy;
+    });
+    
+    window.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        gridContainer.style.cursor = isSpaceDown ? 'grab' : 'default';
+      }
+    });
+    
+    window.addEventListener('resize', layoutCards);
+    window.onload = bootPortal;
+  </script>
+</body>
+</html>

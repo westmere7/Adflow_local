@@ -1,0 +1,787 @@
+<p align="center">
+  <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow Logo" width="240" />
+</p>
+
+# RMIT Adflow
+
+[![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
+[![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
+[![Version](https://img.shields.io/badge/version-v0.61.0-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
+[![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
+
+A professional visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
+
+Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages — or as MP4 video and animated GIF from the same renderer.
+
+**A desktop application.** Adflow runs as a native app on Windows and macOS. Download the folder, double-click, work — nothing to install alongside it, no URL to open, no server to stand up. The Chromium engine it needs ships inside the download, so Windows and Mac get an identical feature set. See [The Desktop App](#the-desktop-app).
+
+**No framework. No bundler. No build step for the app itself.** The application is vanilla HTML, CSS and JavaScript; `electron/` is a ~300-line shell around it. Edit a file, restart the app, see the change.
+
+**Local edition.** No accounts, no cloud storage, no third-party requests. Every project stays on your machine or in the `.flow` files you save, and every library and font ships in the repository.
+
+---
+
+## Table of Contents
+
+- [Core Concept: Multi-Canvas Workflow & Link Groups](#core-concept-multi-canvas-workflow--link-groups)
+- [Headline Feature: Auto-Resize](#headline-feature-auto-resize)
+- [Headline Feature: Data & Versions](#headline-feature-data--versions-dynamic-creative)
+- [Headline Feature: Video & GIF Export](#headline-feature-video--gif-export)
+- [Headline Feature: Local-First, No Accounts](#headline-feature-local-first-no-accounts)
+- [The Desktop App](#the-desktop-app)
+- [Headline Feature: Portals](#headline-feature-portals-preview--batch-operation)
+- [Key Features](#key-features)
+- [Technical Specifications](#technical-specifications)
+- [Getting Started](#getting-started)
+- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [FAQ](#frequently-asked-questions-faq)
+- [Technical Stack (IT & Engineering Overview)](#technical-stack-it--engineering-overview)
+
+---
+
+## Core Concept: Multi-Canvas Workflow & Link Groups
+
+The standout feature of RMIT Adflow is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300×250, 728×90, 160×600), you lay out all sizes side-by-side on an infinite panning workspace.
+
+To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
+
+- **Auto-Link Matching Elements** — pressing **Auto-Link** scans all canvases and groups elements sharing a layer name and category/type. Toggle **Selected only** to scan for matches against just the current selection.
+- **Granular Sync Properties** — choose exactly which properties sync for a group. Text content and styling are separated cleanly: `Colors` covers text colour; a dedicated `Background` property manages text backgrounds (colour, visibility, animation, padding, coverage); `Font size` is split from `Font settings`, so the typeface can sync across canvases while sizes stay per-canvas.
+- **Live-Link Mode (real-time sync)** — enable the sync-arrows toggle on any group and every modification (dragging, resizing, inline text editing, sidebar property changes) propagates to sibling elements on other canvases instantly.
+- **Contextual Actions** — right-click elements to manage link settings, with dynamic `Linked to: [GroupName]` / `Link to: [GroupName]` labels based on membership. **Push changes to group** broadcasts updates manually when Live-link is off.
+- **Categories are enforced, not assumed** — a group carries a single category, so a mixed selection is split into one group per category rather than corrupting a shared one. This is what makes a **mask group** (a mask plus the image it clips) linkable: it becomes a paired `"<name> (Image)"` and `"<name> (Mask)"`, and both halves stay in step.
+
+---
+
+## Headline Feature: Auto-Resize
+
+Design **one** banner canvas, then generate the **whole size set** with a single click. Adflow uses a deterministic layout engine that scans the active canvas, detects elements by their role, and clones them to other canvases — recalculating positions and text wrapping based on whether the target is square, tall, or wide.
+
+### How to use Auto-Resize
+
+1. **Design your source layout** — build a single canvas (we recommend starting with **300×250**; its proportions adapt naturally to other sizes).
+2. **Run Auto-Resize** — click **Auto-resize** at the bottom of the left panel column (or right-click the canvas → **Auto-Resize**). Pick target canvases in the selector dialog and click **Create Resize**.
+3. **Verify and override roles (optional)** — the Layers panel shows a grey role-tag icon next to each layer indicating the detected role. Click it to lock a layer to the correct role; manual overrides turn **purple**.
+4. **Link Groups synchronisation** — Auto-Resize registers matched elements into Link Groups automatically, so later text, style and animation edits propagate to every size.
+
+### The role taxonomy
+
+Ten roles drive placement: **Background image**, **RMIT logo**, **CTA button**, **Heading**, **Subheading**, **CRICOS**, **Main image**, **RFWN** (the "Ready for what's next" tagline), **Extra info**, and **Misc** as the catch-all.
+
+### Engine settings
+
+The **gear icon** beside the Auto-resize button opens:
+
+- **Instant Mode** — skip the selection dialog and progress overlay for one-click generation.
+- **Image Cropping** — cover/contain fallback behaviour for portrait and landscape image slots.
+- **Live Linking Toggles** — enable or disable real-time sync per property (text content, fonts, colours/fills, opacity, animations).
+
+---
+
+## Headline Feature: Data & Versions (Dynamic Creative)
+
+Design **one** template, then data-merge a spreadsheet into it to produce a finished ad set **per row** — ideal for running the same banner set across dozens of RMIT courses. Open it from **File → Data & Versions** or the **Data** button in the top bar.
+
+- **Per-element dynamic opt-in** — select any element and tick which fields should vary per version in the **Dynamic Data** panel: *Text* and *Color* on text; plus *Background* on buttons, *Image* on images, or fill *Color* on shapes. Unmarked elements are never touched by the merge; a small dot marks dynamic elements on the canvas.
+- **Slots compose with Link Groups** — a dynamic field becomes a *slot*. If the element is in a Link Group, the slot covers the **whole group**, so one binding fills that element on every size at once. The corresponding sync properties are enabled, replaced by a bolt icon, and locked from deselection to guarantee consistency.
+- **Bind columns → slots** — import a CSV (or build the sheet inline), map each column to a slot's field, pick the **★ key column** that names exported folders, and optionally bind a column to the **ClickTag** exit URL. The sheet is stored inside the `.flow` project (it auto-saves and travels with it) and can be exported back to CSV for the team to edit.
+- **Live, non-destructive version switching** — pick a row from the **Version** dropdown to render it across the board, in both editing and preview modes. Template defaults are never overwritten; "No version" returns to them.
+- **Hover to flick through versions** — when hover preview is armed (see [Hover preview](#hover-preview)), pointing at a row in the Version dropdown renders that version immediately, so you can scan the list without committing to anything. Switched off, the list behaves like an ordinary dropdown.
+- **Edit-in-place + Data lock** — with a version active and Data Lock off, editing a dynamic slot writes back directly to **that row's cell**. Toggling **Data lock** on makes dynamic inputs read-only, preventing accidental changes during review.
+- **Drag-reorder, inline rename, sort** — double-click a column header to rename, drag headers to reorder columns, drag the ⋮⋮ grip on each row to reorder rows, click the sort icon for asc/desc/none.
+- **Batch export** — **Export All Versions** produces one folder per row (named from the key column), each holding the full compliant ZIP set, through the standard export pipeline.
+
+Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots, so multi-frame ads merge correctly out of the box.
+
+---
+
+## Headline Feature: Video & GIF Export
+
+The same renderer that builds the HTML5 package also produces **MP4 video** and **animated GIF**, frame-accurately and entirely on your machine. Nothing is uploaded.
+
+- **A virtual clock, not a screen recording** — playback time is driven deterministically rather than sampled in real time, so a GIF and an MP4 of the same ad contain exactly the same frames regardless of machine speed. Output is reproducible.
+- **Render into the panel, not straight to disk** — encoder settings are the kind you judge by looking, so a single-canvas export draws the result inside the Export panel: playing on a loop at the size it will ship at, with its frame count and real file size underneath. **Download** writes the file only when you ask. Change a setting and the preview dims and says so, with the button becoming **Re-render**, so what is on screen is never quietly out of date.
+- **The preview sizes itself to the ad** — a portrait banner sits beside the controls, a landscape one underneath. Always 1:1, never scaled down, unless the window genuinely cannot fit it — in which case it scales and labels itself ("shown at 70%") rather than misrepresenting the size.
+- **Drag it straight into another app** — grab the rendered preview and drop it onto a slide, an email draft, a chat window or a folder, and the real animated file lands there. This is the only route that hands another application a working animation: the Windows clipboard has no GIF format at all, so **Copy** deliberately copies the frame currently on screen as a still, and says so.
+- **Video settings** — frame rate and bitrate. Encoding runs through WebCodecs via the vendored `mediabunny` muxer.
+- **GIF settings** — FPS 10 / 20 / 25 (all divide evenly into GIF's hundredth-of-a-second timing, so playback speed is exact) and palette size 32–256, defaulting to the full 256. The palette is quantised from a sample taken across *every* frame, so a photo that arrives late in the animation still gets a say in it.
+- **No encoder, no problem** — GIF needs no video encoder, so it works on browsers that cannot encode H.264.
+
+`Esc` cancels a render in progress; a second `Esc` closes the panel. The multi-size Export dialog still downloads straight away — previewing six sizes in one small panel would help nobody.
+
+---
+
+## Headline Feature: Local-First, No Accounts
+
+Adflow keeps everything on the machine that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
+
+- **Autosave** — every change is debounced into the app's local database (IndexedDB) and restored when you reopen it, including zoom, scroll position and the undo stack. **Open Recent** lists the last projects saved on this machine.
+- **Portable `.flow` files** — `Ctrl+S` (or **File → Save → Save to File**) writes a self-contained ZIP holding the project JSON and every embedded asset. It reopens on any machine; this is the copy to keep and to hand to colleagues. `Ctrl+Shift+S` force-saves silently to the browser database.
+- **Templates** — **File → Save → Save template** marks a `.flow` as a template for the Batch Operation portal and the New Project dialog. Templates in the repository's `Startup/` folder are offered to everyone.
+- **Base project** — Settings ▸ Startup ▸ **Use current project** saves whatever you have open as the thing New Project starts from, in place of an empty board. Stored locally, one per install, replaced whenever you press the button again, cleared with one click. **Its existence is the switch.** New Project offers three peers: *Base project* (preselected when you have one), *Use template*, and *Blank board*. The base project supplies the canvases; ClickTag, max ad size and background stay editable and are applied on top.
+- **Remembered placements** — right-click ▸ **Save placement ▸ All projects** records where a role belongs at a canvas size; Auto-Resize and Auto-arrange start from it in every project you open on this machine. Settings shows how many are held and forgets them all with one button.
+- **Old files open cleanly** — `.flow` files saved by the cloud-connected edition may carry share pointers and cloud stamps; they are dropped on open so nothing stale rides into a new save.
+- **Nothing fetched from the internet** — JSZip, iro.js, mediabunny, gifenc and HarfBuzz are vendored in `lib/`; the brand fonts and the portals' Inter/Outfit are in `data/fonts/`. The app renders identically on a network with no egress.
+
+The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) lives on the `main` branch. Nothing here talks to it, and nothing here needs it.
+
+---
+
+## The Desktop App
+
+Adflow is packaged with Electron. The wrapper is three files and about 300 lines; `scripts/`, `styles.css`, `index.html`, `preview.html` and `batch.html` are untouched by it, so the application and its shell cannot drift apart.
+
+| File | Role |
+|---|---|
+| `electron/main.js` | Window, menu policy, external-link handling, single-instance lock |
+| `electron/static-server.js` | Read-only HTTP server on loopback, serving the app folder |
+| `electron/preload.js` | A read-only `window.adflowDesktop` marker, and nothing else |
+
+**Why there is a server inside the app.** Electron could load `index.html` over `file://`, but Adflow cannot run that way. Every ad preview is an `<iframe srcdoc>` sandbox, and export spawns a `blob:` Worker that `importScripts()` the vendored JSZip — under `file://` both get opaque origins and the browser blocks them. Serving over `http://127.0.0.1` gives the renderer exactly the environment the app was written against, and Chromium treats loopback as a secure context, which is what keeps `showSaveFilePicker` and WebCodecs video export working. The server is read-only, bound to loopback, and reachable from nothing outside the machine.
+
+**Why the port is fixed (47823).** Local storage is keyed to the origin, and the origin includes the port. A random port each launch would hand you an empty workspace every time — autosave, recents, the base project and remembered placements all keyed to a port that no longer exists. If 47823 is genuinely taken, the app falls back to the next free port and **says so in a dialog** rather than silently appearing to have lost your work.
+
+**Why Electron and not Tauri.** Tauri produces much smaller apps, but renders in the operating system's own webview — Chromium on Windows, **Safari's engine on macOS**. Adflow depends on two Chromium-only APIs:
+
+| Feature | API | File |
+|---|---|---|
+| MP4 / WebM export | WebCodecs `VideoEncoder` | `scripts/video-export.js` |
+| Native save dialog | `showSaveFilePicker` | `scripts/project-io.js`, `scripts/export-pipeline.js` |
+
+A system-webview wrapper would therefore ship a Mac build quietly missing video export and the native save dialog — the exact Windows/Mac split the desktop app exists to remove. Electron bundles its own Chromium, at a cost of roughly 150–200 MB against Tauri's ~10 MB. For an internal design tool that is not a meaningful trade.
+
+**Where your work lives.** Autosave, Open Recent, the base project and remembered placements are held by the app on your machine, keyed to that loopback origin. They are per-machine and per-install: they do not sync and they do not follow you to another computer. Save a `.flow` file for anything you want to keep or move.
+
+---
+
+## Headline Feature: Portals (Preview & Batch Operation)
+
+Two standalone pages ship alongside the editor, both opened from the **File** menu, both running entirely client-side. They exist so people who don't design ads never have to learn the editor. Both link the app's own `styles.css` and load the same version-pinned engine files as `index.html`, so neither can drift from what the editor renders.
+
+### Preview Portal — `preview.html`
+
+**File → Preview Portal…** opens the review page standalone with nothing loaded. From the empty prompt: **Open Adflow Project…** (`.flow`) or **Open HTML5 Ad (.zip)…**, or drop either kind anywhere on the page. This is a local-file tool: there is nothing to sign into and no link to fetch. (Share links and the cloud snapshot viewer were removed in v0.60.0 with the rest of the backend.)
+
+With an Adflow project open: playback (**Animated** / **Static only** / **Restart Timeline** / **Loop timeline** as a preview-only override), a **Frame Select** that jumps to and plays any single frame across all sizes, a **Data Version** stepper, a size checklist with per-banner KB estimates, per-card **Restart** and **Download HTML5**, **Download All (.zip)**, and backdrop swatches — the two real Adflow themes, plus a separate checkered toggle that layers over either.
+
+**Reviewing non-Adflow HTML5 ads.** The portal also plays standalone HTML5 ads built outside Adflow — **up to 10 at once, laid out side by side** exactly like banner sizes. Each zip is flattened into one self-contained document: the shallowest `index.html` becomes the entry, stylesheets and scripts are inlined, and every other reference is rewritten to a data URL — including ones the ad's own JavaScript loads by name — so it plays with no server and nothing uploaded. Size comes from the standard `ad.size` meta tag, falling back to a `300x250`-style hint in the filename, else 300×250 flagged for correction; the label states which source was used and per-ad width/height inputs override it. Controls are limited to what applies to someone else's ad: **Restart All**, a **Loop** that reloads on an interval you set (Adflow can't read a third-party timeline), and per-ad **Restart** / **Remove**. Adflow's timeline, frame and version controls are hidden in this mode; the two modes never mix.
+
+### Batch Operation Portal — `batch.html`
+
+**File → Batch Operation…** opens a production surface for other teams. It opens straight into its workspace — no start-up gate — and drives three numbered sidebar steps:
+
+1. **Template** — **Open Template File…**, or drop a `.flow` anywhere on the page. Only genuine Adflow **templates** are accepted (files saved via **File ▸ Save ▸ Save template**, carrying `isTemplate`); ordinary project files are declined so teams always start from a vetted base. Recently opened templates are remembered per-machine (IndexedDB) and offered on the empty prompt.
+2. **Data Sheet** — **Download Sheet Template** emits a CSV pre-filled with the template's own column headers; **Import Data Sheet…** brings it back (one ad version per row); **Edit Data & Versions…** opens the editor's own Data & Versions panel with live per-version banner previews. A sheet whose headers were renamed warns immediately instead of silently exporting default content.
+3. **Export** — one click produces every data version × every ticked banner size into a single ZIP, one folder per version, through the standard export pipeline.
+
+Playback controls, the version stepper and the size checklist sit below the three steps. There is deliberately **no frame picker** (the grid always plays whole ads) and **no appearance controls** — the portal always renders the standard Adflow theme. An unacceptable file reports in place rather than clearing your work.
+
+Because saving a template deliberately strips the asset library, the portals register the RMIT stock library themselves at boot — otherwise data-sheet rows that reference stock art by filename would render as broken images.
+
+---
+
+## Key Features
+
+### Workspace & Architecture
+- **Infinite Multi-Canvas Workspace** — design every banner size side-by-side in one project. Pan with `Space + drag`, zoom with the scroll wheel.
+- **Seamless Auto-Save** — every change is continuously persisted to the browser (IndexedDB) and restored on reload, including zoom and scroll position. Live "All changes saved / Saving… / Unsaved" indicator in the top bar.
+- **Portable `.flow` Projects** — self-contained ZIPs holding project + embedded assets, with an Open Recent list for one-click restore.
+- **New Project Wizard** — pick canvas sizes, name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
+- **Theming System** — **two themes**: **Adflow** (the default dark palette) and **Light**. Light swaps the Adflow wordmark to its light-background variant automatically. The theme changes Adflow's own interface, never your ad. Eleven further palettes were removed in v0.61.0; a project saved with one of them opens on the default.
+- **History Management** — full Undo/Redo stack supporting complex nested operations, including a whole auto-resize as one step. Depth configurable 5–100, default 50.
+
+### Element & Asset Management
+- **Supported Entities** — Text, Images, SVGs, Rectangles, Circles, Pixel shapes, Lines, and Buttons.
+- **Typography Integration** — embedded RMIT brand fonts (Museo 300/500/700, Helvetica Neue LT Pro) with precise controls: line-height, letter-spacing, alignment, auto-size cap, and a per-button wrap threshold.
+- **Brand Element Library** — built-in repository of pre-approved SVG assets (logos, CRICOS text, brand pixel) that bypass manual file management and bundle automatically on export.
+- **Image Compression Tool** — built-in visual compressor converting PNG/JPEG to WebP, JPEG or PNG, with live size preview and 10–100% quality, to help stay under ad weight constraints.
+- **Layer Persistence** — every element belongs to **Always Top** (persistent above every frame — typical for logos), **Main Layers (Frame N)** (only on the active frame), or **Always Bottom** (persistent below — typical for backgrounds). Drag-and-drop between sections.
+- **Role-Tag Icon Column** — every layer row carries a role indicator beside the lock and visibility eyes. Grey when auto-detected, accent purple when manually locked. Click for the picker covering all 10 roles plus reset-to-auto.
+- **Layer-Based Image Masking** — right-click a shape layer (rectangle, circle, pixel) and pick **Use as mask** to clip the image directly beneath it. The mask carries its own independent animation, survives auto-resize via the mask post-pass, and exports identically to the editor preview.
+
+### Animation & Frame Sequencing
+- **Four independent categories** — every element carries **IN** (entrance), **OUT** (exit) and **FX** (Animation FX) toggles; each frame carries **TRANS** (its entering transition). Turning a category off remembers its settings, so switching it back on restores them.
+- **Frame-Based Sequencing** — define sequences with per-frame durations in seconds. A single-frame ad with Loop on self-restarts, re-running every entrance each cycle.
+- **Frame Transitions** — Fade, Slide, Push, Swipe, Zoom, Split, Iris, Blur, Corner Fold, Parallax, Lift, Flip and Punch, each with an optional **Add Fade** and its own duration. Eight of them share one house easing curve — a pronounced symmetric S that builds out of rest and decelerates into place — so a set that mixes them holds one rhythm; Flip and Punch keep their own curves.
+- **Frame Skip** — remove a frame from the export pipeline while keeping it editable in the sequence.
+- **Entrance animations (IN)** — Fade In, Slide, Swipe, Zoom, Split, Blur, plus text-only **Typing**, **Pop**, **Reveal** and **Cursor Slide**. Reveal splits by letters / words / visual lines, travels from Below, Above, Left or Right, and takes an optional per-piece fade. Text-only presets are hidden for non-text layers and lead the list for text and buttons.
+- **Exit animations (OUT)** — Fade Out, Slide, Swipe, Zoom, Blur, plus text-only **Untype** and **Unreveal** (the inverses of Typing and Reveal). Timed as "stay N seconds after appearing", counted from the element's own entrance delay rather than the frame start. Requires IN; never applied to persistent layers.
+- **Continuous Effects (FX)** — Pulse, Float, Flash, Wiggle, Spin, Heartbeat, Move, Zoom, plus text-only **Underline**, which paints on the type rather than moving the layer. Loop infinitely or perform once. On a masked image the effect drives the mask wrapper while the image receives the inverse motion.
+- **Favourite presets** — star any IN / OUT / FX / transition preset in its dropdown, then use the filter button to collapse the lists down to your favourites. Stored per-machine, not in the project.
+- **Shared preset registry** — the Animation panel, the timeline's preset menus and the exporter all read one list (`render-runtime.js`), so a preset can never exist on one surface and not another.
+
+### Hover preview
+
+A small toggle sits beside **Full preview**, marked with a pointer and a motion arc. Armed, pointing at something previews it in place, with no camera movement, no panel hiding and no fullscreen:
+
+- **The Full preview button** → every canvas starts playing at once, through the whole frame sequence.
+- **A canvas's own Preview link** → that one canvas plays inside its own frame; nothing else moves.
+- **A row in a Version dropdown** → the board renders that data version, so you can flick down the list. Works in the toolbar switcher while editing and in the floating bar during single-canvas and full preview.
+
+Every Version dropdown carries **‹ / › cycling arrows** for stepping between versions without opening the list, and because the top bar is hidden while previewing, the floating preview bar carries **its own copy of the toggle** beside those arrows. It is the same switch — flipping either updates both.
+
+It builds the same iframes full preview and the exported ad use, so it is not an approximation. It stands down on any keypress or tab switch, and won't start mid-drag, while you're editing text, or when you're already in a preview. Turning the toggle off mid-hover restores whatever you were on. Pointing at the toggle itself never starts a preview, and the armed state persists between sessions.
+
+### Timeline (Sequencer)
+
+A collapsible sequencer along the bottom of the workspace, showing the animations of the **active canvas and frame** as draggable bars. It edits the same values as the Animation panel — through the panel's own update path, so Link Group sync and undo/redo behave identically.
+
+- **One row per layer**, ordered like the Layers panel. Only animated layers are listed by default; ⚙ → **Show all elements** lists everything on the frame.
+- **Three bars per row** — **IN** (position = delay, length = duration), **OUT** (starts after the element appears, so moving IN carries OUT with it), and **FX**, drawn as white diagonal stripes across the row's full height so it stays readable where it overlaps IN/OUT.
+- **Drag to move, drag either edge to retime**, with a live `start → end` tooltip. Everything snaps to the grid step (0.1s default, 0.1–0.5s in ⚙; moving to a coarser grid re-snaps existing timings and asks first).
+- **Multi-layer drag** — multi-select rows, then drag any one bar: every selected layer shifts or resizes by the same delta, clamped so none crosses zero.
+- **FX edit mode** — a thin strip along the FX bar's bottom edge stays grabbable above IN/OUT, so FX can be dragged anywhere along its length. **Clicking** it on an already-selected layer *isolates* the FX bar: IN/OUT dim and stop responding, and the whole FX bar becomes draggable with its own resize handles. `Esc` or a click elsewhere leaves.
+- **Preset chips** — each row's IN / OUT / FX chip opens the same preset list as the Animation panel, with the same hover-to-preview. Picking a real preset also switches the category on. OUT is gated until IN is enabled.
+- **Play** — `▶ Play` (or tapping `Space`) replays the current frame in place using the exact animation CSS the export generates, including span-driven text markup and mask-translated reveals. It deliberately does not advance frames.
+- **Frame duration follows the animations** — dragging past the frame end extends the duration (with a notice); pulling back shrinks it again, never below its pre-extension value. Overrun track is shaded.
+- **Row reordering** — drag a row label (display order only, never the layer stack).
+- **Row hover** outlines the corresponding element on the canvas.
+
+### Advanced Styling & Color
+- **Advanced Color Engine** — dual-mode picker supporting solid HEX values, native Eyedropper sampling (Chromium), and dynamic linear gradients with multi-stop mapping.
+- **Custom Properties Panel** — contextual right-side panel exposing deep styling controls for the active selection.
+- **Collapsible Panel Sections** — collapse or expand any panel section (Add Element, Layers, Link Groups, Assets, Canvas Settings, Properties, Animation, Dynamic Data) via interactive headers; state persists per project.
+- **Shift+scroll on any numeric input** — one delegated handler gives every number field wheel adjustment, with an opt-out attribute for fields where it would be wrong.
+
+### Alignment & Precision
+- **Snapping Engine** — magnetic snapping to canvas boundaries, element centres, and custom alignment guides.
+- **Rulers & Guides** — draggable viewport rulers for creating pixel-perfect layout guides.
+- **Safezone Overlay** — a centred safezone guide on every canvas to verify content stays within the format-appropriate inset. Available from the canvas / workspace context menu and the canvas Properties panel.
+- **Keyboard Precision** — nudge elements via arrow keys (1px / 10px), with aspect-ratio locking and constrained dragging via modifiers.
+- **Alt-Key Override** — intercepts the browser's default ALT menu navigation so ALT modifiers never interrupt layout work.
+
+### Export & Validation Pipeline
+- **Four formats from one renderer** — HTML5 ZIP, static PNG, MP4 video and animated GIF. Reachable from the Export dialog, the canvas right-click menu, and the Canvas Settings panel.
+- **Google Ads Compliance** — automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
+- **Pre-flight Validation** — real-time checks for missing ClickTags, external asset references, and a configurable maximum ad weight (default 150 KB, the Google Ads standard).
+- **Font subsetting** — brand fonts are subset to the glyphs actually used, via HarfBuzz compiled to WebAssembly, and embedded per package.
+- **Automated Bundling** — external SVGs are fetched and embedded directly into the final ZIP for total portability.
+- **What you see is what ships** — auto-sized text is measured on the canvas and the result baked into the exported ad, so a headline can never settle at a different size in the preview than it had in the editor.
+
+---
+
+## Technical Specifications
+
+### Architecture
+- **Core Technology** — 100% Vanilla JavaScript, HTML5 and CSS3. Zero framework overhead (no React/Vue/Angular) and zero npm dependencies at runtime.
+- **Application Size** — **25 browser-loaded JS files** in `scripts/`, plus **3 Node build scripts** that never reach the browser. Classic `<script>` tags, no bundler, no build step for the app itself.
+- **Cache-busting** — every local `<script src>` and `<link href>` in `index.html`, `preview.html` and `batch.html` is version-pinned with `?v=<app version>`, so a browser can never pair stale engine code with new page code.
+- **DOM Rendering Strategy** — direct DOM manipulation, with dynamic `<iframe>` sandboxing for live ad previews.
+- **Asset Bundling** — real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/), vendored in `lib/` (also used by the export Web Worker).
+- **Colour Processing** — [Iro.js 5](https://iro.js.org/), vendored in `lib/`.
+- **Media Encoding** — `mediabunny` (MP4/WebM muxing over WebCodecs) and `gifenc`, both vendored in `lib/` and lazily imported only when an export starts.
+- **Fonts** — brand fonts (Museo, Helvetica Neue LT Pro) and the portals' UI fonts (Inter, Outfit) are self-hosted under `data/fonts/`. No Google Fonts.
+- **No backend** — no accounts, no server-side database, no uploads, no telemetry. The only HTTP traffic is the app requesting its own files from the loopback server inside it.
+- **Desktop shell** — Electron, with `electron-builder` producing an unpacked portable folder. The shell is 3 files / ~300 lines and changes nothing in the application below it.
+
+### Project Structure
+
+```text
+RMIT-Adflow/
+├── index.html                 # Editor shell: splash, top bar, panels, timeline, script load order
+├── preview.html               # Preview Portal — review page
+│                              #   + third-party HTML5 ad player (up to 10 side by side)
+├── batch.html                 # Batch Operation Portal — template → data sheet → export ZIP
+├── styles.css                 # UI styles, 2 named themes, responsive rules (shared by all three pages)
+│
+├── scripts/                   # 25 browser modules, loaded in index.html order
+│   │                          #   (classic <script> tags sharing one global scope)
+│   │
+│   │  ── Shared engine (also loaded by both portals) ──
+│   ├── numeric-wheel.js       # Shift+scroll on every numeric input (delegated)
+│   ├── render-runtime.js      # Render helpers, animation-preset registry, Auto-size fitter
+│   ├── auto-resize-engine.js  # Rule-based 10-role resize engine
+│   ├── auto-arrange-config.js # Placement coordinates, safezones and sizes per format
+│   ├── docs-content.js        # In-app docs (DOCS_SECTIONS) + changelog (CHANGELOG_DATA)
+│   ├── data-merge.js          # Live Data / Versions (CSV → ads)
+│   ├── font-subset.js         # HarfBuzz glyph subsetting at export time
+│   ├── export-pipeline.js     # HTML5 ZIP + PNG export, validation, the in-ad runtime
+│   ├── video-export.js        # MP4 / GIF capture via the virtual clock + render preview
+│   ├── color-picker.js        # iro.js wrapper, gradient editor
+│   │
+│   │  ── Editor core ──
+│   ├── core-state.js          # The `state` object, element factories, undo history
+│   ├── autosave.js            # IndexedDB autosave + save-status indicator
+│   ├── local-library.js       # Base project (IndexedDB) + remembered placements (localStorage)
+│   ├── link-system.js         # Link groups and cross-canvas sync
+│   ├── canvas-render.js       # render(), canvas frames, rulers, masks
+│   ├── interactions.js        # Element/canvas drag, resize, rotate, marquee, validator
+│   │
+│   │  ── Panels & UI ──
+│   ├── canvases-panel.js      # Left-panel canvases list and link properties
+│   ├── layers-assets.js       # Layers + Assets panels
+│   ├── props-panel.js         # Properties panel + frame transitions
+│   ├── sequencer.js           # Timeline: IN/OUT/FX bars, FX isolation, frame playback
+│   ├── toolbar-import.js      # Top bar, brand elements, drag-and-drop import, hover preview
+│   │
+│   │  ── Project, dialogs, boot ──
+│   ├── project-io.js          # Save/load .flow, recent projects, menu wiring
+│   ├── project-dialogs.js     # New Project / Settings dialogs, validation, version check
+│   ├── modals.js              # Modal / alert / confirm / prompt, image compress + crop
+│   ├── app-boot.js            # Group ops, splash, notifications, initial render
+│   │
+│   │  ── Node build scripts (never loaded by the browser) ──
+│   ├── build-asset-manifest.js    # Writes data/assets/manifest.json
+│   ├── build-startup-registry.js  # Writes Startup/registry.json
+│   └── build-docs-screenshots.mjs # Regenerates the in-app documentation images
+│
+├── lib/                       # Vendored, committed rather than CDN — the app must work offline
+│   ├── jszip.min.js           # ZIP read/write for .flow files and exports (MIT, 3.10.1)
+│   ├── iro.min.js             # Colour picker (MPL-2.0, 5.5.2)
+│   ├── hb-subset.wasm         # HarfBuzz font subsetting (578 KB)
+│   ├── mediabunny.min.mjs     # MP4/WebM muxing + WebCodecs wrappers (MPL-2.0)
+│   └── gifenc.esm.min.js      # GIF quantise + LZW encode (MIT)
+│
+├── data/
+│   ├── version.txt            # Current app version (single line)
+│   ├── changelog.txt          # Human-readable changelog
+│   ├── fonts/                 # Museo 300/500/700 + Helvetica Neue LT Pro (.woff2 + .otf sources)
+│   │   └── ui/                # Inter + Outfit woff2 for the portals, with ui-fonts.css (OFL)
+│   ├── Elements/              # Application assets and SVG brand elements
+│   │   ├── Adflow_logo.svg            # Dark-theme wordmark
+│   │   ├── Adflow_lighttheme.svg      # Light-theme wordmark
+│   │   ├── RMIT_*.svg, Pixel.svg      # Brand assets used in canvas content
+│   │   └── favicon.*
+│   ├── assets/                # Pre-loaded brand creative (scanned at startup)
+│   └── docs/                  # Screenshots embedded in the in-app documentation
+│
+├── Startup/registry.json      # Generated startup-template index
+│
+├── electron/                  # Desktop shell — 3 files, ~300 lines
+│   ├── main.js                #   Window, menu policy, single-instance lock
+│   ├── static-server.js       #   Read-only loopback server, fixed port 47823
+│   └── preload.js             #   window.adflowDesktop marker, nothing else
+├── package.json               # Electron + electron-builder tooling (the app itself has no deps)
+├── build/icon.png             # App icon for the packaged build
+├── run-electron.bat/.command  # Double-click: run the app from source
+├── build-app.bat / .command   # Double-click: package into dist/
+│
+├── dev-server.js              # Optional: browser dev loop with live reload
+├── run-server.bat             #   Windows helper for the above
+│
+├── ELECTRON.md                # Desktop build: design notes, packaging, signing
+├── MAC-README.txt             # macOS first run: chmod, Gatekeeper
+├── SECURITY.md                # What an IT security review will ask about, answered
+├── DEPENDENCIES.md            # Every vendored binary, its licence and provenance
+└── knowledge_base.md          # Architecture reference for engineers and coding agents
+```
+
+See `knowledge_base.md` §2 for the full file-routing table — which feature lives in which file, and the load-order rules for cross-file references.
+
+### System Requirements
+- **Windows** — 10 or 11, 64-bit.
+- **macOS** — 11 (Big Sur) or later. Builds natively on Apple Silicon.
+- **Display** — 1366 × 768 minimum; the workspace wants room, so 1920 × 1080 or better is comfortable.
+- **Nothing else.** The browser engine ships inside the app, so every feature that needs Chromium — WebCodecs video export, the native save dialog, the Eyedropper — works the same on both platforms. There is no separate browser requirement and no runtime to install.
+
+---
+
+## Getting Started
+
+### Run it
+
+Double-click **`run-electron.bat`** (Windows) or **`run-electron.command`** (macOS). The first run fetches the Electron tooling; after that it just opens. By hand:
+
+```bash
+npm install && npm start
+```
+
+On macOS the `.command` files need to be made executable once — see [MAC-README.txt](MAC-README.txt), which also covers the Gatekeeper prompt on an unsigned build.
+
+### Build something you can hand to someone
+
+Double-click **`build-app.bat`** (Windows) or **`build-app.command`** (macOS), or:
+
+```bash
+npm run build:win     # or: npm run build:mac
+```
+
+The result is a **portable folder** in `dist/`, not an installer. `dist/win-unpacked/RMIT Adflow.exe` runs from anywhere — a network share, a USB stick, a user's Downloads folder — with nothing installed, no registry writes and no admin rights. Deleting the folder removes it completely.
+
+Packaging detail, the Electron-versus-Tauri reasoning, and the open items before it goes to staff (code signing and macOS notarisation chief among them) are in [ELECTRON.md](ELECTRON.md).
+
+### Working on the code
+
+`scripts/`, `styles.css` and the three HTML pages are plain files with no build step. Edit one, restart the app, and the change is there.
+
+Two things to remember:
+
+1. **Bump the `?v=` query strings** in `index.html`, `preview.html` and `batch.html` on release. Cache-busting is version-pinned, so a missed bump can pair a stale cached file with new page code — a silent and confusing failure.
+2. **Regenerate the two indexes** after adding brand assets or startup templates:
+
+   ```bash
+   node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js
+   ```
+
+See `knowledge_base.md` §2 for the file-routing table — which feature lives in which file — and §8 for the desktop shell.
+
+<sub>`dev-server.js` is also still in the repo: a zero-dependency Node server with live reload, if you prefer iterating in a browser tab to restarting the app. Nothing in the shipped product uses it.</sub>
+
+---
+
+## Keyboard Shortcuts
+
+### Saving & history
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + S` / `Cmd + S` | Save the project to a `.flow` file (native save dialog where the browser has one, otherwise a download) |
+| `Ctrl + Shift + S` / `Cmd + Shift + S` | Force-save project silently to the browser's IndexedDB database |
+| `Ctrl + Z` / `Cmd + Z` | Undo |
+| `Ctrl + Shift + Z` / `Cmd + Shift + Z` | Redo |
+
+### Selection & editing
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + C` / `Cmd + C` | Copy selected elements |
+| `Ctrl + X` / `Cmd + X` | Cut selected elements |
+| `Ctrl + V` / `Cmd + V` | Paste copied elements |
+| `Ctrl + Shift + V` | Paste in place — keeps the relative position when pasting onto a different canvas |
+| `Ctrl + D` / `Cmd + D` | Duplicate selected element(s) |
+| `Delete` / `Backspace` | Delete selected element(s) — or selected assets, when the Assets panel has the selection |
+| `Arrow Keys` | Nudge element by 1 pixel |
+| `Shift + Arrow Keys` | Nudge element by 10 pixels |
+| `Escape` | Deselect / leave group isolation / leave FX isolation / exit preview / cancel a render / close modals |
+
+### Layers
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + G` / `Cmd + G` | Group selected elements |
+| `Ctrl + Shift + G` | Ungroup selected elements |
+| `Ctrl + 2` | Lock selected layers |
+| `Ctrl + Shift + 2` | Unlock selected layers |
+| `Ctrl + ]` / `Cmd + ]` | Bring layer forward |
+| `Ctrl + [` / `Cmd + [` | Send layer backward |
+| `Ctrl` / `Shift + click layer` | Add to selection / select the range |
+
+### Tools & view
+
+| Shortcut | Action |
+|---|---|
+| `V` | Select tool (standard arrow cursor) |
+| `Z` | Zoom tool — hold `Alt` for zoom-out |
+| `T` | Text tool — click the canvas to place a text layer |
+| `Space + Drag` | Pan the workspace |
+| `Ctrl + R` | Toggle rulers & guides |
+| `Ctrl + Y` | Toggle Outline Mode |
+| `Tab` | Toggle Fullscreen Mode |
+| `` ` `` (backtick) | Toggle Full Mode for the panel section under the cursor |
+
+### Timeline
+
+| Interaction | Action |
+|---|---|
+| `Space` (tap) | Play / stop the current frame's animations on the canvas |
+| Drag a bar | Move that IN / OUT / FX span |
+| Drag a bar edge | Retime (resize) the span |
+| Multi-select rows, then drag | Move / retime every selected layer by the same delta |
+| Click a striped FX bar (layer already selected) | Isolate the FX bar for editing |
+| `Escape` / click away | Leave FX isolation |
+| Click a row's IN / OUT / FX chip | Change that category's preset |
+| Drag a row label | Reorder timeline rows (display order only) |
+
+### Mouse & modifiers
+
+| Shortcut | Action |
+|---|---|
+| `Alt + Drag Element` | Duplicate element on drag |
+| `Alt + Resize Handle` | Scale font size proportionally |
+| `Shift + Drag Element` | Constrain drag axis horizontally/vertically |
+| `Shift + Resize Corner` | Maintain aspect ratio while resizing |
+| `Ctrl + Resize Handle` | Snap resize dimensions to nearest 10px |
+| `Shift + Scroll` (numeric input) | Adjust the value without clicking into the field |
+| `Double-click Text` | Edit text inline |
+| `Double-click Group` | Isolate and select inside group |
+| `Right-click Canvas` | Canvas context menu (Preview / Auto-Resize / Export / Guides & Views / …) |
+| `Right-click Workspace` | Workspace settings (Snapping, Rulers, Safezones) |
+
+---
+
+## Frequently Asked Questions (FAQ)
+
+### 1. How do I build a full campaign banner set quickly from scratch?
+1. **Create Project** — **File → New Project…**, enter a name, default ClickTag, and target formats (e.g. 300×250, 728×90, 160×600).
+2. **Core Design** — focus the **300×250** canvas. Add background elements, copy, headlines, logos and CTA buttons, and arrange the layout exactly how you want it.
+3. **Generate Set** — click the canvas background, hit **Auto-resize** in the left panel, select your target formats, and click **Create Resize**. Adflow handles placement and sets up Link Groups automatically.
+4. **Refine & Sync** — double-click text layers to edit copy across sizes in real time via Live-Link.
+5. **Batch Export** — hit **Export** in the top bar to package ZIP archives for all canvases.
+
+### 2. How do I bind columns and merge spreadsheet data to generate version rows?
+1. **Mark dynamic slots** — select the element you want to vary, open the **Dynamic Data** section, and tick the fields to merge (Text, Color, Background, Image, Fill).
+2. **Open the sheet** — click **Data** in the top bar.
+3. **Import or build** — **Import CSV** to load a spreadsheet, or **+ Add Column** to build one inline.
+4. **Map columns to slots** — bind each column header to a slot's field with the dropdown controls.
+5. **Preview versions** — pick a row from the **Version** dropdown, or arm hover preview and point at rows to flick through them.
+6. **Export All** — choose **All versions (separate folders)** in the Export dialog.
+
+### 3. How does autosave work and how do I prevent losing my progress?
+- **IndexedDB autosave** — every modification (dragging, resizing, typing, recolouring) triggers a debounced save to your browser's IndexedDB.
+- **Auto-restoration** — reloading the tab restores canvases, scroll position, zoom level and the undo stack.
+- **Force browser save** — `Ctrl + Shift + S` saves silently to IndexedDB.
+- **Local file backups** — **File → Save → Save to File (.flow)** before clearing browser data or switching machines.
+
+### 4. Why aren't my entrance animations playing?
+- **Persistent layers** — elements in **Always Top** or **Always Bottom** stay visible across all frames and don't trigger entrances on frame swaps. Drag them into **Main Layers (Frame N)** for the frame the animation should play on.
+- **Check the timeline** — a layer with no row has no animation at all. ⚙ → **Show all elements** lists the rest so you can add one.
+- **OUT needs IN** — an exit animation only plays when the element also has its entrance enabled.
+
+### 5. My element's FX bar is hidden under its IN or OUT bar. How do I retime it?
+The FX bar is always drawn on top as white diagonal stripes, and a thin strip along its bottom edge stays grabbable even where IN or OUT covers it.
+1. **To move it** — drag that strip anywhere along the FX bar's length.
+2. **To resize it** — select the layer, then **click** the FX bar to isolate it; IN and OUT dim and stop responding, and the whole FX bar gets resize handles at both ends.
+3. **To leave** — press `Esc` or click anywhere else.
+
+An FX effect set to loop forever has no end to drag — only its start moves. Give it a fixed duration in the Animation panel first if you need to shorten it.
+
+### 6. Another team needs to produce ads from my design with their own data. Do they have to learn Adflow?
+No — give them a template and point them at the Batch Operation portal.
+1. **Save a template** — **File ▸ Save ▸ Save template**. This is what marks the file as a template; the portal declines ordinary project files.
+2. **Send them the file** plus the portal link (or tell them **File → Batch Operation…**).
+3. **They click Download Sheet Template** for a CSV carrying your column headers, fill in one row per ad version, and **Import Data Sheet…**.
+4. **They review** in the same Data & Versions panel you use, with live previews per version, then hit **Export ZIP** — every version × every ticked size, one folder per version.
+
+Map your dynamic slots and name the columns clearly *before* saving the template — those names become the sheet's headers, and a renamed header no longer matches its slot.
+
+### 7. An agency sent us HTML5 banners not built in Adflow. Can I review them here?
+Yes, in the Preview Portal, as long as each ad is a zip containing an `index.html` plus its assets.
+1. **File → Preview Portal…** → **Open HTML5 Ad (.zip)…**, or drop the zips on the page.
+2. Up to **10 ads** can be open at once, laid out side by side like banner sizes.
+3. Controls are limited to what applies to someone else's ad: **Restart All**, a **Loop** that reloads on an interval you set, and per-ad **Restart** / **Remove**.
+
+If an ad appears at the wrong dimensions its zip carried no `ad.size` meta tag and no size in the filename — type the correct width and height into that ad's sidebar row.
+
+### 8. When should I export video instead of GIF?
+- **MP4** for anything photographic or gradient-heavy, and for social placements. It needs a browser that can encode H.264 (Chromium).
+- **GIF** when the destination demands one, or when no encoder is available. GIF holds 256 colours at most, so gradients and photos band — the panel says so and points at video when that matters.
+- Both come from the same virtual clock, so they contain identical frames. Render first, judge it in the panel, then download — or drag the preview straight into the app you're pasting it into.
+
+### 9. How do I unlink an element to make layout overrides on one size?
+1. Right-click the element on the canvas viewport.
+2. **Link Group → Unlink from group**.
+3. That element is now independent, while the remaining sizes keep their linked status.
+
+*If you want to keep the copy linked but the styling separate, open the Link Groups panel and uncheck specific properties (like Font Size or Fill Color) for the group instead.*
+
+### 10. What should I do if my ad canvas exceeds the 150 KB weight limit?
+Uncompressed image assets are the main cause of weight flags. Use the built-in Image Compressor:
+1. Select the heavy image on your canvas.
+2. Find the Image Compressor in the right-hand panel, next to the file name.
+3. Adjust the quality slider (e.g. 70–80%) to see a live estimate of the KB weight.
+4. Click **Compress**. Output format follows Project Settings and preserves transparency (PNG) where needed.
+
+Fonts are already subset per export, so they are rarely the problem.
+
+### 11. Does Adflow need an internet connection or an account?
+No. It has no accounts and makes no network request beyond its own files, which it serves to itself.
+- **No sign-in** — the app opens straight into the workspace. Nothing to register for, no personal data collected.
+- **No feature loss offline** — layout design, link syncing, spreadsheet merges and every export format run locally. Every library and font is vendored, so it behaves identically on a machine with no internet access at all.
+- **Force save** — `Ctrl + Shift + S` saves silently to the app's local database.
+- **Moving between machines** — your work lives on this machine, in this install. Save a `.flow` (`Ctrl + S`) and open it on the other computer.
+
+---
+
+## Technical Stack (IT & Engineering Overview)
+
+This section is a deeper breakdown of Adflow's architecture, data schemas, security model and subsystem mechanics, for engineering and IT teams.
+
+### 1. Architectural Paradigm
+
+Adflow is a **zero-dependency, compilation-free Single Page Application** built on pure HTML5, Vanilla JavaScript and CSS3. There is no Webpack, Vite, or package manager involved in running it.
+
+All logic lives in modular JS files loaded sequentially via classic `<script>` tags. Because they share the global lexical scope, declarations are visible to every file loaded after them — **the tag order *is* the dependency graph**:
+
+| # | Stage | Files, in load order |
+|---|---|---|
+| 1–10 | **Shared engine** (also loaded by both portals) | [numeric-wheel.js](scripts/numeric-wheel.js) → [render-runtime.js](scripts/render-runtime.js) → [auto-resize-engine.js](scripts/auto-resize-engine.js) → [auto-arrange-config.js](scripts/auto-arrange-config.js) → [docs-content.js](scripts/docs-content.js) → [data-merge.js](scripts/data-merge.js) → [font-subset.js](scripts/font-subset.js) → [export-pipeline.js](scripts/export-pipeline.js) → [video-export.js](scripts/video-export.js) → [color-picker.js](scripts/color-picker.js) |
+| 11–16 | **Editor core** | [core-state.js](scripts/core-state.js) → [autosave.js](scripts/autosave.js) → [local-library.js](scripts/local-library.js) → [link-system.js](scripts/link-system.js) → [canvas-render.js](scripts/canvas-render.js) → [interactions.js](scripts/interactions.js) |
+| 17–21 | **Panels & UI** | [canvases-panel.js](scripts/canvases-panel.js) → [layers-assets.js](scripts/layers-assets.js) → [props-panel.js](scripts/props-panel.js) → [sequencer.js](scripts/sequencer.js) → [toolbar-import.js](scripts/toolbar-import.js) |
+| 22–25 | **Project, dialogs, boot** | [project-io.js](scripts/project-io.js) → [project-dialogs.js](scripts/project-dialogs.js) → [modals.js](scripts/modals.js) → [app-boot.js](scripts/app-boot.js) |
+
+`render-runtime.js` deliberately holds everything three surfaces have to agree on — the animation-preset registry (`ANIM_IN_PRESETS` / `ANIM_OUT_PRESETS` / `ANIM_FX_PRESETS`), the render helpers, and the Auto-size fitter (`calculateAutoSize` / `measureTextFits`). It loads first, and both portals load it too, so the editor, the portals and the exported ad cannot drift.
+
+`preview.html` and `batch.html` load the same version-pinned files plus their own inline page code.
+
+### 2. Sandbox Preview Engine
+
+Adflow uses dynamic `<iframe>` sandboxing to isolate rendered ads, preventing the editor's styles and scripts from bleeding into the ad runtime and vice versa.
+
+- **Editor previews** — the active frame state and layout coordinates are compiled into an inline HTML document injected into the frame's `srcdoc`.
+- **Third-party ads** — a non-Adflow zip is flattened into a single document before mounting: the shallowest `index.html` becomes the entry, `<link>` / `<script src>` references become inline blocks, and every remaining asset reference is rewritten to a `data:` URL. Path variants (`a.png`, `./a.png`, `/a.png`, and the bare basename when unambiguous) are all substituted, so references built at runtime by the ad's own JavaScript resolve too. Every substitution uses the function form of `String.replace`, because ad code and base64 payloads legitimately contain `$&` and `$1`.
+- **Performance** — canvas rendering forces GPU compositing with `transform: translateZ(0)` and uses `clip-path: inset(0)` to prevent sub-pixel hairline leaks during pan and zoom.
+
+### 3. Global State Schema
+
+The active state is a single mutable global object, `state`, declared in [core-state.js](scripts/core-state.js). It is JSON-serialisable; the project-IO save path partitions what persists to `.flow` from what is a local preference.
+
+```typescript
+interface State {
+  projectId?: string;             // UUID assigned on create / first save
+  projectName: string;
+  adSizeLimit: number;            // Validation weight cap in KB (default 150)
+  currentVersion?: string;        // Bound row key from the data merge, if any
+  canvases: Canvas[];
+  activeCanvasId: string;
+  activeFrameId: number;
+  selectedElementId: string | null;
+  layerSelection: string[];
+  frames: Frame[];                // Discrete frames — NOT a continuous timeline
+  linkGroups: Record<string, LinkGroup>;
+  assets: Record<string, string>; // assetId → base64 data URL
+  dataMerge?: DataMergeConfig;
+  theme?: 'default' | 'light';    // v0.61.0: two themes; unknown ids fold to 'default'
+  showRulers?: boolean;
+  showSafezones?: boolean;
+  snapEnabled?: boolean;
+  zoom?: number;
+  viewScrollLeft?: number;
+  viewScrollTop?: number;
+  autosaveInterval?: number;      // Seconds (5–60)
+  savedHistoryLimit?: number;     // Undo depth (5–100, default 50)
+  favoriteAnimations?: string[];  // Machine-local; stripped from .flow on save
+}
+
+interface Canvas {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  elements: Element[];            // Ordered bottom to top
+  bgColor?: string;
+}
+
+interface Element {
+  id: string;
+  type: 'text' | 'image' | 'button' | 'rect' | 'circle' | 'line' | 'pixel';
+  customName?: string;            // Layer display label
+  x: number; y: number; width: number; height: number;
+  rotation?: number;
+  persistent: 'top' | 'bottom' | false;
+  frameId?: number;               // Frame visibility when persistent === false
+  linkGroupId?: string;
+  role?: string;                  // Auto-resize classification
+  roleAuto?: boolean;             // False once manually locked
+  isMask?: boolean;
+  maskTargetId?: string;          // The image this mask clips
+
+  // Type & fill
+  text?: string; fontFamily?: string; fontSize?: number;
+  autoSize?: boolean; maxFontSize?: number; wrapText?: boolean; wrapMinSize?: number;
+  color?: string; fill?: string; stroke?: string;
+
+  // Animation — three independent categories, each with an enable flag decoupled
+  // from its preset, so toggling a category off remembers its settings.
+  // The timeline's IN / OUT / FX bars map directly onto these fields.
+  inEnabled?: boolean;   animType?: string;   animDuration?: number; animDelay?: number;
+  exitEnabled?: boolean; exitType?: string;   exitStart?: number;    exitDuration?: number;
+  fxEnabled?: boolean;   effectType?: string; effDuration?: number;  effDelay?: number;
+
+  // Dynamic data opt-ins — a nested map, NOT dmText/dmImage/... flags.
+  dynamic?: { text?: boolean; color?: boolean; bg?: boolean; image?: boolean; fill?: boolean };
+}
+```
+
+A dynamic field only merges when **both** halves are present: a column mapped to the slot (`dataMerge.mappings['<slotKey>::image']`) *and* the element opting in via `el.dynamic.image` — or inheriting it through a link group that syncs that property. See `dmFieldActive` in [data-merge.js](scripts/data-merge.js).
+
+`exitStart` is stored **relative to the element's own IN delay**, so the effective CSS exit delay is `(animDelay || 0) + (exitStart || 1.5)`. `animOutEnabled(el)` is `animInEnabled(el) && !!el.exitEnabled` — an exit never plays without an entrance. The timeline reads and writes exactly these fields.
+
+### 4. Auto-Resize Layout Engine
+
+A deterministic, rule-based layout engine — not a model. It maps a source canvas onto target canvases using the 10-role taxonomy.
+
+1. **Role classification (`autoAssignRole`)** runs when elements are added or modified:
+   - **Explicit name** — substring match on the layer name (`'logo'` matches `rmit-logo`, `'background'` matches `background-image`).
+   - **Text content regex** — e.g. `/cricos|rto/i` → `cricos`, "ready for next" → `rfwn`.
+   - **Text hierarchy** — the largest font sizes in the project classify `heading` and `subheading`.
+   - **Image aspect & area** — aspect ratio ≥ 2.0 covering < 18% of canvas area → `rmit-logo`; ≥ 70% coverage or placed in the bottom persistent layer → `background-image`.
+2. **Placement rules** — each role maps to a pure placer: `placer(srcEl, targetCanvas, context) → geometry`. Coordinates derive from viewport aspect thresholds (wide, tall, square). Safezone inset is `max(4, round(min(width, height) × factor))`.
+3. **Execution pipeline** — clear the target canvas; run placers in role-priority order; apply R1 edge alignment between `rmit-logo` and `rfwn`; remap `maskTargetId` references to the newly cloned elements; run the no-touch collision resolver (the lower-priority element shrinks along its dominant centre-offset axis by the overlap plus a 4px buffer, while the higher-priority element stays locked); clamp to canvas via `clampToCanvas` (background images exempt).
+
+### 5. Link Sync & Real-Time Synchronisation
+
+Link Groups bind matching elements across canvases; updates propagate through `applyLinkSync` based on the group's active properties.
+
+- **Sync matrix** — text content, typography (font, weight, alignment), font size (separately toggleable), colours, fills, borders, radius, image sources, animations and transitions.
+- **One group per category** — a `LinkGroup` carries a single `category` and `applyLinkSync` branches on it, so a selection spanning categories cannot share one group (a rect mask in an `image` group would have an `assetId` copied onto it). `createAndLinkGroup` splits a mixed selection into one group per category, which is what makes a **mask group** linkable: it becomes a paired `image` group and `shape` group, named `"<name> (Image)"` / `"<name> (Mask)"`. `pushGroupChanges` and the Live-Link / Remove-Link menu actions operate on every group in the selection, so both halves stay in step.
+- **Membership is validated, not assumed** — `canElementJoinGroup(el, gid)` is the single gate: it requires `getElementCategory(el) === group.category` and refuses when `maskPartnerOf(el)` is already in that group, so a mask and the image it clips can never co-habit. It guards `linkSelectionToGroup` (reachable from both the context menu and the Link Groups panel dropdown) and `autoAddAndLink`. Refused members are skipped with a toast rather than silently corrupting the group.
+- **Masks and geometry** — `getDefaultSync` leaves `transform` **off** for a mask *and* for a masked image. A mask is sized to the image it clips on its own canvas, and the auto-resize mask post-pass realigns it there; syncing one half's width/height across canvases would leave the clip mismatched. `areStylesAndNamesEqual` compares `isMask`, so Auto-Link never pairs a mask with an ordinary shape of the same name.
+- **Live-Link propagation** — with a group's `liveLink` active, any modification in an input or a viewport drag sweeps all canvases, finds elements sharing the `linkGroupId`, and overwrites their linked property values in real time.
+
+### 6. Image Masking Engine
+
+- **Core logic** — a shape layer directly above an image in z-order acts as a vector mask when `isMask` is true, implemented with CSS `clip-path`.
+- **Sanitisation** — on every render sweep, `sanitizeMasks` validates the layer stack. A mask records **which** image it clips in `maskTargetId` (backfilled from the current neighbour for legacy masks that predate the field), and is stripped of its masking attributes when that image is deleted, or when no image sits directly beneath it. The identity check matters: adjacency alone would let a mask silently adopt an unrelated image that slid underneath after a deletion — typically the background — leaving an invisible, unselectable layer clipping the wrong picture. A recorded target that still exists *somewhere* (copy, duplicate, cross-canvas paste, deliberate reorder) means the mask was cloned or moved rather than orphaned, so it adopts its new neighbour instead of reverting.
+- **SVG clip paths** — complex custom brand shapes (the RMIT Pixel) generate an inline `<clipPath>` definition, with rotations baked into the path coordinates so masks stay exact through viewport transforms and auto-resizing.
+
+### 7. Export Pipeline & the In-Ad Runtime
+
+- **HTML5 ZIP** — a self-contained document carrying subset fonts, inlined assets, a compliant `clickTag`, and the frame/animation runtime serialised into the page.
+- **Auto-size is baked, not re-derived** — while Auto-size is on, `el.fontSize` is only whatever was last typed into the disabled field, so the editor's `calculateAutoSize` result is written into the markup as `data-fit-size` and the in-ad `adjustAutoSizes()` applies it verbatim. Re-measuring inside the ad made text size depend on whether the preview iframe happened to have layout at `startAd()` time: an iframe with no layout reports every metric as zero, so every candidate size "fits" and the search returns `data-max-size` — the largest font allowed. Exports predating the attribute still fit at runtime, but now refuse to measure a zero-layout box rather than guessing upward.
+- **Static PNG** — the active frame is serialised into an SVG `foreignObject` and rasterised on a canvas.
+- **Video & GIF** — [video-export.js](scripts/video-export.js) installs a **virtual clock** into the export bundle, stepping `performance.now()`, `Date.now()`, `requestAnimationFrame` and CSS animation time deterministically, then pumps frames out one at a time. MP4 muxing goes through mediabunny over WebCodecs; GIF through gifenc, with the palette quantised from a sample spanning every frame rather than one mid-animation frame.
+- **Validation** — ad weight against the configurable cap, ClickTag presence, external references and supported file types, all surfaced before export rather than after.
+
+### 8. Persistence & History
+
+- **IndexedDB autosave** — a debounced queue serialises the whole `state` plus the undo stack into the `adflow-autosave` database under the key `'project'`. IndexedDB rather than localStorage because embedded image data URLs blow past the ~5 MB ceiling.
+- **Undo/Redo** — up to 100 states (default 50). History snapshots the serialisable slices (`canvases`, `frames`, `linkGroups`, `dataMerge`, …) and guards against re-entrant cycles with `_restoringHistory`. App preferences are deliberately excluded: undo must never flip the user's settings.
+- **Portable `.flow` format** — a ZIP (JSZip) containing `project.json` (the state), `meta.json` (dimensions, app version, timestamp) and `images/` (binary assets extracted from base64 data URLs). Saving a **template** additionally sets `isTemplate` and strips the asset library.
+
+### 9. Browser-Side Persistence: Base Project & Remembered Placements
+
+Both cross-project preferences live in the same browser profile as autosave, implemented in [`scripts/local-library.js`](scripts/local-library.js). The function names are the ones the rest of the app already called when these were account features, so the callers (boot, Settings, New Project, the Auto-Resize engine) did not change shape.
+
+| Data | Store | Key | Why there |
+|---|---|---|---|
+| Base project | IndexedDB `adflow-autosave` / store `state` | `default-startup` → `{ blob, meta }` | A `.flow` blob can be many MB, past the localStorage ceiling. Shares the autosave DB so there is one database to clear. |
+| Base project hint | localStorage | `adflow-default-startup-meta` | Lets the New Project dialog paint its "Base project" row synchronously; IndexedDB is the authority and corrects it. |
+| Remembered placements | localStorage | `adflow-placement-library` | Small JSON `{ sizes: { "300x250": { role: geom } } }`; the engine reads it synchronously inside a per-element loop. |
+
+**Existence is the switch.** New Project offers *Base project* whenever the IndexedDB record exists; clearing it (Settings ▸ Clear) deletes the record, drops the hint, and resets a startup preference that pointed at it. Placements are keyed by **dimensions only** — a 1080 × 1080 keeps its placement whether it arrived as "Instagram Square", a typed size, or a renamed canvas.
+
+**Legacy fields.** `.flow` files written by the cloud-connected edition may carry `previewSharePath`, `previewUrl`, `cloudSavedAt`, `spaceId` and friends. `LEGACY_CLOUD_FIELDS` in `project-io.js` lists them and `stripLegacyCloudFields()` runs on every load, template pass, new project and base-project snapshot, so none of them survives into a new save.
+
+**Nothing leaves the machine.** There is no upload path in the codebase. The only network requests are for the app's own files, served by the loopback server inside the desktop shell (`data/version.txt` is polled so the app notices it has been updated).
+
+### 10. Timeline (Sequencer) Architecture
+
+`sequencer.js` is a **view over the element model**, not a parallel one:
+
+- **Every interaction selects first.** A bar grab calls `seqSelectElement(id)` so `renderProps()` binds the properties panel's closures to that element. The sequencer then commits through `activeUpdatePropFn` — the exact path the panel uses — which runs `render(true)` and therefore `applyLinkSync`. Zero duplicated sync logic.
+- **`renderSequencer()` is called from `render()`** on every pass, guarded by an internal signature (`seqSignature()`) so it only rebuilds when the data it displays actually changed. Panel edits, undo/redo, and frame/canvas switches all flow through `render()`, so the timeline cannot go stale.
+- **Geometry** comes from `seqBars(el)`, which reproduces the runtime's own timing math (notably OUT = `animDelay + exitStart`). A multi-layer drag writes each member's own values directly — rather than through `updateProp`, whose multi-select fan-out would force one shared value — then issues a single `render(true)`.
+- **FX veil.** The FX bar must stay hit-testable *below* IN/OUT so those remain draggable where they overlap, but an outline under a solid bar of identical geometry is invisible. So FX visuals are painted by a separate pointer-transparent veil layered on top, whose only pointer-active child is a 7px grip strip. Isolation (`seqFxEditId`) makes the whole veil active and adds resize handles. Infinite FX veils are anchored `right: 0` instead of given a width, so dragging only has to move `left`.
+- **Isolation can't outlive its target** — the render pass clears `seqFxEditId` unless that element is still the sole selection and still present on the frame.
+- **Drag vs click** is discriminated by pixel travel (`maxPx < 4`), captured alongside a `wasSelected` flag read *before* mousedown changes the selection — that is what lets a click isolate while a drag retimes.
+- **Playback** (`seqStartPlayback`) builds keyframes with the same shared builders the exporter uses (`buildElementKeyframesCSS`, `getElementAnimationCSS`, `buildTextEntranceHTML`), so a newly added preset animates identically on the canvas with no extra wiring.
+- **Frame duration coupling** — `seqSyncFrameDuration()` extends the active frame to fit an overrunning animation and shrinks it back toward the remembered pre-extension value, riding the caller's history push rather than creating its own.
+
+### 11. Portal Pages
+
+`preview.html` and `batch.html` are standalone documents loading the same version-pinned engine files plus their own inline page code, and linking the app's `styles.css` rather than carrying a private palette.
+
+- **Token aliasing** — theme aliases must be declared on `body`, not `:root`: a `var()` alias resolves against the element it is *declared* on, so `:root`-level aliases only half-apply under a `body.theme-*` override.
+- **Engine stubs** — the portals don't load `core-state.js`, so globals the export path writes to (e.g. `urlSizeCache`) are declared as stubs in the page. A missing stub surfaces as a silently failed size badge, not a broken export.
+- **Stock assets** — `buildFlowBlob` deliberately clears `assetLibrary` when saving a template, so a template cannot carry the RMIT stock library. Both portals register it themselves at boot.
+- **Deferred layout** — `packRectangles` / `layoutCards` measure `offsetWidth`, so they must run after layout (`setTimeout(..., 50)`), matching `renderCanvases`. Called synchronously they measure `0` and stack every card vertically.
+- **Inline-script hazard** — an HTML parser terminates a `<script>` block at the first literal `</script>`, even inside a JS string. Closing tags emitted by the third-party ad flattener are therefore built by concatenation (`'<' + '/script>'`). Validate inline blocks with `node --check` after editing.
+
+---
+
+## Documentation
+
+- **In-app** — **Help → Documentation** carries the full user guide with screenshots; the footer version button opens the changelog.
+- **[knowledge_base.md](knowledge_base.md)** — the architecture context dump for engineers and coding agents: file-routing table, state schema, subsystem detail, and workflow conventions.
+- **[data/changelog.txt](data/changelog.txt)** — plain-text release history.
+- **[ELECTRON.md](ELECTRON.md)** — the desktop build: why Electron, how the internal server and fixed port work, packaging and code signing.
+- **[MAC-README.txt](MAC-README.txt)** — macOS first-run notes for end users.
+- **[SECURITY.md](SECURITY.md)** — security summary for IT review: data handling, network behaviour, the Electron runtime and known gaps.
+- **[DEPENDENCIES.md](DEPENDENCIES.md)** — every third-party library with version, upstream URL and SHA-256, plus what ships versus what only builds.
+
+---
+
+## License
+
+This project is internal tooling developed for RMIT University. Please refer to your organisation's policies regarding usage, modification, and distribution.

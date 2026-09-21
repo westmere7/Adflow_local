@@ -1,0 +1,13 @@
+# Electron tooling — the only npm in this repository. The web app itself still
+# has no dependencies and no build step.
+node_modules/
+dist/
+
+# Logs and editor debris
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Windows/MSYS crash dumps
+*.stackdump
