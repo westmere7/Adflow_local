@@ -9,7 +9,8 @@
 //
 //   package.json            drives the Electron build's name and exe metadata
 //   index/preview/batch     the ?v= pin on every script and stylesheet
-//   project-dialogs.js      the About box fallback, used before the poll returns
+//   app-boot.js             APP_VERSION_FALLBACK, and the two placeholders in
+//                           index.html shown until the first fetch resolves
 //   README.md               the version badge
 //
 // Hand-updating those is how the number drifts — and a missed ?v= pin is worse
@@ -70,10 +71,25 @@ const rules = [
     label: `${f} ?v= pins`,
   })),
   {
-    file: 'scripts/project-dialogs.js',
-    find: /(_appBootVersion\s*:\s*')v\d+\.\d+\.\d+(')/,
+    file: 'scripts/app-boot.js',
+    find: /(APP_VERSION_FALLBACK\s*=\s*')v\d+\.\d+\.\d+(')/,
     to: `$1${vTag}$2`,
-    label: 'About box fallback',
+    label: 'runtime fallback',
+  },
+  // The two literals in index.html are placeholders shown until the first fetch
+  // of version.txt resolves. Both patterns are anchored to their own attribute so
+  // the historical version numbers in nearby HTML comments are left alone.
+  {
+    file: 'index.html',
+    find: /(class="app-splash-version">)v\d+\.\d+\.\d+(<)/,
+    to: `$1${vTag}$2`,
+    label: 'splash badge placeholder',
+  },
+  {
+    file: 'index.html',
+    find: /(id="app-version-display"[^>]*>)v\d+\.\d+\.\d+(<)/,
+    to: `$1${vTag}$2`,
+    label: 'footer version placeholder',
   },
   {
     file: 'README.md',
@@ -102,8 +118,10 @@ for (const r of rules) {
 
   if (checkOnly) {
     drift++;
-    // Show the first stale value we can name, to make the fix obvious.
-    const stale = (before.match(/\d+\.\d+\.\d+/) || ['?'])[0];
+    // Name the number at the match site. Reading the first version-looking
+    // number in the file instead would report an already-corrected one.
+    const hit = before.match(r.find);
+    const stale = hit ? ((String(hit[0]).match(/[0-9]+.[0-9]+.[0-9]+/) || ['?'])[0]) : '?';
     console.error(`[set-version] DRIFT  ${r.label} (${r.file}) — has ${stale}, expected ${version}`);
   } else {
     // Writing the same string back preserves CRLF; we never normalise.

@@ -1578,7 +1578,7 @@ const appSplash = (() => {
         const verEl = document.createElement('span');
         verEl.className = 'app-splash-version';
         verEl.style.cssText = 'font-size: 10px; color: var(--text-muted, #8b8f9c); border: 1px solid rgba(139, 143, 156, 0.4); padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-top: 2px;';
-        verEl.textContent = 'v0.61.1';
+        verEl.textContent = getAppVersion();
         logoEl.appendChild(verEl);
       }
     }
@@ -1959,6 +1959,34 @@ function showCanvasNotification(message, options = {}) {
 let _appBootVersion = null;
 let _appUpdatePollTimer = null;
 
+// ---------------------------------------------------------------------------
+// The one version anyone reads.
+//
+// data/version.txt is the only place the number is authored. Every version on
+// screen is painted from what we read there, so the footer, the splash badge
+// and the About box cannot disagree with each other or with a deploy. The
+// literals in index.html are only what shows for the few milliseconds before
+// the first fetch resolves; scripts/set-version.js keeps them and the fallback
+// below in step at build time, so even that flash is right.
+//
+// Do not put a version string anywhere else. Three of them had already drifted
+// apart when this was written.
+// ---------------------------------------------------------------------------
+const APP_VERSION_FALLBACK = 'v0.61.2';
+
+function getAppVersion() {
+  return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;
+}
+
+// Safe to call before or after the splash badge is built: a badge that already
+// exists is caught by the query, and one created later reads getAppVersion().
+function applyAppVersion(v) {
+  const ver = v || getAppVersion();
+  const footer = document.getElementById('app-version-display');
+  if (footer) footer.textContent = ver;
+  document.querySelectorAll('.app-splash-version').forEach((el) => { el.textContent = ver; });
+}
+
 async function _fetchDeployedVersion() {
   try {
     // Cache-bust so we read the freshly-deployed file, not a cached copy.
@@ -1989,7 +2017,7 @@ function initVersionWatch() {
   const check = async () => {
     const latest = await _fetchDeployedVersion();
     if (!latest) return;                       // offline / fetch failed — try again next tick
-    if (!_appBootVersion) { _appBootVersion = latest; return; } // establish baseline
+    if (!_appBootVersion) { _appBootVersion = latest; applyAppVersion(latest); return; } // baseline + paint
     if (latest !== _appBootVersion) {
       showAppUpdateBanner(latest);
       // One notice is enough — stop watching; the banner persists until refresh.

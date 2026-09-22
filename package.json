@@ -1,7 +1,7 @@
 {
   "name": "rmit-adflow",
   "productName": "RMIT Adflow",
-  "version": "0.61.1",
+  "version": "0.61.2",
   "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition \u2014 distributed as a portable folder, not an installer.",
   "private": true,
   "license": "UNLICENSED",
