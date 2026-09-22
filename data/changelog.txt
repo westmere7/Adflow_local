@@ -1,6 +1,31 @@
 RMIT Adflow - Version & Changelog History
 
-v0.61.0 (Current) - September 2026 — Engine v3.0
+v0.61.1 (Current) - September 2026 — Engine v3.0
+- Dragging is now essentially free. Moving an element no longer rebuilds anything at
+  all: the dragged layers, their selection outline and the snap guides are moved
+  directly, and the full redraw waits until you let go. A drag that used to cost 62
+  rebuilds now costs none. Anything that changes more than position - alt-drag to
+  duplicate, dragging across canvases, dropping a photo onto another layer, or moving
+  a mask - falls back to the normal redraw automatically.
+- Dragging and zooming are smoother. Every mouse movement was rebuilding the whole
+  workspace — all canvases, panels and rulers — from scratch, which on a small test
+  project meant 62 full rebuilds for a single short drag. A mouse reports position
+  far faster than that work can finish, so the backlog grew and the drag stuttered.
+  Redraws are now batched to at most one per screen refresh, so the same drag costs
+  one rebuild instead of sixty-two. The bigger the project, the more you will notice.
+- Adflow is a desktop application for everyone who makes ads. The managed
+  static-hosting config has been removed. The container image and its web-server
+  configuration stay, with their double-click launchers and the operator guide, so ITS
+  can review the app and run it on RMIT infrastructure without installing anything.
+  Nothing about the app itself changed: the same code that runs in a browser tab is the
+  code inside the desktop build.
+- The manual follows suit. "Desktop app or hosted page" is now "Where your work is
+  kept", and says the thing that actually matters — your projects live on this machine,
+  in this copy of the app, and a .flow file is how you move one somewhere else.
+- The Technical Stack section now documents how the desktop build is packaged instead
+  of how to host the app, and the About box says the same.
+
+v0.61.0 - September 2026 — Engine v3.0
 - Themes reduced to two: Adflow (the default) and Light. The other eleven palettes
   (Obsidian, Nordic, Amber, Amethyst, RMIT Navy, Ocean, Navy, RMIT, Nordic Light,
   Amber Light and Sage Light) have been removed. The Settings theme picker is now a

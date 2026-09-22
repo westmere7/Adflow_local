@@ -30,8 +30,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Arbitrary, deliberately uncommon, and well clear of the 8080 the Docker build
-// uses so both can run side by side.
+// Arbitrary and deliberately uncommon, so it is unlikely to collide with
+// anything else the user happens to be running.
 const PREFERRED_PORT = 47823;
 const FALLBACK_ATTEMPTS = 8;
 

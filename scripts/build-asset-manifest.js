@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Scans data/assets/ and writes data/assets/manifest.json with every image
 // filename it finds. The app reads this manifest to populate the RMIT folder
-// in the Assets panel. Runs at deploy time (Dockerfile build stage, vercel.json
-// buildCommand, run-server.bat); can also be run locally before committing assets.
+// in the Assets panel. Run it after adding or removing files in data/assets/ —
+// `npm run prebuild` calls it, and so does run-server.bat.
 
 const fs = require('fs');
 const path = require('path');

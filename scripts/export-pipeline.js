@@ -2032,7 +2032,7 @@ ${styles}
 
 async function exportCanvasAsPng(c, options = {}) {
   if (window.location.protocol === 'file:') {
-    showAdflowAlert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Please run the local development server (e.g., python -m http.server 8080) and open http://localhost:8080/ to export PNGs with custom fonts.');
+    showAdflowAlert('Local asset fetching is blocked on the file:// protocol due to browser CORS security rules. Open Adflow through the desktop app (or the local development server) rather than opening index.html directly, and PNG export with custom fonts will work.');
   }
 
   let recorderIframe = null;

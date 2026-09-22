@@ -1,12 +1,12 @@
-# RMIT Adflow — Technical App Breakdown (Local edition — updated v0.61.0, Engine v3.0)
+# RMIT Adflow — Technical App Breakdown (Local edition — updated v0.61.1, Engine v3.0)
 
-This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), browser-side persistence, the three delivery targets (desktop app / Docker / static hosting), and workflow rules. **Read this in full before making non-trivial changes.**
+This document is the official context dump for agents (Claude, Codex, etc.) picking up the codebase cold. It covers the current architecture, state schema, core engines (Auto-Resize, Masking, Link Sync, Dynamic Data), the animation sequencer, the three page surfaces (editor + two portals), browser-side persistence, the desktop shell, and workflow rules. **Read this in full before making non-trivial changes.**
 
 > Animation model (July 2026): the app is **frame-based** — discrete `frames[]` plus per-element IN/OUT/FX presets and per-frame transitions. There is still **no continuous scrubber or keyframe editor**. What *does* exist, since v0.25.0, is `scripts/sequencer.js`: a PowerPoint-style **Timeline panel** that visualises the active canvas+frame's existing IN/OUT/FX timings as draggable bars. It is a *view over the element model*, not a second model — it commits every edit through the properties panel's own `updateProp` closure. Do not mistake it for the abandoned continuous-timeline prototype.
 
-> **Local edition (September 2026, v0.60.0):** this branch has **no cloud**. The Supabase auth / Cloud Projects / Team Spaces / Share Preview stack (`auth-ui.js`, `share-preview.js`) was removed; the app is a static site with no backend, no accounts and no third-party requests. The cloud-connected build lives on `main`. Anything below that mentions the cloud is history, not current behaviour.
+> **Local edition (September 2026, v0.60.0):** this repository has **no cloud**. The Supabase auth / Cloud Projects / Team Spaces / Share Preview stack (`auth-ui.js`, `share-preview.js`) was removed; the app is a static site with no backend, no accounts and no third-party requests. The cloud-connected build is a separate product and is not part of this repository. Anything below that mentions the cloud is history, not current behaviour.
 >
-> **Desktop app (September 2026, `electron-app` branch):** the same files also ship as an Electron application for Windows and macOS — see §8. **Nothing** in `scripts/`, `styles.css` or the three HTML pages was changed to make it work, and that is a constraint, not an accident: the desktop and hosted builds must stay byte-identical below `electron/`. Do not add a desktop-only code path to the app itself.
+> **Desktop app (September 2026):** the same files also ship as an Electron application for Windows and macOS — see §8. **Nothing** in `scripts/`, `styles.css` or the three HTML pages was changed to make it work, and that is a constraint, not an accident: the desktop and hosted builds must stay byte-identical below `electron/`. Do not add a desktop-only code path to the app itself.
 >
 > **Themes (September 2026, v0.61.0):** there are exactly **two** — `default` (the bare `:root` palette) and `light` (`body.theme-light`). The other eleven palettes were removed. `normalizeTheme()` in `canvas-render.js` folds any unrecognised id from an old `.flow` back to `default`.
 
@@ -27,7 +27,7 @@ Adflow is a vanilla-JS single-page application — no framework, no bundler, no 
   - `index.html` — the editor.
   - `preview.html` (~2460 lines) — **Preview Portal**: standalone review page and third-party HTML5 ad player. (It was also the share-link viewer until v0.60.0; that path is gone.)
   - `batch.html` (~2400 lines) — **Batch Operation Portal**: template → data sheet → export ZIP, for non-designer teams.
-- **Deployment**: three targets, one codebase. **Static** — `Dockerfile` (node:20-alpine build stage runs the two generators → `nginxinc/nginx-unprivileged` on 8080, `/healthz`, `docker/nginx.conf` for MIME + cache policy) with `docker-compose.yml`, and `vercel.json` for a separate Vercel project; `DEPLOYMENT.md` is the operator guide. **Desktop** — `electron/` + electron-builder, see §8 and `ELECTRON.md`. The web app itself still has no runtime dependencies; `package.json` exists for the Electron tooling only and is not needed to run or develop the app.
+- **Delivery**: a desktop application — `electron/` plus electron-builder, producing an unpacked portable folder in `dist/`. See §8 and `ELECTRON.md`. The application itself still has no runtime dependencies; `package.json` exists for the Electron tooling only. Delivery to end users is the desktop build; the Docker image (`Dockerfile`, `docker-compose.yml`, `docker/nginx.conf`) is kept for ITS review and intranet hosting — see `DEPLOYMENT.md`. There is no managed static-hosting (Vercel) config: Docker is the only hosted target this repository supports.
 
 ### Script load order (from `index.html`, all version-pinned `?v=`)
 
@@ -498,7 +498,7 @@ is a `body.preview-checkered` class layered over whichever theme is active.
 
 ---
 
-## 8. Desktop App — Electron (`electron-app` branch)
+## 8. Desktop App — Electron
 
 The same app, packaged for Windows and macOS. **Three files, ~300 lines**, and
 nothing below them was changed to make it work:

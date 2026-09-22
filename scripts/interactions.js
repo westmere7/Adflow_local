@@ -30,7 +30,7 @@ function onElementMouseDown(e, el, canvasCtx) {
       state.selectedElementId = el.id;
       state.layerSelection = [el.id];
       state.editingElementId = el.id;
-      render();
+      renderNow();   // the setTimeout below focuses DOM this builds
       setTimeout(() => {
         const ed = workspaceEl.querySelector(`.el[data-id="${el.id}"] .editable`);
         if (ed) {
@@ -275,7 +275,13 @@ function onElementMouseDown(e, el, canvasCtx) {
     }
 
     state.activeSmartGuides = { x: snapX, y: snapY };
-    render(true);
+
+    // Move the nodes directly when nothing structural changed; fall back to a
+    // full rebuild otherwise, or if the DOM was not in the expected shape.
+    if (!(canDragFastPath(targets, canvasCtx, { tempClones, crossCanvasCtx })
+          && dragFastRedraw(targets, canvasCtx))) {
+      render(true);
+    }
   };
   const onUp = async (ev) => {
     state.isDragging = false;

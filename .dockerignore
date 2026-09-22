@@ -13,8 +13,6 @@ run-server.bat
 Dockerfile
 docker-compose.yml
 .dockerignore
-vercel.json
-.vercelignore
 
 # Repo docs and debris (the in-app docs live in scripts/docs-content.js)
 README.md

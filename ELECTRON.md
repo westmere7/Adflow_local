@@ -1,11 +1,9 @@
 # RMIT Adflow — desktop app (Electron)
 
-A prototype desktop wrapper around the **same web app**, for Windows and macOS.
-Nothing in `scripts/`, `styles.css` or the three HTML pages was changed to make
-this work: the desktop build and the hosted build run identical code, so they
-cannot drift apart.
-
-For hosting the web version (Docker, Vercel), see [DEPLOYMENT.md](DEPLOYMENT.md).
+A desktop wrapper for Windows and macOS around an application that is still
+plain HTML, CSS and JavaScript. Nothing in `scripts/`, `styles.css` or the three
+HTML pages was changed to make this work, and nothing should be: the shell is
+replaceable, the application is not.
 
 For an IT security review, see [SECURITY.md](SECURITY.md) and
 [DEPENDENCIES.md](DEPENDENCIES.md).
@@ -167,15 +165,12 @@ of them is code.
   separate from the browser's. Anyone moving across should save their projects
   as `.flow` files first and open them in the app.
 - **It still needs no network.** Everything is local: no accounts, no uploads,
-  no third-party requests. Same as the hosted local edition.
-- **It can run alongside Docker.** The desktop app uses port 47823, the
-  container uses 8080.
+  no third-party requests.
 - **The icon is a placeholder** — `build/icon.png`, generated from the square
   RMIT pixel. Replace it with a properly designed 512×512 icon before release.
-- **This introduces the repository's first npm dependency.** The web app itself
-  still has none and still needs no build step; `node_modules/` and `dist/` are
-  git-ignored, and the Electron files are excluded from both the Docker image
-  and the Vercel upload.
+- **This introduces the repository's first npm dependency.** The application
+  itself still has none and still needs no build step; `node_modules/` and
+  `dist/` are git-ignored.
 
 ---
 

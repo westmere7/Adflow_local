@@ -4,7 +4,7 @@ Everything third-party that Adflow contains, at two clearly separate layers:
 what **ships to users**, and what only **builds the desktop app**. Licence texts
 for the shipped libraries are in [lib/THIRD-PARTY-NOTICES.txt](lib/THIRD-PARTY-NOTICES.txt).
 
-Generated for **v0.61.0**. Regenerate the checksums after changing anything in
+Generated for **v0.61.1**. Regenerate the checksums after changing anything in
 `lib/` — see [Verifying](#verifying).
 
 ---

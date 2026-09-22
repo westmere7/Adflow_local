@@ -316,7 +316,7 @@ function syncAdflowLogos() {
   });
 }
 
-function render(skipProps = false) {
+function renderImmediate(skipProps = false) {
   if (state.isPreviewMode || state.singlePreviewId) {
     if (state.activeTool !== 'select') {
       setActiveTool('select');
@@ -501,6 +501,170 @@ function render(skipProps = false) {
   // Hover preview changes nothing in state, so skip it — otherwise every mouse-over
   // of the Full preview button would flash the save indicator for an identical write.
   if (!hoverPreviewActive) scheduleAutosave();
+}
+
+// ============================================================================
+// render() — the public entry point, coalesced to one rebuild per frame.
+// ----------------------------------------------------------------------------
+// renderImmediate() above tears the workspace down (`workspaceEl.innerHTML = ''`)
+// and rebuilds every canvas, panel and ruler. It costs ~10ms on a small project,
+// most of a 60fps frame's 16.7ms budget, and it scales with element count.
+//
+// The ~240 call sites all treat render() as "the state changed, redraw" — which
+// is right — but a drag or a zoom fires one per mousemove or wheel tick. A mouse
+// reporting at 125Hz+ queues rebuilds faster than they can finish, the event
+// backlog grows, and dragging visibly stutters. Measured before this change:
+// 60 mousemoves produced 62 full rebuilds and 363ms of render time.
+//
+// So render() now schedules the rebuild on the next animation frame and folds
+// every further call in that frame into it. Callers do not change; the app just
+// stops rebuilding faster than it can paint.
+//
+// skipProps is ANDed across the coalesced calls: the properties panel is skipped
+// only if EVERY caller in the frame asked to skip it. Rebuilding it when it was
+// not needed costs ~2ms; wrongly skipping it leaves a stale panel on screen.
+//
+// USE renderNow() INSTEAD when the very next statement (or a setTimeout(0))
+// reads DOM that render() creates — the frame has not happened yet, so
+// querySelector would see the previous DOM, or nothing. Five call sites need
+// this: the three inline-text-edit paths that focus `.editable`, and the two
+// canvas-focus paths that measure `.canvas-inner`.
+// ============================================================================
+let _renderRafId = null;
+let _renderSkipProps = true;   // ANDed across coalesced calls; see above
+
+function render(skipProps = false) {
+  _renderSkipProps = _renderSkipProps && skipProps;
+  if (_renderRafId !== null) return;           // already queued for this frame
+  _renderRafId = requestAnimationFrame(() => {
+    _renderRafId = null;
+    const sp = _renderSkipProps;
+    _renderSkipProps = true;
+    renderImmediate(sp);
+  });
+}
+
+// Synchronous render. Cancels any queued frame so the work is not done twice,
+// and honours a skipProps request already made by a coalesced caller.
+function renderNow(skipProps = false) {
+  if (_renderRafId !== null) {
+    cancelAnimationFrame(_renderRafId);
+    _renderRafId = null;
+  }
+  const sp = _renderSkipProps && skipProps;
+  _renderSkipProps = true;
+  renderImmediate(sp);
+}
+
+// ============================================================================
+// Drag fast path — move the dragged nodes instead of rebuilding the workspace.
+// ----------------------------------------------------------------------------
+// rAF batching (above) caps a drag at one full rebuild per frame, but a rebuild
+// is still ~10ms on a small project and grows with element count, so a drag can
+// still miss frames. During a plain move, though, almost nothing that render()
+// produces actually changes: the panels, rulers, other canvases and every
+// element except the ones under the cursor are identical before and after.
+//
+// So dragFastRedraw() writes the handful of things that DID change straight to
+// the DOM — the dragged nodes' left/top, the selection outline that tracks
+// them, and the snap guides. Positions are already committed to state by the
+// drag handler, so a later full render() rebuilds to exactly the same result;
+// this only skips the work of getting there.
+//
+// canDragFastPath() is deliberately strict. Anything that changes structure or
+// reaches beyond the dragged elements falls back to a full render, because the
+// fast path cannot express it:
+//   • alt-drag clones      — adds elements to the canvas
+//   • cross-canvas drags   — moves elements between canvases
+//   • photo-drop targets   — highlights a different element
+//   • masks (either side)  — a mask's geometry drives an SVG clip-path built
+//                            during render; moving the node alone desyncs it
+// A mid-drag change (pressing Alt, crossing a canvas) just fails the check on
+// the next mousemove and falls back, and the full render rebuilds from state —
+// so the DOM self-heals with no special handling.
+//
+// LIVE-LINKED GROUPS ARE DELIBERATELY NOT BLOCKED. render() runs a live-link
+// sweep that calls applyLinkSync() on every sibling, so skipping render looks
+// like it would freeze them — but applyLinkSync never writes targetEl.x or
+// targetEl.y. Position is never link-synced: buildSyncFromLiveLink() in
+// auto-resize-engine.js forces position/size off on purpose, because
+// per-canvas independence is the entire point of Auto-Resize. A drag changes
+// only x/y, so that sweep would re-copy unchanged values — a no-op worth
+// ~10ms a frame. IF applyLinkSync EVER GAINS POSITION SYNC, add a liveLink
+// check back to canDragFastPath().
+// ============================================================================
+function canDragFastPath(targets, canvasCtx, opts) {
+  opts = opts || {};
+  if (opts.tempClones) return false;
+  if (opts.crossCanvasCtx) return false;
+  if (state.dragOverPlaceholderId) return false;
+  if (!targets || targets.length === 0) return false;
+
+  for (const t of targets) {
+    // Masks, and images that a mask clips.
+    if (t.isMask) return false;
+    if (canvasCtx.elements.some(o => o.isMask && o.maskTargetId === t.id)) return false;
+  }
+  return true;
+}
+
+// Returns false if the DOM is not in the shape it expected, so the caller can
+// fall back to a full render rather than leave a half-updated canvas.
+function dragFastRedraw(targets, canvasCtx) {
+  const frame = workspaceEl.querySelector(`.canvas-frame[data-canvas-id="${canvasCtx.id}"]`);
+  const canvas = frame && frame.querySelector('.canvas');
+  if (!canvas) return false;
+
+  for (const t of targets) {
+    const node = canvas.querySelector(`.el[data-id="${t.id}"]`);
+    if (!node) return false;
+    node.style.left = t.x + 'px';
+    node.style.top = t.y + 'px';
+  }
+
+  // The selection outline is a sibling node, not a child of .el, so it has to
+  // be moved too or it lags behind the element it is supposed to be framing.
+  if (targets.length === 1) {
+    const single = canvas.querySelector('.selection-outline:not(.multi)');
+    if (single) {
+      single.style.left = (targets[0].x - 1.5) + 'px';
+      single.style.top = (targets[0].y - 1.5) + 'px';
+    }
+  } else {
+    const multi = canvas.querySelector('.selection-outline.multi');
+    if (multi) {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      targets.forEach(t => {
+        if (t.x < minX) minX = t.x;
+        if (t.y < minY) minY = t.y;
+        if (t.x + t.width > maxX) maxX = t.x + t.width;
+        if (t.y + t.height > maxY) maxY = t.y + t.height;
+      });
+      multi.style.left = (minX - 1.5) + 'px';
+      multi.style.top = (minY - 1.5) + 'px';
+      multi.style.width = (maxX - minX + 3) + 'px';
+      multi.style.height = (maxY - minY + 3) + 'px';
+    }
+  }
+
+  // Snap guides: cheap enough to rebuild, and they come and go constantly.
+  canvas.querySelectorAll('.smart-guide').forEach(n => n.remove());
+  const g = state.activeSmartGuides;
+  if (g && canvasCtx.id === state.activeCanvasId) {
+    if (g.x !== null && g.x !== undefined) {
+      const gx = document.createElement('div');
+      gx.className = 'smart-guide x';
+      gx.style.left = g.x + 'px';
+      canvas.appendChild(gx);
+    }
+    if (g.y !== null && g.y !== undefined) {
+      const gy = document.createElement('div');
+      gy.className = 'smart-guide y';
+      gy.style.top = g.y + 'px';
+      canvas.appendChild(gy);
+    }
+  }
+  return true;
 }
 
 // One-time-per-load migration for the shrunken board. Older projects (and the
@@ -1301,7 +1465,7 @@ function canvasFrameNode(c) {
           state.layerSelection = [];
           if (state.isolatedGroupId) state.isolatedGroupId = null;
         }
-        render();
+        renderNow();   // measured synchronously on the next line
 
         const newCanvasInner = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas-inner`);
         if (!newCanvasInner) return;
@@ -1375,7 +1539,7 @@ function canvasFrameNode(c) {
           state.editingElementId = el.id;
           
           pushHistory();
-          render();
+          renderNow();   // the setTimeout below focuses DOM this builds
 
           setTimeout(() => {
             const ed = workspaceEl.querySelector(`.el[data-id="${el.id}"] .editable`);
@@ -1427,7 +1591,7 @@ function canvasFrameNode(c) {
           state.layerSelection = [];
           if (state.isolatedGroupId) state.isolatedGroupId = null;
         }
-        render();
+        renderNow();   // measured synchronously on the next line
 
         const newCanvasInner = document.querySelector(`.canvas-frame[data-canvas-id="${c.id}"] .canvas-inner`);
         if (!newCanvasInner) return;
@@ -2411,7 +2575,7 @@ function elementNode(el, canvasCtx) {
       state.activeCanvasId = canvasCtx.id;
       state.selectedElementId = el.id;
       state.editingElementId = el.id;
-      render();
+      renderNow();   // the setTimeout below focuses DOM this builds
       // focus and select content
       setTimeout(() => {
         const ed = workspaceEl.querySelector(`.el[data-id="${el.id}"] .editable`);

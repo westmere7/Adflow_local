@@ -6,8 +6,6 @@ files beside them are for Windows; ignore those.
 
   run-electron.command    Run the desktop app from source (needs Node.js)
   build-app.command       Package the desktop app into dist/
-  run-docker.command      Start the hosted version in Docker
-  stop-docker.command     Stop it again
 
 FIRST TIME ONLY: make them runnable
 -----------------------------------
@@ -28,15 +26,10 @@ To allow it: right-click (or Control-click) the app, choose Open, then confirm.
 macOS remembers the decision and later launches open normally. Only do this for
 a copy you got from your own team.
 
-Which one do I want?
---------------------
-  - Working on ads yourself, on your own Mac      ->  the desktop app
-  - Hosting Adflow for other people to open       ->  Docker
+Where your work is kept
+-----------------------
+On this Mac, by this copy of the app. It does not sync, and it does not follow
+you to another computer. To move a project, use File > Save > Save to File
+(.flow) and open that file on the other machine.
 
-Both run the same application and produce identical files. The difference worth
-knowing is that they keep SEPARATE storage: work autosaved in the desktop app
-does not appear in the hosted one, or the other way round. To move a project
-between them, use File > Save > Save to File (.flow) and open the file on the
-other side.
-
-More detail: ELECTRON.md (desktop) and DEPLOYMENT.md (hosting).
+More detail: ELECTRON.md.

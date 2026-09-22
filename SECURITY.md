@@ -1,6 +1,6 @@
 # Adflow — security summary
 
-For RMIT ITS. Covers the **local edition** and its portable desktop app, v0.61.0.
+For RMIT ITS. Covers the **local edition** and its portable desktop app, v0.61.1.
 Supporting detail: [DEPENDENCIES.md](DEPENDENCIES.md) and
 [lib/THIRD-PARTY-NOTICES.txt](lib/THIRD-PARTY-NOTICES.txt).
 
@@ -10,8 +10,8 @@ Supporting detail: [DEPENDENCIES.md](DEPENDENCIES.md) and
 
 A browser-based tool for building HTML5 display ads. **There is no backend.**
 No accounts, no sign-in, no database, no server-side code and no uploads. Earlier
-versions had a hosted backend; it was removed entirely in v0.60.0 and that branch
-is not deployed.
+versions had a hosted backend; it was removed entirely in v0.60.0 and no part of
+it remains in this repository.
 
 Two forms, running byte-identical application code:
 

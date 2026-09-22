@@ -3,10 +3,10 @@
   "autoPort": true,
   "configurations": [
     {
-      "name": "adflow",
+      "name": "adflow-local",
       "runtimeExecutable": "node",
       "runtimeArgs": ["dev-server.js"],
-      "port": 8190
+      "port": 8193
     }
   ]
 }

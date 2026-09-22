@@ -6,7 +6,7 @@
 
 [![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
 [![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-v0.61.0-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Version](https://img.shields.io/badge/version-v0.61.1-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
@@ -124,7 +124,7 @@ Adflow keeps everything on the machine that made it. There is no sign-in, no ser
 - **Old files open cleanly** — `.flow` files saved by the cloud-connected edition may carry share pointers and cloud stamps; they are dropped on open so nothing stale rides into a new save.
 - **Nothing fetched from the internet** — JSZip, iro.js, mediabunny, gifenc and HarfBuzz are vendored in `lib/`; the brand fonts and the portals' Inter/Outfit are in `data/fonts/`. The app renders identically on a network with no egress.
 
-The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) lives on the `main` branch. Nothing here talks to it, and nothing here needs it.
+The cloud-connected edition (Supabase accounts, Cloud Projects, Team Spaces, Share Preview links) is a separate product and is not part of this repository. Nothing here talks to it, and nothing here needs it.
 
 ---
 

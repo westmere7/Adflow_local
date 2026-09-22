@@ -1,7 +1,7 @@
 {
   "name": "rmit-adflow",
   "productName": "RMIT Adflow",
-  "version": "0.60.1",
+  "version": "0.61.1",
   "description": "Browser-based HTML5 display-ad builder. Desktop shell for the local edition \u2014 distributed as a portable folder, not an installer.",
   "private": true,
   "license": "UNLICENSED",
@@ -9,9 +9,11 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "prebuild": "node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
+    "prebuild": "node scripts/set-version.js --check && node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
     "build:win": "npm run prebuild && electron-builder --win --dir",
     "build:mac": "npm run prebuild && electron-builder --mac --dir",
+    "version:set": "node scripts/set-version.js",
+    "version:check": "node scripts/set-version.js --check",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});console.log('dist/ removed')\"",
     "release:win": "npm run clean && npm run build:win",
     "release:mac": "npm run clean && npm run build:mac"
@@ -41,6 +43,7 @@
       "electron/**/*",
       "build/icon.png",
       "!scripts/build-docs-screenshots.mjs",
+      "!scripts/set-version.js",
       "!**/*.map"
     ],
     "win": {

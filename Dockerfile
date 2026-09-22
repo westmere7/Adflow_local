@@ -34,9 +34,13 @@ COPY . .
 # must not survive into the web root either, or the server configuration would be
 # downloadable at /docker/nginx.conf. Deleting it here is the one place that
 # satisfies both.
-RUN node scripts/build-asset-manifest.js \
+# --check first: it fails the build if data/version.txt and the ?v= pins in the
+# three HTML pages disagree, so an image can never serve new HTML against stale,
+# still-cached JS. package.json is absent here (.dockerignore) and is skipped.
+RUN node scripts/set-version.js --check \
+ && node scripts/build-asset-manifest.js \
  && node scripts/build-startup-registry.js \
- && rm -f scripts/build-asset-manifest.js scripts/build-startup-registry.js scripts/build-docs-screenshots.mjs \
+ && rm -f scripts/set-version.js scripts/build-asset-manifest.js scripts/build-startup-registry.js scripts/build-docs-screenshots.mjs \
  && rm -rf docker
 
 
@@ -44,7 +48,7 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 
 LABEL org.opencontainers.image.title="RMIT Adflow" \
       org.opencontainers.image.description="Browser-based HTML5 display-ad builder. Static, local-only edition." \
-      org.opencontainers.image.source="https://github.com/westmere7/Adflow"
+      org.opencontainers.image.source="https://github.com/westmere7/Adflow_local"
 
 # Server block: MIME types for .wasm/.mjs, cache policy, health endpoint.
 COPY --chown=nginx:nginx docker/nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,17 +1,16 @@
 # RMIT Adflow — Deployment Guide (local edition)
 
-This branch of Adflow is a **static web application with no backend**. There are no
+Adflow is a **static web application with no backend**. There are no
 accounts, no database, no uploads and no third-party requests at runtime: every
 library and font is in the repository, and everything a user makes stays in their
 browser unless they save or export a file.
 
 Deploying it therefore means one thing: serve the repository's files over HTTP
-with the right MIME types and cache headers. Two ready-made targets are included.
+with the right MIME types and cache headers. A ready-made target is included.
 
 | Target | Files | Use when |
 |---|---|---|
 | **Docker** (recommended for ITS) | `Dockerfile`, `docker-compose.yml`, `docker/nginx.conf`, `.dockerignore` | Hosting inside RMIT's own infrastructure or an intranet |
-| **Vercel** | `vercel.json`, `.vercelignore` | A managed static host for a public or team URL |
 
 Any other static host works too — see [Other static hosts](#other-static-hosts).
 
@@ -79,7 +78,7 @@ origin, and browsers block `file://` for that. So an offline user needs one of:
   else and needs nothing else installed.
 - **Node.js** — lighter. Install it once from [nodejs.org](https://nodejs.org/),
   then Windows users double-click `run-server.bat`. See
-  [Local development](#6-local-development).
+  [Local development](#5-local-development).
 
 In both cases their projects stay in that machine's browser, so they should save
 `.flow` files (`Ctrl`/`Cmd` + `S`) to move work back to a shared drive.
@@ -232,7 +231,7 @@ and test Export, the Preview Portal and video export before rolling it out.
 ### Health and monitoring
 
 - `GET /healthz` → `200 ok` (served by nginx, no file access).
-- `GET /data/version.txt` → the deployed app version, e.g. `v0.61.0`.
+- `GET /data/version.txt` → the deployed app version, e.g. `v0.61.1`.
 - `docker inspect --format '{{.State.Health.Status}}' rmit-adflow` → `healthy`.
 
 ### Updating
@@ -249,26 +248,7 @@ in **their** browsers (IndexedDB + localStorage for that origin) and in the
 
 ---
 
-## 2. Vercel
-
-1. Create a **new** Vercel project from this repository and branch. Do not reuse
-   the project that serves the cloud-connected edition.
-2. Framework preset: **Other**. `vercel.json` already sets the build command
-   (the two generator scripts), the output directory (`.`), an empty install
-   command (there is no `package.json` and nothing to install), and the same
-   cache/security headers the Docker image sends.
-3. Deploy. No environment variables are needed.
-
-If the dashboard rejects `.` as the output directory, clear the Output Directory
-field in the project settings (the repository root is Vercel's default for a
-static project) and keep the build command.
-
-`.vercelignore` excludes the Docker files, dev server and repo docs from the
-upload.
-
----
-
-## 3. Other static hosts
+## 2. Other static hosts
 
 Serve the repository root (after running the two generator scripts) and make
 sure of three things:
@@ -284,7 +264,7 @@ an HTTP origin.
 
 ---
 
-## 4. Browser requirements
+## 3. Browser requirements
 
 - Chromium-based browsers (Chrome / Edge 90+) for the full feature set,
   including the native save dialog and WebCodecs video export.
@@ -294,7 +274,7 @@ an HTTP origin.
 
 ---
 
-## 5. Data, privacy and backups
+## 4. Data, privacy and backups
 
 - **Where work is stored:** in the user's browser profile for the site's origin
   — autosave and recents in IndexedDB, preferences, remembered placements and
@@ -303,12 +283,12 @@ an HTTP origin.
   profile, or moving to another machine means starting from an empty board.
   Encourage users to keep `.flow` backups (`Ctrl+S`) of anything that matters;
   a `.flow` reopens on any machine and any deployment.
-- **What the server sees:** ordinary static-file access logs (nginx or Vercel).
+- **What the server sees:** ordinary static-file access logs (nginx).
   No application data is ever posted.
 
 ---
 
-## 6. Local development
+## 5. Local development
 
 ```bash
 node dev-server.js 8123
@@ -321,7 +301,7 @@ after adding assets or startup templates.
 
 ---
 
-## 7. Troubleshooting
+## 6. Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
