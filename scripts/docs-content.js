@@ -562,6 +562,7 @@ const DOCS_SECTIONS = [
             ['Ctrl + G / Ctrl + Shift + G','Group / Ungroup'],
             ['Ctrl + 2 / Ctrl + Shift + 2','Lock / Unlock selected layers'],
             ['Ctrl + ] / [','Layer order forward / back'],
+            ['[ / ]','Previous / next frame — stops at the first and last'],
             ['Arrow keys','Nudge 1px'],
             ['Shift + Arrows','Nudge 10px'],
             ['V','Select Tool (standard arrow cursor)'],
@@ -580,6 +581,8 @@ const DOCS_SECTIONS = [
             ['Ctrl / Shift + click layer','Add to selection / select the range'],
             ['Double-click text','Inline edit'],
             ['Double-click group','Isolate &amp; edit inside'],
+            ['Double-click a canvas size label','Make that canvas active and zoom it to fit'],
+            ['Double-click a layer or canvas row','Rename it — Enter commits, Esc cancels'],
             ['Escape','Deselect, leave group or FX isolation, close modal']
           ].map(([k,v]) => `<tr><td style="padding:5px 8px; border-bottom:1px solid var(--border-light); white-space:nowrap;"><span class="kbd">${k}</span></td><td style="padding:5px 8px; border-bottom:1px solid var(--border-light); color:var(--text-muted);">${v}</td></tr>`).join('')}
           </tbody>

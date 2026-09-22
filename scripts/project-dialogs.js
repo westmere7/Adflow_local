@@ -2547,6 +2547,11 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Toggle Fullscreen</b></td><td style="text-align: right;"><span class="kbd">Tab</span></td></tr>
       <tr><td><b>Full Mode for the panel under the cursor</b></td><td style="text-align: right;">Hover a panel + <span class="kbd">\`</span></td></tr>
 
+      <tr class="shortcuts-sec"><td colspan="2">Frames</td></tr>
+      <tr><td><b>Previous Frame</b></td><td style="text-align: right;"><span class="kbd">[</span></td></tr>
+      <tr><td><b>Next Frame</b></td><td style="text-align: right;"><span class="kbd">]</span></td></tr>
+      <tr><td class="shortcuts-note" colspan="2">Stops at the first and last frame. Add <span class="kbd">⌘ / Ctrl</span> and the same keys move the selected layer through the stacking order instead.</td></tr>
+
       <tr class="shortcuts-sec"><td colspan="2">Timeline</td></tr>
       <tr><td><b>Play / Stop this frame's animations</b></td><td style="text-align: right;">Tap <span class="kbd">Space</span></td></tr>
       <tr><td><b>Move an IN / OUT / FX bar</b></td><td style="text-align: right;">Drag the bar</td></tr>
@@ -2566,6 +2571,8 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
       <tr><td><b>Context Menu</b></td><td style="text-align: right;">Right-click Canvas or Element</td></tr>
       <tr><td><b>Edit Text Inline</b></td><td style="text-align: right;">Double-click text element</td></tr>
       <tr><td><b>Select Inside Group</b></td><td style="text-align: right;">Double-click grouped element</td></tr>
+      <tr><td><b>Zoom to a Canvas</b></td><td style="text-align: right;">Double-click its size label</td></tr>
+      <tr><td><b>Rename a Layer or Canvas</b> <span style="color:var(--text-muted);">(Enter commits, Esc cancels)</span></td><td style="text-align: right;">Double-click its row in the panel</td></tr>
       <tr><td><b>Workspace Settings</b></td><td style="text-align: right;">Right-click empty workspace</td></tr>
     </table>`;
   openModal('Shortcuts', body, false);

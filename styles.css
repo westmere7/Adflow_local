@@ -6670,7 +6670,7 @@ body.fullscreen-mode #app-update-banner { display: none !important; }
   animation: aub-pulse 1.8s ease-in-out infinite;
 }
 @keyframes aub-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
-#app-update-banner .aub-refresh {
+#app-update-banner .aub-update {
   background: var(--accent-base);
   color: #fff;
   border: none;
@@ -6681,4 +6681,4 @@ body.fullscreen-mode #app-update-banner { display: none !important; }
   cursor: pointer;
   font-family: inherit;
 }
-#app-update-banner .aub-refresh:hover { filter: brightness(1.12); }
+#app-update-banner .aub-update:hover { filter: brightness(1.12); }

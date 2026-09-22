@@ -943,6 +943,19 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // [ / ] → previous / next frame. The Ctrl/Cmd variants just above are layer
+  // order, so these only fire unmodified; Shift gives { and } and so misses too.
+  //
+  // Driving the toolbar buttons rather than state.activeFrameId directly reuses
+  // the disabled-at-the-ends logic canvas-render.js already maintains, so "is
+  // there a frame that way" keeps exactly one definition.
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.key === '[' || e.key === ']')) {
+    e.preventDefault();
+    const frameBtn = document.getElementById(e.key === ']' ? 'btn-next-frame' : 'btn-prev-frame');
+    if (frameBtn && !frameBtn.disabled) frameBtn.click();
+    return;
+  }
+
   // Ctrl+2 → lock selection, Ctrl+Shift+2 → unlock selection (Illustrator-style).
   // Operates on every currently-selected layer; no-op when selection is empty.
   if ((e.ctrlKey || e.metaKey) && e.key === '2') {

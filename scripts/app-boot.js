@@ -2006,8 +2006,8 @@ function showAppUpdateBanner(newVer) {
   el.innerHTML = `
     <span class="aub-dot"></span>
     <span>A new version (<b>${newVer}</b>) is available.</span>
-    <button class="aub-refresh" title="Reload to update">Refresh</button>`;
-  el.querySelector('.aub-refresh').onclick = () => location.reload();
+    <button class="aub-update" title="Load the new version now">Update</button>`;
+  el.querySelector('.aub-update').onclick = () => location.reload();
   void el.offsetWidth; // reflow so the transition plays
   el.classList.add('show');
 }
