@@ -10,39 +10,39 @@
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
-A professional visual design tool engineered specifically for building animated HTML5 display ads. RMIT Adflow eliminates the need for complex build pipelines and third-party software installations, providing a streamlined environment tailored for high-volume banner production.
+RMIT Adflow is an in-house design tool for producing animated HTML5 display advertising. Creative staff build multi-frame campaigns across every banner size in one workspace, then export Google Ads-compliant HTML5 packages, static PNGs, MP4 video or animated GIF from a single renderer. It replaces licensed desktop software, such as Google Web Designer, in that workflow.
 
-Designed to replace bloated legacy tools like Google Web Designer, this application allows creative teams to compose multi-frame, multi-size banner campaigns on an infinite canvas and instantly export them as Google Ads-compliant HTML5 packages — or as MP4 video and animated GIF from the same renderer.
+**Delivered as a desktop application.** Adflow runs as a portable app on Windows and macOS: a folder holding the application and its runtime, with nothing to install, no server to run and no URL to open. The Chromium engine ships inside the folder, so both platforms have the same feature set. See [The Desktop App](#the-desktop-app). The same code can also be served from a container for ITS review or intranet hosting; see [For ITS: Security & Deployment Review](#for-its-security--deployment-review).
 
-**A desktop application.** Adflow runs as a native app on Windows and macOS. Download the folder, double-click, work — nothing to install alongside it, no URL to open, no server to stand up. The Chromium engine it needs ships inside the download, so Windows and Mac get an identical feature set. See [The Desktop App](#the-desktop-app).
+**No framework, bundler or build step.** The application is vanilla HTML, CSS and JavaScript, and `electron/` is a ~300-line shell around it. The file in the repository is the file that runs.
 
-**No framework. No bundler. No build step for the app itself.** The application is vanilla HTML, CSS and JavaScript; `electron/` is a ~300-line shell around it. Edit a file, restart the app, see the change.
-
-**Local edition.** No accounts, no cloud storage, no third-party requests. Every project stays on your machine or in the `.flow` files you save, and every library and font ships in the repository.
+**Local edition.** No accounts, no cloud storage and no third-party requests. Every project stays on the user's machine or in the `.flow` files they save, and every library and font ships in the repository.
 
 ---
 
 ## Table of Contents
 
-- [Core Concept: Multi-Canvas Workflow & Link Groups](#core-concept-multi-canvas-workflow--link-groups)
-- [Headline Feature: Auto-Resize](#headline-feature-auto-resize)
-- [Headline Feature: Data & Versions](#headline-feature-data--versions-dynamic-creative)
-- [Headline Feature: Video & GIF Export](#headline-feature-video--gif-export)
-- [Headline Feature: Local-First, No Accounts](#headline-feature-local-first-no-accounts)
+- [Multi-Canvas Workflow & Link Groups](#multi-canvas-workflow--link-groups)
+- [Auto-Resize](#auto-resize)
+- [Data & Versions (Dynamic Creative)](#data--versions-dynamic-creative)
+- [Video & GIF Export](#video--gif-export)
+- [Local Storage & Project Files](#local-storage--project-files)
 - [The Desktop App](#the-desktop-app)
-- [Headline Feature: Portals](#headline-feature-portals-preview--batch-operation)
-- [Key Features](#key-features)
+- [Preview & Batch Operation Portals](#preview--batch-operation-portals)
+- [Feature Reference](#feature-reference)
 - [Technical Specifications](#technical-specifications)
 - [Getting Started](#getting-started)
 - [Keyboard Shortcuts](#keyboard-shortcuts)
 - [FAQ](#frequently-asked-questions-faq)
+- [For ITS: Security & Deployment Review](#for-its-security--deployment-review)
 - [Technical Stack (IT & Engineering Overview)](#technical-stack-it--engineering-overview)
+- [Documentation](#documentation)
 
 ---
 
-## Core Concept: Multi-Canvas Workflow & Link Groups
+## Multi-Canvas Workflow & Link Groups
 
-The standout feature of RMIT Adflow is its **Multi-Canvas Orchestration**. Instead of creating and managing separate files for each banner size (e.g. 300×250, 728×90, 160×600), you lay out all sizes side-by-side on an infinite panning workspace.
+Adflow is built around a **multi-canvas workspace**. Instead of a separate file for each banner size (e.g. 300×250, 728×90, 160×600), all sizes sit side by side on one pannable workspace.
 
 To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
 
@@ -54,9 +54,9 @@ To avoid duplicate, manual updates across different canvases, you use **Link Gro
 
 ---
 
-## Headline Feature: Auto-Resize
+## Auto-Resize
 
-Design **one** banner canvas, then generate the **whole size set** with a single click. Adflow uses a deterministic layout engine that scans the active canvas, detects elements by their role, and clones them to other canvases — recalculating positions and text wrapping based on whether the target is square, tall, or wide.
+Design **one** banner canvas, then generate the **full size set** from it in one step. A deterministic layout engine scans the active canvas, detects elements by their role, and clones them to other canvases — recalculating positions and text wrapping based on whether the target is square, tall, or wide.
 
 ### How to use Auto-Resize
 
@@ -79,9 +79,9 @@ The **gear icon** beside the Auto-resize button opens:
 
 ---
 
-## Headline Feature: Data & Versions (Dynamic Creative)
+## Data & Versions (Dynamic Creative)
 
-Design **one** template, then data-merge a spreadsheet into it to produce a finished ad set **per row** — ideal for running the same banner set across dozens of RMIT courses. Open it from **File → Data & Versions** or the **Data** button in the top bar.
+Design **one** template, then data-merge a spreadsheet into it to produce a finished ad set **per row**, for example the same banner set for each of several dozen RMIT courses. Open it from **File → Data & Versions** or the **Data** button in the top bar.
 
 - **Per-element dynamic opt-in** — select any element and tick which fields should vary per version in the **Dynamic Data** panel: *Text* and *Color* on text; plus *Background* on buttons, *Image* on images, or fill *Color* on shapes. Unmarked elements are never touched by the merge; a small dot marks dynamic elements on the canvas.
 - **Slots compose with Link Groups** — a dynamic field becomes a *slot*. If the element is in a Link Group, the slot covers the **whole group**, so one binding fills that element on every size at once. The corresponding sync properties are enabled, replaced by a bolt icon, and locked from deselection to guarantee consistency.
@@ -92,11 +92,11 @@ Design **one** template, then data-merge a spreadsheet into it to produce a fini
 - **Drag-reorder, inline rename, sort** — double-click a column header to rename, drag headers to reorder columns, drag the ⋮⋮ grip on each row to reorder rows, click the sort icon for asc/desc/none.
 - **Batch export** — **Export All Versions** produces one folder per row (named from the key column), each holding the full compliant ZIP set, through the standard export pipeline.
 
-Frames need no special handling — a frame-1 and frame-2 headline are simply two differently-named slots, so multi-frame ads merge correctly out of the box.
+Frames need no special handling: a frame-1 heading and a frame-2 heading are two differently named slots, so multi-frame ads merge correctly without extra setup.
 
 ---
 
-## Headline Feature: Video & GIF Export
+## Video & GIF Export
 
 The same renderer that builds the HTML5 package also produces **MP4 video** and **animated GIF**, frame-accurately and entirely on your machine. Nothing is uploaded.
 
@@ -106,13 +106,13 @@ The same renderer that builds the HTML5 package also produces **MP4 video** and 
 - **Drag it straight into another app** — grab the rendered preview and drop it onto a slide, an email draft, a chat window or a folder, and the real animated file lands there. This is the only route that hands another application a working animation: the Windows clipboard has no GIF format at all, so **Copy** deliberately copies the frame currently on screen as a still, and says so.
 - **Video settings** — frame rate and bitrate. Encoding runs through WebCodecs via the vendored `mediabunny` muxer.
 - **GIF settings** — FPS 10 / 20 / 25 (all divide evenly into GIF's hundredth-of-a-second timing, so playback speed is exact) and palette size 32–256, defaulting to the full 256. The palette is quantised from a sample taken across *every* frame, so a photo that arrives late in the animation still gets a say in it.
-- **No encoder, no problem** — GIF needs no video encoder, so it works on browsers that cannot encode H.264.
+- **GIF without a video encoder** — GIF export does not depend on WebCodecs, so it also works where H.264 encoding is unavailable.
 
 `Esc` cancels a render in progress; a second `Esc` closes the panel. The multi-size Export dialog still downloads straight away — previewing six sizes in one small panel would help nobody.
 
 ---
 
-## Headline Feature: Local-First, No Accounts
+## Local Storage & Project Files
 
 Adflow keeps everything on the machine that made it. There is no sign-in, no server-side storage and no network traffic beyond loading the app's own files.
 
@@ -155,7 +155,7 @@ A system-webview wrapper would therefore ship a Mac build quietly missing video 
 
 ---
 
-## Headline Feature: Portals (Preview & Batch Operation)
+## Preview & Batch Operation Portals
 
 Two standalone pages ship alongside the editor, both opened from the **File** menu, both running entirely client-side. They exist so people who don't design ads never have to learn the editor. Both link the app's own `styles.css` and load the same version-pinned engine files as `index.html`, so neither can drift from what the editor renders.
 
@@ -181,11 +181,13 @@ Because saving a template deliberately strips the asset library, the portals reg
 
 ---
 
-## Key Features
+## Feature Reference
 
 ### Workspace & Architecture
 - **Infinite Multi-Canvas Workspace** — design every banner size side-by-side in one project. Pan with `Space + drag`, zoom with the scroll wheel.
-- **Seamless Auto-Save** — every change is continuously persisted to the browser (IndexedDB) and restored on reload, including zoom and scroll position. Live "All changes saved / Saving… / Unsaved" indicator in the top bar.
+- **Auto-Save** — every change is persisted to the app's local database (IndexedDB) and restored on reopen, including zoom and scroll position. The top bar shows "All changes saved / Saving… / Unsaved".
+- **Responsive dragging and zooming** — a drag moves the layers, selection outline and snap guides directly and redraws once on release; other redraws are batched to at most one per screen refresh. Changes that affect more than position (Alt-drag duplicate, cross-canvas moves, dropping an image onto a layer, moving a mask) fall back to a full redraw automatically.
+- **Update notice** — the app checks `data/version.txt` and, when its files have been replaced by a newer version, shows a banner with an **Update** button that loads it.
 - **Portable `.flow` Projects** — self-contained ZIPs holding project + embedded assets, with an Open Recent list for one-click restore.
 - **New Project Wizard** — pick canvas sizes, name, ClickTag, default background colour, and a configurable maximum ad weight (KB).
 - **Theming System** — **two themes**: **Adflow** (the default dark palette) and **Light**. Light swaps the Adflow wordmark to its light-background variant automatically. The theme changes Adflow's own interface, never your ad. Eleven further palettes were removed in v0.61.0; a project saved with one of them opens on the default.
@@ -239,7 +241,7 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 - **Row hover** outlines the corresponding element on the canvas.
 
 ### Advanced Styling & Color
-- **Advanced Color Engine** — dual-mode picker supporting solid HEX values, native Eyedropper sampling (Chromium), and dynamic linear gradients with multi-stop mapping.
+- **Colour Picker** — solid HEX values, native Eyedropper sampling, and linear gradients with multiple stops.
 - **Custom Properties Panel** — contextual right-side panel exposing deep styling controls for the active selection.
 - **Collapsible Panel Sections** — collapse or expand any panel section (Add Element, Layers, Link Groups, Assets, Canvas Settings, Properties, Animation, Dynamic Data) via interactive headers; state persists per project.
 - **Shift+scroll on any numeric input** — one delegated handler gives every number field wheel adjustment, with an opt-out attribute for fields where it would be wrong.
@@ -256,8 +258,8 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 - **Google Ads Compliance** — automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
 - **Pre-flight Validation** — real-time checks for missing ClickTags, external asset references, and a configurable maximum ad weight (default 150 KB, the Google Ads standard).
 - **Font subsetting** — brand fonts are subset to the glyphs actually used, via HarfBuzz compiled to WebAssembly, and embedded per package.
-- **Automated Bundling** — external SVGs are fetched and embedded directly into the final ZIP for total portability.
-- **What you see is what ships** — auto-sized text is measured on the canvas and the result baked into the exported ad, so a headline can never settle at a different size in the preview than it had in the editor.
+- **Automated Bundling** — referenced SVGs are embedded in the final ZIP, so the package carries no external references.
+- **Consistent text sizing** — auto-sized text is measured on the canvas and the result written into the exported ad, so text cannot settle at a different size in the ad than it had in the editor.
 
 ---
 
@@ -265,8 +267,9 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 
 ### Architecture
 - **Core Technology** — 100% Vanilla JavaScript, HTML5 and CSS3. Zero framework overhead (no React/Vue/Angular) and zero npm dependencies at runtime.
-- **Application Size** — **25 browser-loaded JS files** in `scripts/`, plus **3 Node build scripts** that never reach the browser. Classic `<script>` tags, no bundler, no build step for the app itself.
+- **Application Size** — **25 browser-loaded JS files** in `scripts/`, plus **4 Node build scripts** that never reach the browser. Classic `<script>` tags, no bundler, no build step for the app itself.
 - **Cache-busting** — every local `<script src>` and `<link href>` in `index.html`, `preview.html` and `batch.html` is version-pinned with `?v=<app version>`, so a browser can never pair stale engine code with new page code.
+- **One version source** — `data/version.txt` is the only place the version is authored. The footer, splash badge, Settings and About box are painted from it at runtime, and `scripts/set-version.js` propagates it to `package.json`, the `?v=` pins, the HTML placeholders and the README badge. Both the desktop build and the Docker build fail on any drift.
 - **DOM Rendering Strategy** — direct DOM manipulation, with dynamic `<iframe>` sandboxing for live ad previews.
 - **Asset Bundling** — real-time client-side zipping via [JSZip 3.10](https://stuk.github.io/jszip/), vendored in `lib/` (also used by the export Web Worker).
 - **Colour Processing** — [Iro.js 5](https://iro.js.org/), vendored in `lib/`.
@@ -274,6 +277,7 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 - **Fonts** — brand fonts (Museo, Helvetica Neue LT Pro) and the portals' UI fonts (Inter, Outfit) are self-hosted under `data/fonts/`. No Google Fonts.
 - **No backend** — no accounts, no server-side database, no uploads, no telemetry. The only HTTP traffic is the app requesting its own files from the loopback server inside it.
 - **Desktop shell** — Electron, with `electron-builder` producing an unpacked portable folder. The shell is 3 files / ~300 lines and changes nothing in the application below it.
+- **Container image** — an unprivileged nginx image (port 8080, health endpoint) serving the same static files, kept for ITS review and intranet hosting. See [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Project Structure
 
@@ -322,6 +326,7 @@ RMIT-Adflow/
 │   ├── app-boot.js            # Group ops, splash, notifications, initial render
 │   │
 │   │  ── Node build scripts (never loaded by the browser) ──
+│   ├── set-version.js             # Propagates data/version.txt everywhere; --check fails on drift
 │   ├── build-asset-manifest.js    # Writes data/assets/manifest.json
 │   ├── build-startup-registry.js  # Writes Startup/registry.json
 │   └── build-docs-screenshots.mjs # Regenerates the in-app documentation images
@@ -334,7 +339,7 @@ RMIT-Adflow/
 │   └── gifenc.esm.min.js      # GIF quantise + LZW encode (MIT)
 │
 ├── data/
-│   ├── version.txt            # Current app version (single line)
+│   ├── version.txt            # Current app version — the single source (see set-version.js)
 │   ├── changelog.txt          # Human-readable changelog
 │   ├── fonts/                 # Museo 300/500/700 + Helvetica Neue LT Pro (.woff2 + .otf sources)
 │   │   └── ui/                # Inter + Outfit woff2 for the portals, with ui-fonts.css (OFL)
@@ -357,13 +362,20 @@ RMIT-Adflow/
 ├── run-electron.bat/.command  # Double-click: run the app from source
 ├── build-app.bat / .command   # Double-click: package into dist/
 │
+├── Dockerfile                 # ITS review / intranet hosting: unprivileged nginx, port 8080
+├── docker-compose.yml         #   docker compose up -d --build
+├── docker/nginx.conf          #   MIME types, cache policy, /healthz
+├── run-docker / stop-docker   #   Double-click launchers (.bat and .command)
+│
 ├── dev-server.js              # Optional: browser dev loop with live reload
 ├── run-server.bat             #   Windows helper for the above
 │
 ├── ELECTRON.md                # Desktop build: design notes, packaging, signing
 ├── MAC-README.txt             # macOS first run: chmod, Gatekeeper
+├── DEPLOYMENT.md              # Operator guide for the container
 ├── SECURITY.md                # What an IT security review will ask about, answered
 ├── DEPENDENCIES.md            # Every vendored binary, its licence and provenance
+├── Adflow-ITS-Review.pptx     # Architecture and security review deck for ITS
 └── knowledge_base.md          # Architecture reference for engineers and coding agents
 ```
 
@@ -371,9 +383,9 @@ See `knowledge_base.md` §2 for the full file-routing table — which feature li
 
 ### System Requirements
 - **Windows** — 10 or 11, 64-bit.
-- **macOS** — 11 (Big Sur) or later. Builds natively on Apple Silicon.
+- **macOS** — 11 (Big Sur) or later, Apple Silicon and Intel. The macOS build is unsigned and has not yet been verified on hardware; see [ELECTRON.md](ELECTRON.md).
 - **Display** — 1366 × 768 minimum; the workspace wants room, so 1920 × 1080 or better is comfortable.
-- **Nothing else.** The browser engine ships inside the app, so every feature that needs Chromium — WebCodecs video export, the native save dialog, the Eyedropper — works the same on both platforms. There is no separate browser requirement and no runtime to install.
+- **No other requirements.** The browser engine ships inside the app, so every feature that needs Chromium — WebCodecs video export, the native save dialog, the Eyedropper — works the same on both platforms. There is no separate browser requirement and no runtime to install.
 
 ---
 
@@ -394,8 +406,10 @@ On macOS the `.command` files need to be made executable once — see [MAC-READM
 Double-click **`build-app.bat`** (Windows) or **`build-app.command`** (macOS), or:
 
 ```bash
-npm run build:win     # or: npm run build:mac
+npm run release:win   # or: npm run release:mac
 ```
+
+`release:*` empties `dist/` before building, so what is left there is the build you just made. Use it before handing a copy to anyone; `build:*` skips the clean for quick rebuilds while iterating.
 
 The result is a **portable folder** in `dist/`, not an installer. `dist/win-unpacked/RMIT Adflow.exe` runs from anywhere — a network share, a USB stick, a user's Downloads folder — with nothing installed, no registry writes and no admin rights. Deleting the folder removes it completely.
 
@@ -407,7 +421,13 @@ Packaging detail, the Electron-versus-Tauri reasoning, and the open items before
 
 Two things to remember:
 
-1. **Bump the `?v=` query strings** in `index.html`, `preview.html` and `batch.html` on release. Cache-busting is version-pinned, so a missed bump can pair a stale cached file with new page code — a silent and confusing failure.
+1. **Set the version with the script, never by hand.** `data/version.txt` is the single source; the script writes it and propagates it to every `?v=` pin, the runtime fallback, the HTML placeholders, `package.json` and the README badge:
+
+   ```bash
+   npm run version:set -- 0.62.0
+   ```
+
+   `npm run version:check` verifies without writing. The same check runs before every desktop build and inside the Docker build, so a missed pin fails the build instead of pairing a stale cached file with new page code.
 2. **Regenerate the two indexes** after adding brand assets or startup templates:
 
    ```bash
@@ -470,6 +490,15 @@ See `knowledge_base.md` §2 for the file-routing table — which feature lives i
 | `Tab` | Toggle Fullscreen Mode |
 | `` ` `` (backtick) | Toggle Full Mode for the panel section under the cursor |
 
+### Frames
+
+| Shortcut | Action |
+|---|---|
+| `[` | Previous frame (stops at the first) |
+| `]` | Next frame (stops at the last) |
+
+With `Ctrl` / `Cmd` held, the same keys change the selected layer's stacking order instead.
+
 ### Timeline
 
 | Interaction | Action |
@@ -495,6 +524,8 @@ See `knowledge_base.md` §2 for the file-routing table — which feature lives i
 | `Shift + Scroll` (numeric input) | Adjust the value without clicking into the field |
 | `Double-click Text` | Edit text inline |
 | `Double-click Group` | Isolate and select inside group |
+| `Double-click a canvas size label` | Make that canvas active and zoom it to fit |
+| `Double-click a layer or canvas row` | Rename it — `Enter` commits, `Esc` cancels |
 | `Right-click Canvas` | Canvas context menu (Preview / Auto-Resize / Export / Guides & Views / …) |
 | `Right-click Workspace` | Workspace settings (Snapping, Rulers, Safezones) |
 
@@ -504,7 +535,7 @@ See `knowledge_base.md` §2 for the file-routing table — which feature lives i
 
 ### 1. How do I build a full campaign banner set quickly from scratch?
 1. **Create Project** — **File → New Project…**, enter a name, default ClickTag, and target formats (e.g. 300×250, 728×90, 160×600).
-2. **Core Design** — focus the **300×250** canvas. Add background elements, copy, headlines, logos and CTA buttons, and arrange the layout exactly how you want it.
+2. **Core Design** — focus the **300×250** canvas. Add the background, headings, body copy, logo and CTA button, and arrange the layout.
 3. **Generate Set** — click the canvas background, hit **Auto-resize** in the left panel, select your target formats, and click **Create Resize**. Adflow handles placement and sets up Link Groups automatically.
 4. **Refine & Sync** — double-click text layers to edit copy across sizes in real time via Live-Link.
 5. **Batch Export** — hit **Export** in the top bar to package ZIP archives for all canvases.
@@ -580,6 +611,45 @@ No. It has no accounts and makes no network request beyond its own files, which 
 - **No feature loss offline** — layout design, link syncing, spreadsheet merges and every export format run locally. Every library and font is vendored, so it behaves identically on a machine with no internet access at all.
 - **Force save** — `Ctrl + Shift + S` saves silently to the app's local database.
 - **Moving between machines** — your work lives on this machine, in this install. Save a `.flow` (`Ctrl + S`) and open it on the other computer.
+
+---
+
+## For ITS: Security & Deployment Review
+
+This section summarises what an ITS architecture and security review needs. The full answers are in [SECURITY.md](SECURITY.md), with library provenance in [DEPENDENCIES.md](DEPENDENCIES.md), the container runbook in [DEPLOYMENT.md](DEPLOYMENT.md), and the review deck in `Adflow-ITS-Review.pptx`.
+
+### Delivery options
+
+The application code is byte-identical in all three, so a review of the code covers every option.
+
+| Option | Intended for | What it is | Size |
+|---|---|---|---|
+| **Portable desktop app** | Staff (recommended) | A folder holding the app and its Electron runtime. No installer, no admin rights, no registry writes; deleting the folder removes it | ~288 MB |
+| **Container** | Internal hosting and review | Unprivileged nginx on port 8080 with a `/healthz` endpoint. `docker compose up -d --build` | ~109 MB image |
+| **Static hosting** | Any web server | The same files over HTTPS, running in the browser ITS already manages and patches | ~20 MB |
+
+### Security posture
+
+- **No backend.** No accounts, sign-in, database, server-side code or uploads. The hosted backend was removed entirely in v0.60.0 and no part of it remains in this repository.
+- **No outbound network traffic.** The only host contacted is `127.0.0.1`. There are no third-party CDNs, no telemetry, analytics or crash reporting, no licence check, and no auto-update channel. Updates are a new folder, distributed deliberately.
+- **One listening port**, `127.0.0.1:47823`, bound to loopback and verified unreachable from the machine's LAN address. The internal server is read-only, serves an explicit allow-list of eight paths and rejects directory traversal.
+- **Data stays on the user's machine**: work in progress in the app's local storage, and saved projects and exports wherever the user puts them. No institutional system holds any of it, so there is no retention or residency question.
+- **Reviewable as shipped.** First-party code is not bundled, transpiled or minified, so the file in the repository is the file that executes. The five vendored libraries (JSZip, iro.js, mediabunny, gifenc, harfbuzzjs) are pinned by SHA-256 in DEPENDENCIES.md.
+
+### Open items
+
+| Item | Effect | Status |
+|---|---|---|
+| **Chromium patching** | The desktop app bundles Chromium 130 (Electron 33.4.11), which Windows Update and ITS browser management do not patch | Rebuild and redistribute on Chromium advisories, a few times a year. Exposure is limited because the app loads no remote content. If that is not acceptable, static hosting removes the bundled runtime entirely |
+| **Code signing** | Windows SmartScreen warns on a downloaded copy; macOS blocks an unsigned app | Requires a code-signing certificate and, for macOS, an Apple Developer account for notarisation |
+| **macOS build** | No distributable build yet; Mac users build locally from source | Needs an Apple Developer account for signing and notarisation |
+| **Build-tooling advisories** | `npm audit` reports 14 findings in build tooling | None reach users; `npm audit --omit=dev` reports zero |
+
+### Decisions requested
+
+1. **Approve the application for internal use.** It can be scanned as is, and the container runs with `docker compose up -d --build`.
+2. **Provide a code-signing certificate.** This removes the SmartScreen warning and is a prerequisite for macOS distribution.
+3. **Agree the patching arrangement**: rebuild and redistribute on Chromium advisories, or move to hosted delivery instead.
 
 ---
 
@@ -777,8 +847,10 @@ Both cross-project preferences live in the same browser profile as autosave, imp
 - **[data/changelog.txt](data/changelog.txt)** — plain-text release history.
 - **[ELECTRON.md](ELECTRON.md)** — the desktop build: why Electron, how the internal server and fixed port work, packaging and code signing.
 - **[MAC-README.txt](MAC-README.txt)** — macOS first-run notes for end users.
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** — operator guide for the container: build, run, health checks, updating and troubleshooting.
 - **[SECURITY.md](SECURITY.md)** — security summary for IT review: data handling, network behaviour, the Electron runtime and known gaps.
 - **[DEPENDENCIES.md](DEPENDENCIES.md)** — every third-party library with version, upstream URL and SHA-256, plus what ships versus what only builds.
+- **`Adflow-ITS-Review.pptx`** — the architecture and security review deck prepared for ITS, with speaker notes.
 
 ---
 
