@@ -11,7 +11,7 @@
     "start": "electron .",
     "prebuild": "node scripts/set-version.js --check && node scripts/build-asset-manifest.js && node scripts/build-startup-registry.js",
     "build:win": "npm run prebuild && electron-builder --win --dir",
-    "build:mac": "npm run prebuild && electron-builder --mac --dir",
+    "build:mac": "npm run prebuild && electron-builder --mac --dir --arm64 --x64",
     "version:set": "node scripts/set-version.js",
     "version:check": "node scripts/set-version.js --check",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true});console.log('dist/ removed')\"",

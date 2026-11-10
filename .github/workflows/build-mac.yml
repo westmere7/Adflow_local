@@ -56,6 +56,10 @@ jobs:
       # part of build:mac, so a tree with drifted version numbers fails here, the
       # same as it does locally and in the Docker build.
       #
+      # build:mac passes --arm64 --x64 explicitly: with --dir and no arch flag,
+      # electron-builder builds only the runner's own architecture and ignores
+      # the arch list in package.json (the first run produced arm64 only).
+      #
       # CSC_IDENTITY_AUTO_DISCOVERY=false: there is no signing identity on the
       # runner, so stop electron-builder hunting for one. The app is signed
       # ad-hoc in the next step instead.
@@ -125,20 +129,21 @@ jobs:
           done
           ls -lh out
 
+      # archive: false uploads each ditto zip as-is, so the download IS that zip
+      # (named after the file) instead of a zip wrapped in a second zip. It takes
+      # exactly one file per step, hence two steps.
       - name: Upload arm64 (Apple Silicon)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-arm64
-          path: out/*-mac-arm64.zip
+          path: out/RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-arm64.zip
+          archive: false
           if-no-files-found: error
-          compression-level: 0   # already zipped
           retention-days: 30
 
       - name: Upload x64 (Intel)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-x64
-          path: out/*-mac-x64.zip
+          path: out/RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-x64.zip
+          archive: false
           if-no-files-found: error
-          compression-level: 0
           retention-days: 30
