@@ -1,0 +1,144 @@
+# ============================================================================
+# Build the macOS desktop app on a GitHub-hosted Mac.
+# ----------------------------------------------------------------------------
+# electron-builder only builds Mac targets on macOS, and Electron's Mac bundle is
+# full of symlinks that a Windows checkout cannot hold. So the Mac build runs
+# here, on a `macos-latest` runner, using the exact same `npm run build:mac` and
+# package.json config a Mac would use locally. Nothing in the app changes.
+#
+# Run it: GitHub → Actions → "Build macOS app" → Run workflow. When it finishes,
+# download the zips from the run's Artifacts section (one per architecture).
+#
+# What comes out is AD-HOC SIGNED, not Developer-ID signed or notarized:
+#   - Ad-hoc signing (no Apple account) is the minimum Apple Silicon needs to
+#     launch the app at all; without it macOS reports the app as "damaged".
+#   - Gatekeeper will still block the first launch of a downloaded copy. On
+#     macOS 15+ the user allows it in System Settings → Privacy & Security →
+#     "Open Anyway". See ELECTRON.md.
+# Developer ID signing + notarization need RMIT's Apple Developer account; add
+# them as repository secrets and extend the "Sign" step when that exists.
+#
+# Cost: macOS runner minutes bill at 10x Linux minutes on private repositories.
+# That is why this runs only on demand, never on every push.
+# ============================================================================
+
+name: Build macOS app
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-mac:
+    runs-on: macos-latest   # Apple Silicon; the x64 app is built here too
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20      # same major as the Docker build stage
+          cache: npm
+
+      - name: Install Electron tooling
+        run: npm ci
+
+      # prebuild (set-version --check, asset manifest, startup registry) runs as
+      # part of build:mac, so a tree with drifted version numbers fails here, the
+      # same as it does locally and in the Docker build.
+      #
+      # CSC_IDENTITY_AUTO_DISCOVERY=false: there is no signing identity on the
+      # runner, so stop electron-builder hunting for one. The app is signed
+      # ad-hoc in the next step instead.
+      - name: Build (arm64 + x64)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:mac
+
+      - name: Read version
+        id: ver
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # Copying the app into Electron's prebuilt bundle invalidates Electron's own
+      # signature, so re-seal every bundle ad-hoc ("-" = no certificate). No
+      # hardened runtime here: that is only meaningful with a Developer ID
+      # signature, and without the matching entitlements it would stop V8's JIT.
+      - name: Sign (ad-hoc) and verify
+        run: |
+          shopt -s nullglob
+          apps=(dist/mac*/*.app)
+          if [ ${#apps[@]} -eq 0 ]; then
+            echo "::error::No .app bundles found under dist/"; ls -la dist; exit 1
+          fi
+          for app in "${apps[@]}"; do
+            echo "Signing $app"
+            codesign --force --deep --sign - "$app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            lipo -archs "$app/Contents/MacOS/RMIT Adflow"
+          done
+
+      # Launch the native (arm64) build for real and ask its internal server for
+      # data/version.txt. Proves the packaged app starts, binds 127.0.0.1:47823
+      # and serves the app files, which is the part that differs from running
+      # from source. The x64 build shares every byte below the Electron binary.
+      - name: Smoke test (arm64 app boots and serves the app)
+        run: |
+          APP="dist/mac-arm64/RMIT Adflow.app/Contents/MacOS/RMIT Adflow"
+          EXPECTED="$(tr -d '[:space:]' < data/version.txt)"
+          "$APP" > smoke.log 2>&1 &
+          PID=$!
+          GOT=""
+          for i in $(seq 1 60); do
+            GOT="$(curl -fsS http://127.0.0.1:47823/data/version.txt 2>/dev/null | tr -d '[:space:]' || true)"
+            [ -n "$GOT" ] && break
+            sleep 1
+          done
+          STATUS="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:47823/index.html || true)"
+          kill "$PID" 2>/dev/null || true
+          echo "version.txt: expected '$EXPECTED', got '$GOT'; index.html HTTP $STATUS"
+          if [ "$GOT" != "$EXPECTED" ] || [ "$STATUS" != "200" ]; then
+            echo "::error::Packaged app did not come up"; cat smoke.log; exit 1
+          fi
+
+      # ditto keeps the symlinks and extended attributes inside the bundle. A
+      # plain upload-artifact of the .app would flatten them and break it.
+      - name: Zip
+        run: |
+          mkdir -p out
+          for app in dist/mac*/*.app; do
+            case "$(basename "$(dirname "$app")")" in
+              mac-arm64)     arch=arm64 ;;
+              mac-universal) arch=universal ;;
+              *)             arch=x64 ;;
+            esac
+            ditto -c -k --sequesterRsrc --keepParent "$app" \
+              "out/RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-${arch}.zip"
+          done
+          ls -lh out
+
+      - name: Upload arm64 (Apple Silicon)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-arm64
+          path: out/*-mac-arm64.zip
+          if-no-files-found: error
+          compression-level: 0   # already zipped
+          retention-days: 30
+
+      - name: Upload x64 (Intel)
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMIT-Adflow-v${{ steps.ver.outputs.version }}-mac-x64
+          path: out/*-mac-x64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

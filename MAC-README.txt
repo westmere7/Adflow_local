@@ -21,10 +21,23 @@ works normally.
 
 "macOS cannot verify the developer of this app"
 -----------------------------------------------
-The desktop app is not code-signed yet, so Gatekeeper blocks it on first launch.
-To allow it: right-click (or Control-click) the app, choose Open, then confirm.
+The desktop app is not code-signed with an Apple Developer ID yet, so Gatekeeper
+blocks it on first launch. To allow it:
+
+  macOS 15 (Sequoia) and later
+    Try to open the app once and dismiss the warning. Then open System Settings >
+    Privacy & Security, scroll to Security, click "Open Anyway" next to
+    RMIT Adflow, and confirm.
+
+  macOS 14 and earlier
+    Right-click (or Control-click) the app, choose Open, then confirm.
+
 macOS remembers the decision and later launches open normally. Only do this for
 a copy you got from your own team.
+
+Get the build that matches the Mac: "mac-arm64" for Apple Silicon (M1 and later),
+"mac-x64" for older Intel Macs. Unzip it, then move "RMIT Adflow.app" wherever you
+like (Applications is fine).
 
 Where your work is kept
 -----------------------

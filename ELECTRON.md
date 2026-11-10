@@ -106,7 +106,7 @@ until you run `build-app.bat` or one of these:
 | `npm start` | nothing on disk | Development. Runs from source; edits show on restart |
 | `npm run release:win` | empties `dist/`, then builds `dist/win-unpacked/` | **The only command to use before handing a copy to anyone** |
 | `npm run build:win` | `dist/win-unpacked/` without clearing first | Quick rebuild while iterating |
-| `npm run release:mac` / `build:mac` | `dist/mac*/RMIT Adflow.app` (needs a Mac) | Same, for macOS |
+| `npm run release:mac` / `build:mac` | `dist/mac*/RMIT Adflow.app` (needs a Mac — or use the GitHub Actions workflow below) | Same, for macOS |
 
 `release:win` clears the folder first so whatever is in `dist/` afterwards is the
 build you just made and nothing else. `npm run clean` does the emptying on its own.
@@ -134,8 +134,30 @@ the first launch of a *downloaded* copy shows Windows SmartScreen's "Windows
 protected your PC" — *More info*, then *Run anyway*, once. A copy built on your
 own machine does not trigger it. Signing is what removes that step (see below).
 
-**A Mac build needs a Mac.** A signed, notarized `.app` cannot be produced from
-Windows. Use a Mac, or a `macos-latest` runner on GitHub Actions.
+**A Mac build needs a Mac — so borrow GitHub's.** electron-builder only builds
+Mac targets on macOS, and Electron's Mac bundle is full of symlinks a Windows
+checkout cannot hold. `.github/workflows/build-mac.yml` runs the same
+`npm run build:mac` on a `macos-latest` runner:
+
+1. Push the branch, then on GitHub open **Actions → Build macOS app → Run
+   workflow**. It only runs when started by hand: Mac runner minutes bill at 10×
+   Linux minutes on a private repository.
+2. When it finishes, download the two zips from the run's **Artifacts**
+   (`…-mac-arm64` for Apple Silicon, `…-mac-x64` for Intel). They are kept 30 days;
+   attach the ones you hand out to a GitHub Release.
+
+The workflow fails if the version numbers have drifted (the same `prebuild`
+check as locally), signs both apps **ad-hoc**, and launches the Apple Silicon build
+on the runner to confirm its internal server comes up and serves the app. It does
+not replace a person clicking through the app on a real Mac (see *Verified so far*).
+
+Ad-hoc signing needs no Apple account and is the minimum Apple Silicon requires to
+launch the app at all. It is **not** Developer ID signing or notarization, so
+Gatekeeper still blocks the first launch of a downloaded copy — see
+`MAC-README.txt` for how users allow it. Proper signing needs RMIT's Apple
+Developer account (*Before this goes to staff*, below); when that exists, add the
+certificate and notarization credentials as repository secrets and replace the
+workflow's ad-hoc *Sign* step.
 
 `asar` is deliberately **disabled** in `package.json` so the packaged app keeps
 its files on disk exactly as the repository has them, which keeps the internal
