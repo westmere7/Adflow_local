@@ -77,7 +77,7 @@ origin, and browsers block `file://` for that. So an offline user needs one of:
 - **Docker Desktop** — heavier, but it is the same double-click file as everyone
   else and needs nothing else installed.
 - **Node.js** — lighter. Install it once from [nodejs.org](https://nodejs.org/),
-  then Windows users double-click `run-server.bat`. See
+  then double-click `run-server.bat` (Windows) or `run-server.command` (Mac). See
   [Local development](#5-local-development).
 
 In both cases their projects stay in that machine's browser, so they should save
@@ -294,8 +294,10 @@ an HTTP origin.
 node dev-server.js 8123
 ```
 
-Zero-dependency Node server with `no-store` headers and live reload. On Windows,
-`run-server.bat` also regenerates the two indexes and opens a browser. Any static
+Zero-dependency Node server with `no-store` headers and live reload.
+`run-server.bat` (Windows) and `run-server.command` (macOS/Linux) also regenerate
+the two indexes and open a browser; the Mac one takes an optional port argument
+and falls back to `python3 -m http.server` without Node. Any static
 server works (`python -m http.server 8080`), but remember to rerun the generators
 after adding assets or startup templates.
 

@@ -4,6 +4,8 @@ RMIT Adflow — running this on a Mac
 The double-click launchers in this folder are the .command files. The .bat
 files beside them are for Windows; ignore those.
 
+  run-server.command      Run Adflow in your browser at http://localhost:8080/
+                          (Node.js for live reload; falls back to Python)
   run-electron.command    Run the desktop app from source (needs Node.js)
   build-app.command       Package the desktop app into dist/
 

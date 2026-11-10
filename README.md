@@ -368,7 +368,7 @@ RMIT-Adflow/
 ├── run-docker / stop-docker   #   Double-click launchers (.bat and .command)
 │
 ├── dev-server.js              # Optional: browser dev loop with live reload
-├── run-server.bat             #   Windows helper for the above
+├── run-server.bat / .command  #   Double-click helper for the above
 │
 ├── ELECTRON.md                # Desktop build: design notes, packaging, signing
 ├── MAC-README.txt             # macOS first run: chmod, Gatekeeper
