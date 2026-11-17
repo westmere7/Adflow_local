@@ -153,9 +153,16 @@ function updateSaveStatusUI() {
     const localConfText = localMap[_localSaveStatus]?.text || 'Saved';
     const fileConfText = _fileSaveStatus === 'saved' ? 'Saved' : (_fileSaveStatus === 'unsaved' ? 'Out of Sync' : 'Not Saved');
 
+    // Firefox and Safari can only save by downloading a new copy each time
+    // (no File System Access API), which is why the name never shows a .flow
+    // there. Say so where people look when they wonder.
+    const downloadOnly = !window.showSaveFilePicker
+      ? `• This browser saves by downloading a new copy each time; it can't save over a file. Chrome, Edge or the desktop app can.\n`
+      : '';
     const title = `[Save Status]\n` +
                   `• Browser Auto-save: ${localConfText} (Last: ${localTime})\n` +
-                  `• File (.flow): ${fileConfText} (Last: ${fileTime})\n\n` +
+                  `• File (.flow): ${fileConfText} (Last: ${fileTime})\n` +
+                  downloadOnly + `\n` +
                   `Click to open project settings / Double-click to rename`;
     containerEl.setAttribute('title', title);
   }

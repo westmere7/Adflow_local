@@ -383,7 +383,34 @@ async function saveProjectAsFlow(opts) {
     // keeps the project name, but the leave-page prompt knows nothing is unsaved.
     await markProjectClean(null);
     await addRecentProject(exportState);
+    notifyDownloadOnlySave(suggestedName);
   }
+}
+
+// Browsers without the File System Access API (Firefox, Safari) can only save
+// by downloading, so every Ctrl+S asks where to put a new copy and the title
+// never shows a file name. That looks like a bug unless something says why, so
+// the first such save in a session explains it, until "Don't show again".
+const DOWNLOAD_ONLY_NOTICE_KEY = 'adflow-download-only-save-notice-off';
+let _downloadOnlyNoticeShown = false;
+function notifyDownloadOnlySave(fileName) {
+  if (_downloadOnlyNoticeShown) return;
+  try { if (localStorage.getItem(DOWNLOAD_ONLY_NOTICE_KEY) === '1') return; } catch (e) { /* storage blocked: show it */ }
+  _downloadOnlyNoticeShown = true;
+  const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  showCanvasNotification(
+    `Downloaded <b>${esc(fileName)}</b>. This browser can’t save over a file, so each save downloads a new copy. To keep saving to the same file, use Chrome, Edge or the Adflow desktop app.`,
+    {
+      type: 'info',
+      duration: 14000,
+      buttons: [
+        { text: 'Got it', onClick: () => {} },   // a button with no handler would not dismiss
+        { text: 'Don’t show again', title: 'Stop explaining this in this browser', onClick: () => {
+          try { localStorage.setItem(DOWNLOAD_ONLY_NOTICE_KEY, '1'); } catch (e) { /* nothing to remember with */ }
+        } }
+      ]
+    }
+  );
 }
 
 async function saveTemplateAsFlow() {

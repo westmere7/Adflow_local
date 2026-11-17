@@ -1,6 +1,17 @@
 RMIT Adflow - Version & Changelog History
 
-v0.63.0 (Current) - November 2026 — Engine v3.0
+v0.63.1 (Current) - November 2026 — Engine v3.0
+- Preview Portal playback is one row of four icon buttons: Play, Stop, Restart and
+  Static, each labelled in its tooltip. The highlighted one is the current mode.
+- New: Stop freezes every banner exactly where it is, mid-animation. Play, Restart or
+  picking a frame start them again from the beginning. Static is unchanged. Exported
+  preview portal files have the same controls.
+- Firefox and Safari cannot save over a file, so every save downloads a new copy and the
+  top bar never shows a .flow name. The first such save in a session now explains this
+  and points to Chrome, Edge or the desktop app (Got it / Don't show again); the project
+  name's tooltip says the same.
+
+v0.63.0 - November 2026 — Engine v3.0
 - Preview portal for stakeholders: Export > Format > Preview portal (single HTML file)
   writes ONE .html file with the Preview Portal, the ticked sizes and every data version
   inside. It opens in any browser, offline, with no Adflow, account or server, from an

@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.63.0" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.63.1" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.63.0"></script>
+  <script src="lib/jszip.min.js?v=0.63.1"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.63.0" />
+  <link rel="stylesheet" href="styles.css?v=0.63.1" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -232,6 +232,19 @@
     .playback-row {
       display: flex;
       gap: 8px;
+    }
+
+    /* Play / Stop / Restart / Static — four equal icon buttons. Layout only,
+       like the rule below: colour and the .primary "current mode" fill come
+       from styles.css. */
+    .playback-icons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .sidebar .playback-icons .btn {
+      height: 34px;
+      padding: 0;
     }
     
     /* Colour, hover, :disabled and .primary all come from styles.css so this
@@ -638,14 +651,21 @@
       <div class="control-group" id="adflow-playback-group">
         <div class="control-label">Playback Controls</div>
         <div class="playback-row" style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; gap:8px; width:100%;">
-            <button class="btn primary" id="btn-play" style="flex:1;" title="Play banner animations">Animated</button>
-            <button class="btn" id="btn-static" style="flex:1;" title="Freeze animations as static images">Static only</button>
+          <!-- Play / Stop / Restart / Static. Icons only; the title is the label. -->
+          <div class="playback-icons" role="group" aria-label="Playback">
+            <button class="btn primary" id="btn-play" title="Play — run every banner from the start" aria-label="Play">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+            </button>
+            <button class="btn" id="btn-stop" title="Stop — freeze every banner where it is. Play starts again from the beginning" aria-label="Stop">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>
+            </button>
+            <button class="btn" id="btn-replay" title="Restart — run the timeline again from the start" aria-label="Restart">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="btn" id="btn-static" title="Static — show one frame as a still, with every animation finished" aria-label="Static">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+            </button>
           </div>
-          <button class="btn" id="btn-replay" style="width:100%;" title="Restart timeline">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Restart Timeline</span>
-          </button>
           <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
             <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
               <input type="checkbox" id="chk-loop-ad" title="Loop the timeline in this preview only. The exported ad keeps its own loop setting" style="margin:0; cursor:pointer;">
@@ -892,13 +912,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.63.0"></script>
-  <script src="scripts/render-runtime.js?v=0.63.0"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.63.0"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.63.0"></script>
-  <script src="scripts/data-merge.js?v=0.63.0"></script>
-  <script src="scripts/font-subset.js?v=0.63.0"></script>
-  <script src="scripts/export-pipeline.js?v=0.63.0"></script>
+  <script src="scripts/numeric-wheel.js?v=0.63.1"></script>
+  <script src="scripts/render-runtime.js?v=0.63.1"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.63.1"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.63.1"></script>
+  <script src="scripts/data-merge.js?v=0.63.1"></script>
+  <script src="scripts/font-subset.js?v=0.63.1"></script>
+  <script src="scripts/export-pipeline.js?v=0.63.1"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -916,6 +936,7 @@
     const playBtn = document.getElementById('btn-play');
     const staticBtn = document.getElementById('btn-static');
     const replayBtn = document.getElementById('btn-replay');
+    const stopBtn = document.getElementById('btn-stop');
     const chkLoopAd = document.getElementById('chk-loop-ad');
     const versionGroup = document.getElementById('version-control-group');
 
@@ -1009,6 +1030,48 @@
     if (btnNextVersion) btnNextVersion.onclick = () => cycleSelect(selectVersion, 1);
     
     let isPlaying = true;
+    // Stop: banners frozen mid-play, wherever they were. A sub-state of
+    // playing (the frame list still offers "All frames"); anything that reloads
+    // or re-plays a banner ends it, since the banners are moving again.
+    let isStopped = false;
+
+    // The highlighted button is the current mode: Play, Stop or Static.
+    function updatePlaybackButtons() {
+      playBtn.classList.toggle('primary', isPlaying && !isStopped);
+      if (stopBtn) stopBtn.classList.toggle('primary', isPlaying && isStopped);
+      staticBtn.classList.toggle('primary', !isPlaying);
+    }
+    function leaveStop() {
+      if (!isStopped) return;
+      isStopped = false;
+      updatePlaybackButtons();
+    }
+
+    // Halt one banner where it is: cancel its frame timers (so it cannot jump
+    // to the next frame behind a paused animation) and pause every animation.
+    function haltBanner(iframe) {
+      const cw = iframe.contentWindow;
+      if (cw) {
+        try {
+          const maxId = cw.setTimeout(() => {}, 0);
+          for (let id = 0; id <= maxId; id++) cw.clearTimeout(id);
+        } catch (err) {
+          console.warn('Failed to clear timeouts on pause:', err);
+        }
+      }
+      const doc = iframe.contentDocument || (cw && cw.document);
+      if (!doc || !doc.head) return;
+      if (!doc.getElementById('preview-playback-pause-style')) {
+        const style = doc.createElement('style');
+        style.id = 'preview-playback-pause-style';
+        style.textContent = `
+              #ad * {
+                animation-play-state: paused !important;
+              }
+            `;
+        doc.head.appendChild(style);
+      }
+    }
     let selectedCanvasIds = new Set();
 
     // Repopulate options based on play state (shows or hides "All frames")
@@ -1082,17 +1145,16 @@
     // Play / Static only state control
     function setPlayState(playing, triggerReload = true) {
       isPlaying = playing;
-      
+      isStopped = false;
+
       // Repopulate options based on play state (shows or hides "All frames")
       repopulateFrameSelect();
-      
+
       // Frame select stays enabled at all times (jump-and-play model).
       selectFrame.disabled = false;
-      
+      updatePlaybackButtons();
+
       if (isPlaying) {
-        playBtn.classList.add('primary');
-        staticBtn.classList.remove('primary');
-        
         if (triggerReload) {
           reloadAllBanners();
         } else {
@@ -1117,37 +1179,9 @@
           });
         }
       } else {
-        playBtn.classList.remove('primary');
-        staticBtn.classList.add('primary');
-        
         // Pause animations & clear internal loops to prevent background timeline jumps
-        document.querySelectorAll('iframe').forEach(iframe => {
-          if (iframe.contentWindow) {
-            try {
-              const maxId = iframe.contentWindow.setTimeout(() => {}, 0);
-              for (let id = 0; id <= maxId; id++) {
-                iframe.contentWindow.clearTimeout(id);
-              }
-            } catch (err) {
-              console.warn('Failed to clear timeouts on pause:', err);
-            }
-          }
-          
-          const doc = iframe.contentDocument || iframe.contentWindow.document;
-          if (!doc) return;
-          let style = doc.getElementById('preview-playback-pause-style');
-          if (!style) {
-            style = doc.createElement('style');
-            style.id = 'preview-playback-pause-style';
-            style.textContent = `
-              #ad * {
-                animation-play-state: paused !important;
-              }
-            `;
-            doc.head.appendChild(style);
-          }
-        });
-        
+        document.querySelectorAll('iframe').forEach(haltBanner);
+
         // Freeze on the selected frame
         const val = selectFrame.value;
         if (val && val !== 'play') {
@@ -1155,8 +1189,17 @@
         }
       }
     }
-    
+
     playBtn.onclick = () => setPlayState(true);
+
+    // Stop: freeze every banner mid-play, exactly where it is. Only meaningful
+    // while playing — Static is already still. Play starts again from the top.
+    if (stopBtn) stopBtn.onclick = () => {
+      if (!isPlaying || isStopped) return;
+      isStopped = true;
+      updatePlaybackButtons();
+      document.querySelectorAll('.card iframe').forEach(haltBanner);
+    };
 
     // Inject a static-freeze stylesheet into every banner so it shows `frameId`
     // with all animations stopped. Used by the Static-only button.
@@ -1214,6 +1257,8 @@
     // Frame Selection — jump-and-play: picking a frame jumps every banner to it
     // and plays forward (looping just that frame if playing); "All frames" restarts the full loop.
     selectFrame.onchange = () => {
+      // Picking a frame while stopped plays it, so Stop is over.
+      leaveStop();
       const val = selectFrame.value;
       if (val === 'play') {
         if (!isPlaying) {
