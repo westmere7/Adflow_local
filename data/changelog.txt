@@ -1,6 +1,22 @@
 RMIT Adflow - Version & Changelog History
 
-v0.64.2 (Current) - November 2026 — Engine v3.0
+v0.65.0 (Current) - November 2026 — Engine v3.0
+- Export for Adobe Advertising: new Ad server setting in the Export dialog (HTML5 ZIP).
+  Standard clickTag is unchanged (CM360, DV360, most ad servers). Adobe Advertising
+  follows Adobe's HTML5 creative spec: AMOLibrary.js on the first line of <head>,
+  amo.registerClick("clickTag", ...) in <head>, clicks via amo.onAdClick('clickTag').
+  The choice is remembered and used by every HTML5 ZIP export.
+- Adobe build converts WebP images to JPEG (PNG with transparency); Adobe accepts only
+  JPG, PNG, SVG and GIF. JPEG quality is the highest within 20% of the WebP's weight.
+- Adobe: landing page domains over 35 characters are flagged in the Export dialog and
+  the all-versions check.
+- Landing page URLs with & (tracking parameters) work: the & was written as &amp;
+  inside the ad's script, sending clicks to a broken URL.
+- No unused files in the ZIP: the RMIT logo was packed twice (one copy unused, one in a
+  nested assets/data/Elements/ folder named .svg.svg). Each ZIP now holds only what
+  index.html uses.
+
+v0.64.2 - November 2026 — Engine v3.0
 - Link Groups: Auto-Link and Distribute & Link are icons in the section header (beside
   Full Mode) instead of buttons under the list. Auto-Link opens a small menu under the
   icon - Selected layers (count) or All layers - replacing the Selected only checkbox.

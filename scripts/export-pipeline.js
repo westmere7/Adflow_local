@@ -27,6 +27,114 @@
 // are call-time only — fire only when the user triggers an export.
 // ============================================================================
 
+// --- AD SERVER TARGET ---
+// Which ad server the HTML5 ZIP is built for. A per-installation preference
+// (localStorage, shared by index/batch/preview pages), not project content:
+// a team deploys every project through the same ad server.
+//   'standard' — global `clickTag` + window.open. Google CM360 / DV360 and most
+//                ad servers that read a clickTag variable.
+//   'adobe'    — Adobe Advertising (Creative HTML5 creative spec): the main HTML
+//                loads AMOLibrary.js as the FIRST line of <head>, registers the
+//                exit with amo.registerClick("clickTag", "url") in <head>, and
+//                clicks go through amo.onAdClick('clickTag'). Adobe accepts only
+//                JPG / PNG / SVG / GIF images, so WebP is converted at export.
+// Only packaged exports (a zip passed to generateExportHTML) change; previews,
+// PNG/video capture and the preview portal always use the standard build.
+const AD_SERVER_PREF_KEY = 'adflow-ad-server';
+const ADOBE_AMO_LIBRARY_URL = 'https://ads.everesttech.net/ads/static/local/AMOLibrary.js';
+const ADOBE_MAX_LANDING_DOMAIN = 35;
+function getExportAdServer() {
+  try { return localStorage.getItem(AD_SERVER_PREF_KEY) === 'adobe' ? 'adobe' : 'standard'; }
+  catch (e) { return 'standard'; }
+}
+function setExportAdServer(value) {
+  try { localStorage.setItem(AD_SERVER_PREF_KEY, value === 'adobe' ? 'adobe' : 'standard'); } catch (e) {}
+}
+// Ad-server-specific clickTag rule, or null. Adobe: "The landing page domain
+// and its subdomains may be no longer than 35 characters."
+function adServerClickTagIssue(urlStr) {
+  if (getExportAdServer() !== 'adobe' || !urlStr) return null;
+  try {
+    const host = new URL(urlStr).hostname;
+    if (host.length > ADOBE_MAX_LANDING_DOMAIN) {
+      return `Adobe: landing page domain is ${host.length} characters (max ${ADOBE_MAX_LANDING_DOMAIN})`;
+    }
+  } catch (e) {}
+  return null;
+}
+// A JS string literal safe inside an inline <script>. HTML entities are NOT
+// decoded in script text, so the old HTML-escaping turned "&" in a URL's query
+// string into a literal "&amp;" and broke tracking parameters.
+function jsStringLiteral(s) {
+  // U+2028/2029 are legal in string literals since ES2019, so only "</" needs care.
+  return JSON.stringify(String(s)).replace(/<\//g, '<\\/');
+}
+
+// WebP → JPEG/PNG for ad servers that reject WebP (Adobe). Filled by
+// addCanvasAssetsToZip (async) and read by the synchronous HTML builder.
+const exportImageTranscodes = new Map();
+function exportImageNeedsTranscode(src) {
+  return typeof src === 'string' && (/^data:image\/webp[;,]/i.test(src) || /\.webp(\?|$)/i.test(src));
+}
+async function transcodeExportImage(src) {
+  if (exportImageTranscodes.has(src)) return exportImageTranscodes.get(src);
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('Could not decode image'));
+    im.src = src;
+  });
+  const cv = document.createElement('canvas');
+  cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+  const ctx = cv.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+  let hasAlpha = false;
+  try {
+    const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    for (let i = 3; i < px.length; i += 4) { if (px[i] < 255) { hasAlpha = true; break; } }
+  } catch (e) { hasAlpha = true; }
+  // PNG keeps transparency. Opaque images go to JPEG at the best quality that
+  // stays within 20% of the WebP's weight: WebP is ~30% smaller at equal
+  // quality, so a fixed q0.9 JPEG could push an ad well past its KB limit
+  // (a 77 KB WebP photo became 123 KB). Floor q0.7.
+  let out;
+  if (hasAlpha) out = cv.toDataURL('image/png');
+  else {
+    let srcBytes = 0;
+    if (src.startsWith('data:')) srcBytes = Math.floor((src.length - src.indexOf(',') - 1) * 3 / 4);
+    else { try { srcBytes = (await (await fetch(src)).blob()).size; } catch (e) {} }
+    const budget = srcBytes ? srcBytes * 1.2 : Infinity;
+    const bytesOf = (d) => Math.floor((d.length - d.indexOf(',') - 1) * 3 / 4);
+    for (const q of [0.9, 0.86, 0.82, 0.78, 0.74, 0.7]) {
+      out = cv.toDataURL('image/jpeg', q);
+      if (bytesOf(out) <= budget) break;
+    }
+  }
+  exportImageTranscodes.set(src, out);
+  return out;
+}
+
+// Drop zip entries under assets/ that the finished HTML never references.
+// addCanvasAssetsToZip packs ahead of the HTML build and can't know which
+// files the HTML will end up using (e.g. a brand asset the builder inlines
+// under another name). Ad servers reject or bill for unreferenced files —
+// Adobe: "Don't include any files in the creative that the creative doesn't
+// reference." Works on JSZip and on the streaming exporter's file collector.
+function pruneUnreferencedZipAssets(zip, html) {
+  if (!zip || typeof zip.forEach !== 'function' || typeof zip.remove !== 'function') return;
+  const files = [], dirs = [];
+  zip.forEach((path, entry) => {
+    if (!path.startsWith('assets/')) return;
+    if (entry && entry.dir) dirs.push(path); else files.push(path);
+  });
+  const kept = files.filter(p => html.includes(p));
+  files.filter(p => !kept.includes(p)).forEach(p => zip.remove(p));
+  // Deepest first, so a parent left empty by its child's removal goes too.
+  dirs.sort((a, b) => b.length - a.length)
+    .filter(d => !kept.some(p => p.startsWith(d)))
+    .forEach(d => zip.remove(d));
+}
+
 // --- SHARED MASK & VECTOR RENDERING UTILITIES ---
 function _maskRotPt(x, y, cx, cy, rotDeg) {
   if (!rotDeg) return [x, y];
@@ -1788,6 +1896,18 @@ function getRequiredFonts(c) {
 
 // Helper to pre-fetch all image and font assets and add them to a ZIP file.
 async function addCanvasAssetsToZip(c, zip) {
+  // 0. Adobe rejects WebP: convert those images now, while we can await, so the
+  // synchronous HTML builder can swap in the JPEG/PNG (exportImageTranscodes).
+  if (getExportAdServer() === 'adobe') {
+    for (const el of c.elements) {
+      if (el.type !== 'image' || !el.assetId || el.hidden) continue;
+      const src = state.assets[el.assetId] || el.assetId;
+      if (!exportImageNeedsTranscode(src)) continue;
+      try { await transcodeExportImage(src); }
+      catch (err) { console.error('Failed to convert WebP image for Adobe', el.assetId, err); }
+    }
+  }
+
   // 1. Pack image assets
   for (const el of c.elements) {
     if (el.type === 'image' && el.assetId && el.assetId.startsWith('data/Elements/')) {
@@ -2224,10 +2344,15 @@ function clearCanvasFrame(c) {
 function generateExportHTML(targetCanvas, zipRef, isImageExport = false, options = {}) {
   const dm = state.dataMerge;
   const idx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
-  if (idx == null) return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options);
-  const restore = dmBakeRow(idx);
-  try { return _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options); }
-  finally { restore(); }
+  let html;
+  if (idx == null) html = _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options);
+  else {
+    const restore = dmBakeRow(idx);
+    try { html = _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport, options); }
+    finally { restore(); }
+  }
+  if (zipRef) pruneUnreferencedZipAssets(zipRef, html);
+  return html;
 }
 function getExportFilename(el, ext) {
   const dm = state.dataMerge;
@@ -2259,7 +2384,14 @@ function getExportFilename(el, ext) {
     if (base) return `${base}.${ext}`;
   }
 
-  return `${el.assetId}.${ext}`;
+  // Path-like ids ("data/Elements/RMIT_white.svg") would otherwise become a
+  // nested "assets/data/Elements/RMIT_white.svg.svg" in the zip.
+  const id = String(el.assetId);
+  if (id.includes('/')) {
+    const base = id.split('/').pop().replace(/\.[a-z0-9]+$/i, '').trim();
+    if (base) return `${base}.${ext}`;
+  }
+  return `${id}.${ext}`;
 }
 
 // Auto-size elements ship the font the EDITOR computed, not el.fontSize — while
@@ -2296,6 +2428,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
   const c = targetCanvas || getActiveCanvas();
   if (!c) return '';
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  // Adobe markup only in packaged (zip) exports — see AD SERVER TARGET.
+  const adobeBuild = !!zipRef && !isImageExport && getExportAdServer() === 'adobe';
+  const exitUrl = (state.clickTag || 'https://www.rmit.edu.au/').trim();
   let dynamicKeyframes = '';
   // Set true when any element actually emits an exit animation, so the shared
   // exit @keyframes are only included when used — an all-"none" export stays
@@ -2489,6 +2624,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
         src = 'data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iTGF5ZXJfMiIgZGF0YS1uYW1lPSJMYXllciAyIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMTkuNjcgNzYuMjMiPgogIDxkZWZzPgogICAgPHN0eWxlPgogICAgICAuY2xzLTEgewogICAgICAgIGZpbGw6ICNmZmY7CiAgICAgIH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxnIGlkPSJMYXllcl8xLTIiIGRhdGEtbmFtZT0iTGF5ZXIgMSI+CiAgICA8ZyBpZD0iUk1JVF93aGl0ZSI+CiAgICAgIDxnPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTI2LjIxLDBoLTYuNjh2NS40M2gtMTEuMTV2MTEuMzRIMHYxNi42NWg4LjM3djExLjM0aDExLjEzdjUuNDNoNS45MWMxMy43OCwwLDI1LjkzLTExLjEzLDI1LjkzLTI1LjAyUzQwLjAzLDAsMjYuMjEsMCIvPgogICAgICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSIxNjAuNDEgNC43OSAxNjYuMjMgNC43OSAxNjYuMjMgNDUuMzcgMTYwLjQxIDQ1LjM3IDE2MC40MSA0Ny40NiAxODAuNTggNDcuNDYgMTgwLjU4IDQ1LjM3IDE3NC43OCA0NS4zNyAxNzQuNzggNC43OSAxODAuNTggNC43OSAxODAuNTggMi42NyAxNjAuNDEgMi42NyAxNjAuNDEgNC43OSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIxOC45NCwyLjY1aC0zNS44OGwtLjczLDExLjgxaDIuMTJjMS4yMy04LjU4LDIuODEtMTAuNjEsMTIuMjctMTAuMTN2NDEuMDNoLTYuMTh2Mi4xaDIwLjk2di0yLjFoLTYuMThWNC4zM2M5LjQ0LS40OCwxMS4wNiwxLjU1LDEyLjI3LDEwLjEzaDIuMDhsLS43My0xMS44MVoiLz4KICAgICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xNDIuMjMsNS40N3YzOS44OWgtNS43N3YyLjFoMjAuMTR2LTIuMWgtNS43N1Y0Ljc3aDUuNzV2LTIuMTRoLTE2LjU0bC05LjcyLDMwLjY1LTkuMzctMzAuNjVoLTE2LjQ3djIuMTJoNS43OXY0MC42aC02LjI1Yy01LjgyLjE0LTUuOTEtNC44MS01Ljg4LTUuODQuMDktMTAuOTMtMi4zNy0xNC44OS0xMi44NC0xNi41MXYtLjE0YzYuMjUtLjY2LDE0LjIzLTIuNDQsMTQuMjMtMTAuMDEsMC05LjMzLTguNjktMTAuMi0xNi4wMy0xMC4yaC0yMS42djIuMTJoNS43OXY0MC42aC01Ljc5djIuMTJoMjAuMTZ2LTIuMTJoLTUuNzl2LTIxLjM5YzMuNzItLjE0LDcuOTEuOCw5Ljc4LDIuNDIsMS43NiwxLjQ4LDIuNjksNi4wOSwyLjY5LDExLjYzLDAsNi44NCwzLjU0LDkuNDQsMTAuMzMsOS40NGgxOS40M3YtMi4xaC01LjY2VjUuNDdoLjE0bDEzLjM0LDQyLjAxaDIuMjZsMTMuNDMtNDIuMDFoLjIxWk03Ni4yNywyMS44NWwtLjAyLjAyVjQuNzdoNS44NGM1Ljk4LDAsOC4xOSwxLjUxLDguMTksOS4wMywwLDYtMi40OSw4LjA1LTguNTEsOC4wNWgtNS41WiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTc4LjU1LDU5Ljk0djkuNjljMCwyLjY3LTEuNjcsNC4yNC00LjIsNC4yNHMtNC4yLTEuNTUtNC4yLTQuMnYtOS43NGMwLTEuMTItLjQ4LTEuNi0xLjYtMS42aC0yLjUxdjIuMTRoMS4wN2MuMzQsMCwuNTUuMTguNTUuNTVoLS4wMnMwLDguNzQsMCw4Ljc0YzAsMy44MywyLjc0LDYuNDUsNi43Myw2LjQ1czYuNjYtMi42Miw2LjY2LTYuNDV2LTguNzRjMC0uMzYuMjEtLjU1LjU1LS41NWgxLjA3di0yLjE0aC0yLjQ5Yy0xLjEyLDAtMS42Mi40OC0xLjYyLDEuNiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTk3LjM5LDU5Ljk0djkuNTNjMCwxLC4xOCwyLjM5LjE4LDIuMzloLS4wNXMtLjgyLTEuNDYtMS40Ni0yLjM5bC03LjgyLTExLjEzaC0yLjI2djE0Ljg3YzAsLjM0LS4yMS41NS0uNTUuNTVoLTEuMDd2Mi4xNGgyLjUxYzEuMTIsMCwxLjYtLjQ4LDEuNi0xLjZ2LTkuNTNjMC0uOTgtLjE2LTIuMzktLjE2LTIuMzloLjA1cy44LDEuNDYsMS40NCwyLjM5bDcuODUsMTEuMTNoMi4yNHYtMTQuODdjMC0uMzYuMjEtLjU1LjU1LS41NWgxLjA3di0yLjE0aC0yLjQ5Yy0xLjE0LDAtMS42Mi40OC0xLjYyLDEuNiIvPgogICAgICAgIDxwb2x5Z29uIGNsYXNzPSJjbHMtMSIgcG9pbnRzPSIxMDQuMjEgNjAuNDkgMTA1LjkyIDYwLjQ5IDEwNS45MiA3My43NiAxMDQuMjEgNzMuNzYgMTA0LjIxIDc1LjkxIDExMC4wMSA3NS45MSAxMTAuMDEgNzMuNzYgMTA4LjMgNzMuNzYgMTA4LjMgNjAuNDkgMTEwLjAxIDYwLjQ5IDExMC4wMSA1OC4zNCAxMDQuMjEgNTguMzQgMTA0LjIxIDYwLjQ5Ii8+CiAgICAgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMTI0LjEsNTkuNzhsLTMuODUsMTAuODNjLS4zNC45Ni0uNjYsMi40Mi0uNjYsMi40MmgtLjA1cy0uMzQtMS40OC0uNjYtMi40MmwtMy44NS0xMC44M2MtLjQxLTEuMTYtLjg0LTEuNDQtMi4wOC0xLjQ0aC0xLjM5djIuMTRoLjM0Yy40MywwLC42Ni4wOS44Mi41NWgtLjAybDUuNTIsMTQuODdoMi42NWw1LjUyLTE0Ljg3Yy4xNi0uNDYuMzYtLjU1LjgyLS41NWguMzR2LTIuMTRoLTEuMzljLTEuMjMsMC0xLjY0LjI3LTIuMDUsMS40NCIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTEzOS4zNiw3My4yNGMwLC4zNC0uMjEuNTUtLjU1LjU1aC01LjEzYy0uMzQsMC0uNTUtLjIxLS41NS0uNTV2LTUuMTFoNi4xNHYtMi4xNGgtNi4xNHYtNS41aDVjLjM0LDAsLjU1LjE4LjU1LjU1djEuMTJoMi4yNnYtMi4yMWMwLTEuMTItLjQ4LTEuNi0xLjYtMS42aC0xMC4zM3YyLjE0aDEuNjJ2MTMuODRjMCwxLjEyLjQ4LDEuNiwxLjYsMS42aDcuODJjMS4xMiwwLDEuNi0uNDgsMS42LTEuNnYtMi4yMWgtMi4yOHYxLjEyWiIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE1Ni4xMyw3My4xOWwtMi4xMi00LjJjLS4zLS41Ny0uNzUtLjgtLjc1LS44di0uMDVjMS4yNS0uMjcsMy4xNy0xLjcxLDMuMTctNC42NSwwLTMuMjItMi4xNy01LjE1LTUuMjUtNS4xNWgtNy42NnYyLjE0aDEuNjJ2MTUuNDJoMi40OXYtN2gyLjI4Yy45NiwwLDEuMjguMTQsMS43My45NmwyLjM5LDQuNzJjLjU3LDEuMTQsMS4wNywxLjMyLDIuNDQsMS4zMmgxLjIzdi0yLjE0aC0uMzJjLS42MiwwLTEtLjA1LTEuMjUtLjU3TTE1MC44Niw2Ni43OGgtMy4yNHYtNi4zaDMuMjhjMS44NSwwLDIuOTcsMS4xNCwyLjk3LDMuMXMtMS4xMiwzLjE5LTMuMDEsMy4xOSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE2Mi4zNSw2Mi42OGMwLTEuMzIsMS4xOS0yLjM3LDMuMDgtMi4zNywxLjM5LDAsMi43MS42OCwyLjcxLDEuNnYuODJoMi4yOHYtMS40NGMwLTIuMzktMy4xMi0zLjI0LTUtMy4yNC0zLjMzLDAtNS42MywyLjA1LTUuNjMsNC43LDAsNS40Nyw4LjQ4LDQuOSw4LjQ4LDguNTgsMCwxLjYyLTEuMzcsMi42Mi0zLjAxLDIuNjItMi41MSwwLTQuMjctMS45Ny00LjM5LTIuMTFsLTEuNDUsMS43NHMyLjA4LDIuNjIsNS44MiwyLjYyYzMuNDcsMCw1LjU3LTIuMyw1LjU3LTUsMC01Ljc3LTguNDYtNC45Ny04LjQ2LTguNTMiLz4KICAgICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xNjAuODcsNzEuODJzMCwwLC4wMS4wMWguMDFzLS4wMi0uMDEtLjAyLS4wMVoiLz4KICAgICAgICA8cG9seWdvbiBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTczLjQxIDYwLjQ5IDE3NS4xMiA2MC40OSAxNzUuMTIgNzMuNzYgMTczLjQxIDczLjc2IDE3My40MSA3NS45MSAxNzkuMjEgNzUuOTEgMTc5LjIxIDczLjc2IDE3Ny41IDczLjc2IDE3Ny41IDYwLjQ5IDE3OS4yMSA2MC40OSAxNzkuMjEgNTguMzQgMTczLjQxIDU4LjM0IDE3My40MSA2MC40OSIvPgogICAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTE5NC40LDU4LjM3aC0xMi4wOWMtMS4xMiwwLTEuNDguMzctMS40OCwxLjQ4djIuM2gyLjIxdi0xLjEyYzAtLjM3LjIxLS41NS41NS0uNTVoMy41MXYxNS40MmgyLjQ5di0xNS40MmgzLjU0Yy4zNCwwLC41NS4xOC41NS41NXYxLjEyaDIuMjF2LTIuM2MwLTEuMTItLjM2LTEuNDgtMS40OC0xLjQ4Ii8+CiAgICAgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNMjA4LjAxLDU5LjY5bC0yLjY1LDQuNDJjLS41OS45Ni0xLjA3LDEuOTYtMS4wNywxLjk2aC0uMDVzLS41LS45OC0xLjA3LTEuOTZsLTIuNjctNC40MmMtLjcxLTEuMTYtMS4xOS0xLjM1LTIuMzctMS4zNWgtMS4xNHYyLjE0aC41Yy41MiwwLC43NS4wOSwxLjA3LjYybDQuNDUsNy4xNGguMDJ2Ny42NmgyLjQ5di03LjY2bDQuNDItNy4xNGMuMzItLjUyLjU3LS42MiwxLjA5LS42MmguNDh2LTIuMTRoLTEuMTRjLTEuMTksMC0xLjY5LjE4LTIuMzcsMS4zNSIvPgogICAgICA8L2c+CiAgICA8L2c+CiAgPC9nPgo8L3N2Zz4=';
         state.assets[el.assetId] = src; // upgrade legacy state
       }
+      // WebP converted for Adobe by addCanvasAssetsToZip (packaged exports only).
+      if (zipRef && adobeBuild && exportImageTranscodes.has(src)) src = exportImageTranscodes.get(src);
       if (zipRef && src.startsWith('data:image/')) {
         const b64Parts = src.split(',');
         const b64Data = b64Parts[1];
@@ -2771,9 +2908,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+${adobeBuild ? `<script src="${ADOBE_AMO_LIBRARY_URL}"></script>
+` : ''}<meta charset="UTF-8">
 <title>Ad</title>
-<meta name="ad.size" content="width=${c.width},height=${c.height}">
+<meta name="ad.size" content="width=${c.width},height=${c.height}">${adobeBuild ? `
+<script>amo.registerClick("clickTag", ${jsStringLiteral(exitUrl)});</script>` : ''}
 <style>
 ${fontFaceRules.join('\n')}
 ${dynamicKeyframes}
@@ -2895,7 +3034,7 @@ ${elsTop}
   </div>
 
   <script type="text/javascript">
-    var clickTag = "${esc(state.clickTag || 'https://www.rmit.edu.au/')}";
+    var clickTag = ${jsStringLiteral(exitUrl)};
   </script>
   <script>
     var frames = ${JSON.stringify(frameData)};
@@ -3231,7 +3370,11 @@ ${elsTop}
 
     window.addEventListener('load', function () {
       document.querySelectorAll('.clickArea').forEach(function(el) {
-        el.addEventListener('click', function () {
+        el.addEventListener('click', function (${adobeBuild ? 'clickEvt' : ''}) {${adobeBuild ? `
+          // Adobe Advertising: the exit goes through AMOLibrary so Adobe can
+          // track it and swap in the landing page set at upload. Opened from
+          // disk (library unreachable), fall back to the clickTag below.
+          if (window.amo && typeof amo.onAdClick === 'function') { amo.onAdClick('clickTag', clickEvt); return; }` : ''}
           window.open(clickTag);
         });
       });
@@ -3398,6 +3541,14 @@ function openExportModal() {
           <option value="portal">Preview portal (single HTML file)</option>
         </select>
         <div id="exp-format-note" style="font-size:10px; color:var(--text-muted); margin-top:4px;">A self-contained HTML5 package per size — the standard ad-server deliverable.</div>
+        <div id="exp-adserver-wrap" style="margin-top:8px;">
+          <label for="exp-adserver" style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Ad server</label>
+          <select id="exp-adserver" title="Which ad server the HTML5 ZIP is built for. Remembered for next time." style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;">
+            <option value="standard" ${getExportAdServer() === 'standard' ? 'selected' : ''}>Standard clickTag</option>
+            <option value="adobe" ${getExportAdServer() === 'adobe' ? 'selected' : ''}>Adobe Advertising</option>
+          </select>
+          <div id="exp-adserver-note" style="font-size:10px; color:var(--text-muted); margin-top:4px; line-height:1.35;"></div>
+        </div>
         <div id="exp-video-opts" style="display:none; margin-top:6px;">${typeof buildVideoSettingsHTML === 'function' ? buildVideoSettingsHTML('exp') : ''}</div>
       </div>
       ${hasVersions ? `
@@ -3609,8 +3760,10 @@ function openExportModal() {
         } catch (e) {
           errors.push('clickTag URL format is invalid');
         }
+        const adServerIssue = adServerClickTagIssue(ct);
+        if (adServerIssue) errors.push(adServerIssue);
       }
-      
+
       let imageElements = c.elements.filter(el => el.type === 'image');
       let hasMissing = false;
       let hasExt = false;
@@ -3931,6 +4084,23 @@ function openExportModal() {
     if (vidOpts) vidOpts.style.display = isMotion ? 'block' : 'none';
     if (isMotion && typeof setVideoSettingsFormat === 'function') setVideoSettingsFormat(modalBg, 'exp', fmt);
     if (vidSettings) vidSettings.refresh();
+    const adWrap = modalBg.querySelector('#exp-adserver-wrap');
+    if (adWrap) adWrap.style.display = fmt === 'zip' ? 'block' : 'none';
+  });
+
+  // Ad server: remembered per installation; the table re-measures because the
+  // Adobe build converts WebP images and checks the landing-page domain length.
+  const AD_SERVER_NOTES = {
+    standard: 'Clicks open the clickTag URL. For Google CM360, DV360 and most ad servers.',
+    adobe: 'For Adobe Advertising: loads Adobe’s AMOLibrary.js and routes clicks through amo.onAdClick, and converts WebP images to JPEG/PNG. The library comes from Adobe’s server, so clicks are tracked once uploaded.'
+  };
+  const adServerSel = modalBg.querySelector('#exp-adserver');
+  const adServerNote = modalBg.querySelector('#exp-adserver-note');
+  if (adServerNote) adServerNote.textContent = AD_SERVER_NOTES[getExportAdServer()];
+  adServerSel?.addEventListener('change', () => {
+    setExportAdServer(adServerSel.value);
+    if (adServerNote) adServerNote.textContent = AD_SERVER_NOTES[getExportAdServer()];
+    updateExportTableDetails();
   });
   // The size estimate scales with how many sizes are ticked.
   if (vidSettings) {
@@ -4454,6 +4624,12 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
                 content,
                 isBase64: !!(options && options.base64)
               });
+            },
+            // For pruneUnreferencedZipAssets (JSZip's forEach/remove shape).
+            forEach: (cb) => filesToPackage.slice().forEach(f => cb(f.name, { dir: false })),
+            remove: (name) => {
+              const at = filesToPackage.findIndex(f => f.name === name);
+              if (at >= 0) filesToPackage.splice(at, 1);
             }
           };
           
@@ -4607,6 +4783,8 @@ function runAllVersionsValidator() {
           } catch (e) {
             errors.push('clickTag URL format is invalid');
           }
+          const adServerIssue = adServerClickTagIssue(ct);
+          if (adServerIssue) errors.push(adServerIssue);
         }
 
         let imageElements = c.elements.filter(el => el.type === 'image');
