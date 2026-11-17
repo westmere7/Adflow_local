@@ -7,6 +7,13 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["dev-server.js"],
       "port": 8193
+    },
+    {
+      "name": "adflow-desktop-server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "require('./electron/static-server').startStaticServer(process.cwd()).then(s => console.log('Adflow desktop static server on http://127.0.0.1:' + s.port))"],
+      "port": 47823,
+      "url": "http://127.0.0.1:47823"
     }
   ]
 }

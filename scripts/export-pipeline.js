@@ -3395,6 +3395,7 @@ function openExportModal() {
           <option value="png">PNG (static)</option>
           <option value="video">Video (MP4)</option>
           <option value="gif">Animated GIF</option>
+          <option value="portal">Preview portal (single HTML file)</option>
         </select>
         <div id="exp-format-note" style="font-size:10px; color:var(--text-muted); margin-top:4px;">A self-contained HTML5 package per size — the standard ad-server deliverable.</div>
         <div id="exp-video-opts" style="display:none; margin-top:6px;">${typeof buildVideoSettingsHTML === 'function' ? buildVideoSettingsHTML('exp') : ''}</div>
@@ -3909,7 +3910,8 @@ function openExportModal() {
     zip: 'A self-contained HTML5 package per size — the standard ad-server deliverable.',
     png: 'A static image of the active frame, one file per size.',
     video: 'Records one loop cycle per size. H.264 MP4; falls back to WebM where MP4 encoding isn’t available.',
-    gif: 'Records one loop cycle per size as a looping GIF. Capped at 256 colours, so gradients band — video keeps them clean.'
+    gif: 'Records one loop cycle per size as a looping GIF. Capped at 256 colours, so gradients band — video keeps them clean.',
+    portal: 'One HTML file for stakeholders: the Preview Portal with the selected sizes and every data version inside. Opens offline in any browser, no Adflow needed, and plays exactly what Full preview shows.'
   };
   const formatSel = modalBg.querySelector('#exp-format');
   const vidSettings = (typeof wireVideoSettings === 'function' && modalBg.querySelector('#exp-video-bitrate'))
@@ -3955,6 +3957,13 @@ function openExportModal() {
     const versionChoice = mode === 'all' ? 'all' : (versionSelect ? versionSelect.value : null);
     
     const selectedCanvases = selectedIds.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
+
+    // One file for the whole set, with every data version inside, so the
+    // version picker below does not apply.
+    if (format === 'portal') {
+      await exportPreviewPortalFile(selectedCanvases, filenamePrefix);
+      return;
+    }
 
     if (hasVersions && versionChoice === 'all') {
       if (format === 'video' || format === 'gif') {
@@ -4792,4 +4801,349 @@ function showBatchValidatorResults(problems) {
       }
     }
   });
+}
+
+// ============================================================================
+// Preview portal set — the whole project as ONE offline HTML file
+// ============================================================================
+// Stakeholder review used to be a cloud share link. This replaces it with a
+// file: preview.html (the Preview Portal) with the project baked in, every
+// script, stylesheet, font and image inlined, so it opens from an email
+// attachment or a shared drive with no server and no network at all.
+//
+// FIDELITY BY PRECOMPUTATION. The portal normally generates each ad itself,
+// from a .flow, inside its own page. That is close to the editor but not
+// guaranteed identical (its own stubs, its own state normalisation, stock art it
+// has to fetch). So the ads are generated HERE, in the editor, with exactly the
+// call the editor's Full preview makes (previewFrameNode in canvas-render.js),
+// for every canvas × data version × Loop on/off — the three things the portal's
+// controls can change. The packed portal returns those strings verbatim; see
+// the PACKED block in preview.html.
+//
+// SIZE. Every image and font is stored once in `res` and referenced from the
+// HTML by token (@@ADFLOW_RES_<n>@@), so six sizes sharing one photo carry it
+// once. The HTML table itself is DEFLATEd with JSZip, which the portal already
+// loads. Zip sizes for the badges are measured here too, with the same
+// calculateCanvasZipSize the export dialog uses.
+// ============================================================================
+const PORTAL_PACK_TOKEN = (i) => `@@ADFLOW_RES_${i}@@`;
+// Base64 data URIs only: those are the big, repeated payloads. Plain-text data
+// URIs (inline SVG) are small and already self-contained.
+const PORTAL_PACK_DATA_URI_RE = /data:[a-z]+\/[a-z0-9.+-]+(?:;[a-z0-9.+=-]+)*;base64,[A-Za-z0-9+/]+=*/gi;
+// The relative paths a zipless ad can reference: fonts (fontPrefix
+// 'data/fonts/'), brand elements and stock art (state.assets[id] || id).
+const PORTAL_PACK_PATH_RE = /(?:\.\/)?data\/(?:fonts|Elements|assets)\/[^"'()\s<>\\&]+/g;
+
+function _portalPackBlobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = () => reject(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+async function _portalPackFetchDataUrl(url, mimeOverride) {
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`Could not read ${url} (HTTP ${r.status})`);
+  let blob = await r.blob();
+  if (mimeOverride) blob = new Blob([blob], { type: mimeOverride });
+  return _portalPackBlobToDataUrl(blob);
+}
+
+// One instance per export: dedupes resources across every ad it tokenizes.
+function makePortalResourceTable() {
+  const res = [];
+  const indexOf = new Map();
+  const pathData = new Map();   // relative path -> Promise<data URL>
+  const put = (value) => {
+    let i = indexOf.get(value);
+    if (i === undefined) { i = res.length; res.push(value); indexOf.set(value, i); }
+    return PORTAL_PACK_TOKEN(i);
+  };
+  const dataUrlForPath = (p) => {
+    if (!pathData.has(p)) pathData.set(p, _portalPackFetchDataUrl(p.replace(/^\.\//, '')));
+    return pathData.get(p);
+  };
+  async function tokenize(html) {
+    // Data URIs first: base64 can contain "/", so paths are only searched for
+    // once every payload has been lifted out.
+    html = html.replace(PORTAL_PACK_DATA_URI_RE, (m) => put(m));
+    const paths = Array.from(new Set(html.match(PORTAL_PACK_PATH_RE) || []))
+      .sort((a, b) => b.length - a.length);           // longest first: no prefix clobbering
+    for (const p of paths) {
+      const du = await dataUrlForPath(p);
+      html = html.split(p).join(put(du));
+    }
+    return html;
+  }
+  // Every ad carries a ~40KB runtime <script> and a style block, and across
+  // sizes × versions × Loop most of those are identical (312 ads: 15MB of
+  // blocks, 1.5MB distinct). Store each distinct block once, by token.
+  const blocks = [];
+  const blockIndex = new Map();
+  function dedupeBlocks(html) {
+    return html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, (b) => {
+      if (b.length < 1024) return b;
+      let i = blockIndex.get(b);
+      if (i === undefined) { i = blocks.length; blocks.push(b); blockIndex.set(b, i); }
+      return `@@ADFLOW_BLK_${i}@@`;
+    });
+  }
+  return { res, blocks, tokenize, dedupeBlocks, dataUrlForPath };
+}
+
+// Anything an ad would still have to load from beside the file. Returns the
+// offending references; an empty list means the ad is self-contained.
+function findPortalPackRelativeRefs(html) {
+  const bad = [];
+  const ok = (v) => v.trim() === '' ||
+    /^(?:@@ADFLOW_RES_\d+@@|data:|blob:|about:|javascript:|#|https?:|mailto:|tel:)/i.test(v.trim());
+  const re = /\b(?:src|href|poster)\s*=\s*(["'])(.*?)\1|url\(\s*(["']?)([^"')]*)\3\s*\)/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const v = m[2] !== undefined ? m[2] : m[4];
+    if (v === undefined || v.includes('${') || v.includes("' +") || v.includes('" +')) continue; // the ad's own JS building strings
+    if (!ok(v)) bad.push(v);
+  }
+  return Array.from(new Set(bad));
+}
+
+// Run fn with exactly one data version active (null = template defaults), the
+// way the portal's version switcher sets it. dmRunExport alone would leave the
+// editor's current version in place for null.
+async function withPortalPackVersion(versionIdx, fn) {
+  const dm = state.dataMerge;
+  if (!dm) return await fn();
+  const saved = dm.activeVersion;
+  dm.activeVersion = versionIdx;
+  try { return await dmRunExport(versionIdx, fn); }
+  finally { dm.activeVersion = saved; }
+}
+
+// The versions the portal can show. Its lookup key uses the same expression
+// (packedVersionKey in preview.html): a version only counts when data merge
+// is enabled, so a disabled sheet always shows the template.
+function portalPackVersions() {
+  const dm = state.dataMerge;
+  const out = [null];
+  if (dm && dm.enabled && Array.isArray(dm.rows)) dm.rows.forEach((_, i) => out.push(i));
+  return out;
+}
+const portalPackKey = (canvasId, versionIdx, loop) =>
+  `${canvasId}|${versionIdx == null ? 'd' : versionIdx}|${loop ? 1 : 0}`;
+
+// Generate every ad the portal can show, tokenized. Every state flag it
+// touches is restored, even on error.
+async function buildPortalPackAds(canvases, onProgress) {
+  const table = makePortalResourceTable();
+  const html = {};
+  const kb = {};
+  const versions = portalPackVersions();
+  const total = canvases.length * versions.length;
+  let done = 0;
+
+  const saved = {
+    loopAd: state.loopAd,
+    previewCurrentOnly: state.previewCurrentOnly,
+    includeSkipped: state._exportIncludeSkippedFrames
+  };
+  // Full preview plays the whole ad; "Preview current only" is a working view.
+  // Skipped frames stay out, exactly as in the preview and the export.
+  state.previewCurrentOnly = false;
+  state._exportIncludeSkippedFrames = undefined;
+  try {
+    for (const c of canvases) {
+      for (const v of versions) {
+        // Measure FIRST. addCanvasAssetsToZip subsets this version's fonts into
+        // fontSubsetter's cache, and the zipless generator embeds the cached
+        // subset when there is one (else the full .woff2). Measuring first
+        // makes every ad carry the subset the real export ships, and makes the
+        // output deterministic: generated before the measurement, the same ad
+        // came out with the full font, after it with the subset.
+        state.loopAd = saved.loopAd;
+        kb[`${c.id}|${v == null ? 'd' : v}`] = await withPortalPackVersion(v, () => calculateCanvasZipSize(c, v));
+        for (const loop of [false, true]) {
+          state.loopAd = loop;
+          const raw = await withPortalPackVersion(v, () => generateExportHTML(c, null, false, { previewControls: true }));
+          const tokenized = await table.tokenize(raw);
+          const leftovers = findPortalPackRelativeRefs(tokenized);
+          if (leftovers.length) {
+            throw new Error(`${c.width}×${c.height} still points at files beside it (${leftovers.slice(0, 3).join(', ')}), so it would show broken. Nothing was saved.`);
+          }
+          html[portalPackKey(c.id, v, loop)] = table.dedupeBlocks(tokenized);
+        }
+        done++;
+        if (onProgress) onProgress(done / total, `${c.width}×${c.height}${v == null ? '' : ` · version ${v + 1}`}`);
+      }
+    }
+  } finally {
+    state.loopAd = saved.loopAd;
+    state.previewCurrentOnly = saved.previewCurrentOnly;
+    state._exportIncludeSkippedFrames = saved.includeSkipped;
+  }
+  return { html, kb, res: table.res, blocks: table.blocks, table };
+}
+
+// Inverse of the packing, exactly as preview.html's packedAdHtml does it:
+// blocks first (they contain resource tokens), then resources.
+function resolvePortalPackAd(tokenized, blocks, res) {
+  return tokenized
+    .replace(/@@ADFLOW_BLK_(\d+)@@/g, (m, i) => (blocks[+i] === undefined ? m : blocks[+i]))
+    .replace(/@@ADFLOW_RES_(\d+)@@/g, (m, i) => (res[+i] === undefined ? m : res[+i]));
+}
+
+// The project as the portal reads it: what the controls and the audit list
+// need, none of the images (the precomputed ads carry those).
+function buildPortalPackState(canvases) {
+  const s = JSON.parse(JSON.stringify(state));
+  const keep = new Set(canvases.map(c => c.id));
+  s.canvases = s.canvases.filter(c => keep.has(c.id));
+  s.assets = {};
+  s.assetLibrary = [];
+  s.assetFolders = [];
+  s.compressedAssetsMap = {};
+  s.clipboard = null;
+  s.previewCurrentOnly = false;
+  delete s.history; delete s.historyIndex; delete s.isTemplate; delete s.user;
+  delete s._exportIncludeSkippedFrames;
+  if (typeof stripLegacyCloudFields === 'function') stripLegacyCloudFields(s);
+  return s;
+}
+
+// preview.html with every <script src>, stylesheet and markup image inlined.
+async function buildPortalPackShell() {
+  const pageUrl = new URL('preview.html', document.baseURI);
+  const r = await fetch(pageUrl.href, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`Could not read preview.html (HTTP ${r.status})`);
+  let page = await r.text();
+
+  // Stylesheets: inline their own url() references (fonts) relative to the
+  // sheet, then embed the sheet itself.
+  const cssToDataUrl = async (href) => {
+    const cssUrl = new URL(href, pageUrl);
+    const cr = await fetch(cssUrl.href, { cache: 'no-store' });
+    if (!cr.ok) throw new Error(`Could not read ${href} (HTTP ${cr.status})`);
+    let css = await cr.text();
+    const refs = Array.from(new Set(Array.from(css.matchAll(/url\(\s*(["']?)([^"')]+)\1\s*\)/g), m => m[2])))
+      .filter(u => !/^(data:|https?:|#)/i.test(u))
+      .sort((a, b) => b.length - a.length);
+    for (const ref of refs) {
+      const du = await _portalPackFetchDataUrl(new URL(ref, cssUrl).href);
+      css = css.split(ref).join(du);
+    }
+    return _portalPackBlobToDataUrl(new Blob([css], { type: 'text/css' }));
+  };
+
+  const linkTags = Array.from(new Set(Array.from(page.matchAll(/<link\b[^>]*\brel=["']stylesheet["'][^>]*>/gi), m => m[0])));
+  for (const tag of linkTags) {
+    const href = (tag.match(/\bhref=["']([^"']+)["']/i) || [])[1];
+    if (!href || /^(data:|https?:)/i.test(href)) continue;
+    const du = await cssToDataUrl(href);
+    page = page.split(tag).join(tag.replace(href, du));
+  }
+
+  // Scripts as data: URLs: no </script> or <!-- escaping to get wrong, and
+  // classic scripts keep their order and their shared global scope.
+  const scriptTags = Array.from(page.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>\s*<\/script>/gi));
+  for (const m of scriptTags) {
+    const src = m[1];
+    if (/^(data:|https?:)/i.test(src)) continue;
+    const du = await _portalPackFetchDataUrl(new URL(src, pageUrl).href, 'text/javascript');
+    page = page.split(m[0]).join(m[0].replace(src, du));
+  }
+
+  // Markup images (favicon, wordmark).
+  const attrRefs = Array.from(new Set(Array.from(page.matchAll(/\b(?:src|href)=["']((?:\.\/)?data\/[^"'$]+)["']/gi), m => m[1])));
+  for (const ref of attrRefs) {
+    const du = await _portalPackFetchDataUrl(new URL(ref, pageUrl).href);
+    page = page.split(`"${ref}"`).join(`"${du}"`).split(`'${ref}'`).join(`'${du}'`);
+  }
+  return page;
+}
+
+// Assemble the file in memory. Returns { html, packed, ads }.
+async function buildPortalPackFile(canvases, onProgress) {
+  const progress = onProgress || (() => {});
+  progress(0.02, 'Reading the preview portal');
+  const shell = await buildPortalPackShell();
+
+  const ads = await buildPortalPackAds(canvases, (f, label) => progress(0.08 + f * 0.82, `Rendering ${label}`));
+
+  progress(0.92, 'Packing');
+  if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
+  const zip = new JSZip();
+  zip.file('ads.json', JSON.stringify(ads.html));
+  zip.file('blocks.json', JSON.stringify(ads.blocks));
+  const htmlZip = await zip.generateAsync({ type: 'base64', compression: 'DEFLATE', compressionOptions: { level: 9 } });
+
+  const packed = {
+    v: 1,
+    appVersion: (typeof getAppVersion === 'function') ? getAppVersion() : '',
+    projectName: state.projectName || 'RMIT_ad',
+    exportedAt: new Date().toISOString(),
+    state: buildPortalPackState(canvases),
+    html: htmlZip,
+    res: ads.res,
+    kb: ads.kb
+  };
+  // "<" escaped so nothing typed into an ad (a "</script>" in a headline, say)
+  // can close the data block early. JSON.parse reads < back as "<".
+  const json = JSON.stringify(packed).replace(/</g, '\\u003c');
+  const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  let page = shell.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${esc(packed.projectName)} — Preview</title>`);
+  const dataTag = `<script type="application/json" id="adflow-packed">${json}</script>\n  `;
+  const marker = '<!-- ENGINE STUBS';
+  // Function replacements: the payload is full of "$" sequences.
+  page = page.includes(marker)
+    ? page.replace(marker, () => dataTag + marker)
+    : page.replace(/<\/head>/i, () => dataTag + '</head>');
+  progress(1, 'Done');
+  return { html: page, packed, ads };
+}
+
+async function exportPreviewPortalFile(canvases, filenamePrefix) {
+  if (!canvases || !canvases.length) { showAdflowAlert('No ads selected.'); return; }
+  const safePrefix = (filenamePrefix || state.projectName || 'RMIT_ad').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const suggestedName = `${safePrefix}-preview.html`;
+
+  // Ask where first: building takes a few seconds, and the save dialog has to
+  // open while the click that asked for it still counts.
+  let handle = null;
+  if (window.showSaveFilePicker) {
+    try {
+      handle = await window.showSaveFilePicker({
+        types: [{ description: 'Preview portal (HTML)', accept: { 'text/html': ['.html'] } }],
+        suggestedName
+      });
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.warn('Save dialog unavailable, downloading instead:', e);
+    }
+  }
+
+  const progress = (typeof showLoadingProgress === 'function') ? showLoadingProgress('Building preview portal…') : null;
+  try {
+    const { html } = await buildPortalPackFile(canvases, (f, msg) => progress && progress.setProgress(Math.round(f * 100), msg));
+    const blob = new Blob([html], { type: 'text/html' });
+    if (handle) {
+      const w = await handle.createWritable();
+      await w.write(blob);
+      await w.close();
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = suggestedName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+    const mb = (blob.size / 1048576).toFixed(1);
+    showCanvasNotification(`Preview portal saved (${mb} MB). It opens offline in any browser.`, { type: 'success' });
+  } catch (e) {
+    console.error('Preview portal export failed:', e);
+    showAdflowAlert('Could not build the preview portal: ' + (e.message || e));
+  } finally {
+    if (progress) progress.close();
+  }
 }

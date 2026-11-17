@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.62.2" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.63.0" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.62.2"></script>
+  <script src="lib/jszip.min.js?v=0.63.0"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.62.2" />
+  <link rel="stylesheet" href="styles.css?v=0.63.0" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -544,6 +544,21 @@
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
+
+    /* Packed portal (Export ▸ Preview portal): a single offline file with one
+       project baked in. Everything that needs the network or other files —
+       downloads (they re-fetch fonts and art), opening another project, the
+       third-party ad player, the drop target — is hidden. Set on <html>, not
+       <body>, because applyPreviewAppearance() rewrites body.className. */
+    html.pv-packed #btn-download-all,
+    html.pv-packed #btn-drag-trigger,
+    html.pv-packed #drag-overlay,
+    html.pv-packed #external-controls,
+    html.pv-packed #pv-empty-actions,
+    html.pv-packed #pv-empty-hint,
+    html.pv-packed .banner-footer-btn[title="Download HTML5"] {
+      display: none !important;
+    }
   </style>
   
   <!-- Empty mock elements to absorb editor script listeners -->
@@ -877,13 +892,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.62.2"></script>
-  <script src="scripts/render-runtime.js?v=0.62.2"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.62.2"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.62.2"></script>
-  <script src="scripts/data-merge.js?v=0.62.2"></script>
-  <script src="scripts/font-subset.js?v=0.62.2"></script>
-  <script src="scripts/export-pipeline.js?v=0.62.2"></script>
+  <script src="scripts/numeric-wheel.js?v=0.63.0"></script>
+  <script src="scripts/render-runtime.js?v=0.63.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.63.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.63.0"></script>
+  <script src="scripts/data-merge.js?v=0.63.0"></script>
+  <script src="scripts/font-subset.js?v=0.63.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.63.0"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -903,6 +918,74 @@
     const replayBtn = document.getElementById('btn-replay');
     const chkLoopAd = document.getElementById('chk-loop-ad');
     const versionGroup = document.getElementById('version-control-group');
+
+    // ---- Packed portal ------------------------------------------------------
+    // Export ▸ Preview portal writes this page as ONE offline file with a
+    // project baked into <script id="adflow-packed">. Every ad was generated
+    // in the editor, with the exact call its Full preview makes, for each
+    // canvas × data version × Loop setting (buildPortalPackAds in
+    // export-pipeline.js). Here those strings are returned verbatim instead of
+    // regenerating them, so the file shows precisely what the editor showed —
+    // and needs nothing beside it. Images and fonts are stored once in `res`
+    // and referenced by @@ADFLOW_RES_<n>@@ tokens.
+    //
+    // With no #adflow-packed (the normal hosted page) PACKED is null and none
+    // of this does anything.
+    const PACKED = (() => {
+      const el = document.getElementById('adflow-packed');
+      if (!el) return null;
+      try { return JSON.parse(el.textContent); }
+      catch (e) { console.error('Packed preview data is unreadable:', e); return null; }
+    })();
+    if (PACKED) document.documentElement.classList.add('pv-packed');
+    let packedAds = null;                 // key -> tokenized html, once unzipped
+    let packedBlocks = [];                // shared <script>/<style> blocks
+    const packedResolved = new Map();     // key -> html with tokens resolved
+
+    // Must match portalPackVersions()/portalPackKey() in export-pipeline.js.
+    function packedVersionKey() {
+      const dm = state.dataMerge;
+      return (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : 'd';
+    }
+    function packedAdHtml(c) {
+      if (!packedAds || !c) return null;
+      const key = `${c.id}|${packedVersionKey()}|${state.loopAd ? 1 : 0}`;
+      if (packedResolved.has(key)) return packedResolved.get(key);
+      const tokenized = packedAds[key];
+      if (tokenized == null) return null;
+      // Same order as resolvePortalPackAd in export-pipeline.js: blocks
+      // first, because blocks carry resource tokens of their own.
+      const html = tokenized
+        .replace(/@@ADFLOW_BLK_(\d+)@@/g, (m, i) => {
+          const b = packedBlocks[+i];
+          return b === undefined ? m : b;
+        })
+        .replace(/@@ADFLOW_RES_(\d+)@@/g, (m, i) => {
+          const v = PACKED.res[+i];
+          return v === undefined ? m : v;
+        });
+      packedResolved.set(key, html);
+      return html;
+    }
+    if (PACKED) {
+      // Zipless calls are the ones that render an ad on screen. Calls with a
+      // zip (downloads, size measurement) never happen here: downloads are
+      // hidden and sizes come precomputed.
+      const liveGenerateExportHTML = generateExportHTML;
+      generateExportHTML = function (c, zipRef) {
+        if (!zipRef) {
+          const html = packedAdHtml(c);
+          if (html != null) return html;
+          console.warn('Packed preview has no precomputed ad for', c && c.id, '— generating it live; fonts and images may be missing offline.');
+        }
+        return liveGenerateExportHTML.apply(this, arguments);
+      };
+      // A dropped file would replace the baked-in project. Not here.
+      ['dragenter', 'dragover', 'drop'].forEach(type => window.addEventListener(type, (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }, true));
+    }
     
     // Cycle select helpers
     const btnPrevFrame = document.getElementById('btn-prev-frame');
@@ -1251,6 +1334,12 @@
 
     // Calculate compressed ZIP size for a canvas (matching export & app weight calculation)
     async function calculateCanvasZipSize(c) {
+      // Packed: measured in the editor at export time (the real zip, fonts and
+      // art included), because measuring here would need the files beside it.
+      if (PACKED) {
+        const kb = PACKED.kb && PACKED.kb[`${c.id}|${packedVersionKey()}`];
+        return typeof kb === 'number' ? kb : 0;
+      }
       if (typeof JSZip === 'undefined') return 0;
       const zip = new JSZip();
       
@@ -2391,9 +2480,49 @@
     // Boot: open on the prompt. The local edition has no share links, so there
     // is no ?url= snapshot path any more — files come in by drop or Open.
     async function bootPortal() {
+      if (PACKED) { await bootPackedPortal(); return; }
       loader.style.display = 'none';
       loader.style.opacity = '0';
       showPvEmpty(true);
+    }
+
+    // The steps processProjectFile takes after reading a .flow, minus the
+    // ones that need the network: the stock-art library is not fetched,
+    // because the precomputed ads already carry every image they use.
+    async function bootPackedPortal() {
+      loader.style.opacity = '1';
+      loader.style.display = 'flex';
+      loaderTitle.textContent = 'Opening preview...';
+      loaderSubtitle.textContent = 'Unpacking ads';
+      try {
+        const zip = await JSZip.loadAsync(PACKED.html, { base64: true });
+        const table = zip.file('ads.json');
+        if (!table) throw new Error('This preview file is incomplete (no ads inside).');
+        packedAds = JSON.parse(await table.async('string'));
+        const blocksFile = zip.file('blocks.json');
+        packedBlocks = blocksFile ? JSON.parse(await blocksFile.async('string')) : [];
+        window.state = PACKED.state;
+        const name = state.projectName || PACKED.projectName || 'Adflow Ad Pack';
+        document.title = `${name} — Preview`;
+        const badge = document.getElementById('portal-mode-badge');
+        if (badge) {
+          const when = PACKED.exportedAt ? new Date(PACKED.exportedAt) : null;
+          badge.title = `Exported from Adflow ${PACKED.appVersion || ''}${when && !isNaN(when) ? ' on ' + when.toLocaleString() : ''}. Opens offline; nothing is loaded from anywhere else.`;
+        }
+        loaderSubtitle.textContent = 'Rendering canvases';
+        applyPortalMode('adflow');
+        showPvEmpty(false);
+        populateControls();
+        renderCanvases();
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 500);
+      } catch (err) {
+        console.error(err);
+        loader.style.opacity = '0';
+        loader.style.display = 'none';
+        showPvEmpty(true);
+        showPvError('This preview could not be opened: ' + (err.message || err));
+      }
     }
 
     // Canvas grid panning logic
