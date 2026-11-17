@@ -1,6 +1,28 @@
 RMIT Adflow - Version & Changelog History
 
-v0.63.2 (Current) - November 2026 — Engine v3.0
+v0.64.0 (Current) - November 2026 — Engine v3.0
+- Closest edge for every directional animation: Slide, Swipe and Reveal entrances and
+  Slide and Swipe exits all offer it (only Slide's entrance did before). The layer comes
+  in from, or leaves by, its nearest canvas edge and follows the layer as it moves;
+  linked copies on other sizes each use their own nearest edge.
+- Text properties: every field pair shares the same two columns (Font|Weight,
+  Size|Max size, Color|Opacity, Leading|Tracking, Background|Opacity), padding fields
+  beneath; Auto and background On sit at the right of their field's label. Shape,
+  line and stroke colour rows use the same grid.
+- One name per setting across the panel: button Text (was Label), Size + Auto and Max
+  size, Fill (was BG), Pad L/R and Pad T/B everywhere, line Color; units always in
+  brackets - Opacity (%), Cover (%), After (s); Wrap below (was Wrap <), always shown,
+  greyed until Auto and Wrap are on; Lock ratio and Animate background spelled out.
+- Auto-Link and Distribute & Link no longer carry the purple highlight.
+- Preview portal export follows the dialog's Data version: Single Version puts just that
+  version in (no version picker); All Selected Versions puts in the template and every
+  selected row. Unticking "Skip frames marked as skipped" includes those frames.
+- Preview Portal Static mode no longer shows a thin line of the first frame's colour
+  round a banner whose frozen frame has a different background.
+- Preview Portal backdrop swatches (Presentation Grid / BG) removed; it always uses the
+  standard Adflow theme.
+
+v0.63.2 - November 2026 — Engine v3.0
 - Canvas labels and buttons stay within the canvas's own width. The frame controls and
   Preview link under a small active canvas used to stretch the space around it and push
   the auto-arrange button off the right edge, even at 100%. When there is not room,

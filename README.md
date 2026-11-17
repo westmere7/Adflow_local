@@ -6,7 +6,7 @@
 
 [![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
 [![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-v0.63.2-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Version](https://img.shields.io/badge/version-v0.64.0-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
@@ -165,7 +165,7 @@ Two standalone pages ship alongside the editor, both opened from the **File** me
 
 **File → Preview Portal…** opens the review page standalone with nothing loaded. From the empty prompt: **Open Adflow Project…** (`.flow`) or **Open HTML5 Ad (.zip)…**, or drop either kind anywhere on the page. This is a local-file tool: there is nothing to sign into and no link to fetch. (Share links and the cloud snapshot viewer were removed in v0.60.0 with the rest of the backend.)
 
-With an Adflow project open: playback icons (**Play**, **Stop** to freeze every banner where it is, **Restart**, **Static** for one frame as a still) and **Loop timeline** as a preview-only override, a **Frame Select** that jumps to and plays any single frame across all sizes, a **Data Version** stepper, a size checklist with per-banner KB estimates, per-card **Restart** and **Download HTML5**, **Download All (.zip)**, and backdrop swatches — the two real Adflow themes, plus a separate checkered toggle that layers over either.
+With an Adflow project open: playback icons (**Play**, **Stop** to freeze every banner where it is, **Restart**, **Static** for one frame as a still) and **Loop timeline** as a preview-only override, a **Frame Select** that jumps to and plays any single frame across all sizes, a **Data Version** stepper, a size checklist with per-banner KB estimates, per-card **Restart** and **Download HTML5**, **Download All (.zip)**.
 
 **Reviewing non-Adflow HTML5 ads.** The portal also plays standalone HTML5 ads built outside Adflow — **up to 10 at once, laid out side by side** exactly like banner sizes. Each zip is flattened into one self-contained document: the shallowest `index.html` becomes the entry, stylesheets and scripts are inlined, and every other reference is rewritten to a data URL — including ones the ad's own JavaScript loads by name — so it plays with no server and nothing uploaded. Size comes from the standard `ad.size` meta tag, falling back to a `300x250`-style hint in the filename, else 300×250 flagged for correction; the label states which source was used and per-ad width/height inputs override it. Controls are limited to what applies to someone else's ad: **Restart All**, a **Loop** that reloads on an interval you set (Adflow can't read a third-party timeline), and per-ad **Restart** / **Remove**. Adflow's timeline, frame and version controls are hidden in this mode; the two modes never mix.
 
@@ -257,7 +257,7 @@ A collapsible sequencer along the bottom of the workspace, showing the animation
 
 ### Export & Validation Pipeline
 - **Four formats from one renderer** — HTML5 ZIP, static PNG, MP4 video and animated GIF. Reachable from the Export dialog, the canvas right-click menu, and the Canvas Settings panel.
-- **Preview portal for stakeholders** — a fifth Export format writes the whole set as **one offline HTML file**: the Preview Portal with the selected sizes and every data version baked in. Each ad is generated at export time with the same call Full preview makes (every size × version × Loop setting) and played back byte-for-byte; images and fonts are inlined and stored once. It replaces the old cloud share link: email it or put it on a drive, and it opens in any browser with no Adflow and no network.
+- **Preview portal for stakeholders** — a fifth Export format writes the whole set as **one offline HTML file**: the Preview Portal with the selected sizes and the chosen data version (or every selected version, switchable) baked in. Each ad is generated at export time with the same call Full preview makes (every size × version × Loop setting) and played back byte-for-byte; images and fonts are inlined and stored once. It replaces the old cloud share link: email it or put it on a drive, and it opens in any browser with no Adflow and no network.
 - **Google Ads Compliance** — automatically generates self-contained `.zip` files validated against Google's HTML5 ad network requirements.
 - **Pre-flight Validation** — real-time checks for missing ClickTags, external asset references, and a configurable maximum ad weight (default 150 KB, the Google Ads standard).
 - **Font subsetting** — brand fonts are subset to the glyphs actually used, via HarfBuzz compiled to WebAssembly, and embedded per package.

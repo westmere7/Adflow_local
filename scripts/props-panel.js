@@ -1389,12 +1389,8 @@ function wireCustomSelects(el, updateProp) {
         }
       } else {
         if (el) {
-          if (key === 'animDirection') {
-            if ((el.animType || '').startsWith('swipe-')) {
-              updateProp('animType', `swipe-${val}`);
-            } else {
-              updateProp('animDirection', val);
-            }
+          if (key === 'animDirection' || key === 'riseDirection' || key === 'exitDirection') {
+            applyDirectionChoice(el, key, val, updateProp);
           } else if (key === 'animType') {
             let targetVal = val;
             if (targetVal === 'swipe') targetVal = 'swipe-right';
@@ -1461,6 +1457,10 @@ function wireCustomSelects(el, updateProp) {
           const origTypingUnit = el.typingUnit;
           const origPopUnit = el.popUnit;
           const origCursorSplit = el.cursorSplit;
+          const origInDirClosest = el.inDirClosest;
+          const origExitDirClosest = el.exitDirClosest;
+          // Hover previews write straight to the element and put it back after.
+          const previewSet = (k, v) => { el[k] = v; };
 
           if (key === 'cursorSplit') {
             el.cursorSplit = val;
@@ -1469,7 +1469,7 @@ function wireCustomSelects(el, updateProp) {
             el.riseSplit = val;
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'riseDirection') {
-            el.riseDirection = val;
+            applyDirectionChoice(el, key, val, previewSet, true);
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'typingUnit') {
             el.typingUnit = val;
@@ -1478,11 +1478,7 @@ function wireCustomSelects(el, updateProp) {
             el.popUnit = val;
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'animDirection') {
-            if ((el.animType || '').startsWith('swipe-')) {
-              el.animType = `swipe-${val}`;
-            } else {
-              el.animDirection = val;
-            }
+            applyDirectionChoice(el, key, val, previewSet, true);
             if (startElementAnimPreviewFn) startElementAnimPreviewFn(el.animType || 'none');
           } else if (key === 'panDir') {
             el.panDir = val;
@@ -1497,11 +1493,13 @@ function wireCustomSelects(el, updateProp) {
           } else if (key === 'exitType' && el.exitEnabled) {
             if (startElementExitPreviewFn) startElementExitPreviewFn(val);
           } else if (key === 'exitDirection' && el.exitEnabled) {
-            el.exitDirection = val;
+            applyDirectionChoice(el, key, val, previewSet, true);
             if (startElementExitPreviewFn) startElementExitPreviewFn(el.exitType || 'fade-out');
           }
 
           item.onmouseleave = () => {
+            if (origInDirClosest === undefined) delete el.inDirClosest; else el.inDirClosest = origInDirClosest;
+            if (origExitDirClosest === undefined) delete el.exitDirClosest; else el.exitDirClosest = origExitDirClosest;
             el.animType = origType;
             el.animDirection = origDirection;
             el.panDir = origPanDir;
@@ -1562,6 +1560,33 @@ function wireCustomSelects(el, updateProp) {
     document.addEventListener('click', () => {
       document.querySelectorAll('.custom-select-dropdown').forEach(d => d.style.display = 'none');
     });
+  }
+}
+
+// A direction pick — 'up' | 'down' | 'left' | 'right' | 'closest' — for an
+// entrance (animDirection: Slide and Swipe; riseDirection: Reveal) or an exit
+// (exitDirection: Slide and Swipe). "Closest edge" sets a flag and lets
+// applyClosestEdgeDirections (render-runtime.js) fill in the real direction for
+// the layer's position; any other pick clears the flag. setProp is updateProp
+// for a real change (it reaches the whole selection and linked layers) or a
+// plain setter for a hover preview, which the caller puts back afterwards.
+function applyDirectionChoice(el, key, val, setProp, previewOnly = false) {
+  const flag = key === 'exitDirection' ? 'exitDirClosest' : 'inDirClosest';
+  if (val === 'closest') {
+    setProp(flag, true);
+  } else {
+    if (el[flag]) setProp(flag, false);
+    if (key === 'animDirection' && (el.animType || '').startsWith('swipe-')) setProp('animType', `swipe-${val}`);
+    else setProp(key, val);
+  }
+  // Resolve now, not on the next frame, so the preview that follows already
+  // plays from the right edge.
+  if (typeof applyClosestEdgeDirections !== 'function') return;
+  if (previewOnly) {
+    const c = state.canvases.find(cv => cv.elements.includes(el));
+    if (c) applyClosestEdgeDirections(el, c);
+  } else {
+    applyClosestEdgeDirectionsAll(state.canvases);
   }
 }
 
@@ -2353,12 +2378,16 @@ function renderProps() {
     const val = (key === 'color' && dColor !== undefined) ? dColor : ((key === 'bg' && dBg !== undefined) ? dBg : el[key]);
     const isDisabled = isFieldDisabled(key);
     const triggerTitle = `Choose ${label.toLowerCase()} color`;
+    // Left column of the shared grid, so its swatch lines up with the
+    // colour + opacity rows (colOpac) above and below it.
     return `
-    <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
-      <label>${label}</label>
-      <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-        <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
-        ${hexInputBox(key, val, '', isDisabled)}
+    <div class="prop-row prop-grid-2" ${isDisabled ? 'data-locked-field="true"' : ''}>
+      <div class="prop-field">
+        <div class="prop-label-row"><label>${label}</label></div>
+        <div class="prop-swatch-hex" style="${isDisabled ? 'pointer-events:none;' : ''}">
+          <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="background:${getBgStyle(val) || '#000'}"></button>
+          ${hexInputBox(key, val, '', isDisabled)}
+        </div>
       </div>
     </div>`;
   };
@@ -2368,20 +2397,20 @@ function renderProps() {
     const isDisabled = isFieldDisabled(key);
     const triggerTitle = `Choose ${label.toLowerCase()} color`;
     const opacityTitle = `${label} opacity percentage`;
+    // Same two equal columns as the rest of the panel (.prop-grid-2), so a
+    // colour row lines up with the Font/Weight and Size/Max rows around it.
     return `
-    <div class="prop-row" ${isDisabled ? 'data-locked-field="true"' : ''}>
-      <div style="display:flex; align-items:end; gap:8px; width:100%;">
-        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
-          <label>${label}</label>
-          <div style="display:flex; gap:6px; align-items:center; ${isDisabled ? 'pointer-events:none;' : ''}">
-            <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(val) || '#000'}"></button>
-            ${hexInputBox(key, val, '', isDisabled)}
-          </div>
+    <div class="prop-row prop-grid-2" ${isDisabled ? 'data-locked-field="true"' : ''}>
+      <div class="prop-field">
+        <div class="prop-label-row"><label>${label}</label></div>
+        <div class="prop-swatch-hex" style="${isDisabled ? 'pointer-events:none;' : ''}">
+          <button class="cp-trigger" data-k="${key}" ${isDisabled ? 'disabled' : ''} title="${triggerTitle}" style="background:${getBgStyle(val) || '#000'}"></button>
+          ${hexInputBox(key, val, '', isDisabled)}
         </div>
-        <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
-          <label>Opacity %</label>
-          <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" title="${opacityTitle}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" />
-        </div>
+      </div>
+      <div class="prop-field">
+        <div class="prop-label-row"><label>Opacity (%)</label></div>
+        <input type="number" data-k="opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" title="${opacityTitle}" />
       </div>
     </div>`;
   };
@@ -2405,7 +2434,7 @@ function renderProps() {
       ${numIcon('rotation', rIcon, 'Rotation', 0)}
       <div class="checkbox-row" style="height:24px; align-items:center;">
         <input type="checkbox" data-k="lockRatio" id="prop-lock-ratio" title="Maintain aspect ratio when resizing" ${el.lockRatio ? 'checked' : ''} />
-        <label for="prop-lock-ratio" title="Maintain aspect ratio when resizing">Lock Ratio</label>
+        <label for="prop-lock-ratio" title="Maintain aspect ratio when resizing">Lock ratio</label>
       </div>
     </div>
   </div>`);
@@ -2448,86 +2477,74 @@ function renderProps() {
     // Resolve computed size for display
     const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
 
-    // Line 1: Font and Weight
-    f.push(`<div class="prop-row">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-        <div class="prop-row" style="margin:0"><label>Font</label>
-          <select data-k="fontFamily" title="Font Family">
-            ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
-          </select>
-        </div>
-        <div class="prop-row" style="margin:0"><label>Weight</label>
-          <select data-k="weight" title="Font Weight">
-            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
-          </select>
-        </div>
+    // Font | Weight
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field"><div class="prop-label-row"><label>Font</label></div>
+        <select data-k="fontFamily" title="Font Family">
+          ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
+        </select>
+      </div>
+      <div class="prop-field"><div class="prop-label-row"><label>Weight</label></div>
+        <select data-k="weight" title="Font Weight">
+          ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+        </select>
       </div>
     </div>`);
 
-    // Line 2: Size & Auto & Max size
-    f.push(`<div class="prop-row">
-      <div style="display:flex; align-items:end; gap:8px; width:100%;">
-        <div class="prop-row" style="margin:0; flex:1;">
-          <label for="prop-font-size">Size</label>
-          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="Font Size (px)" />
-        </div>
-        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale text size to fit boundary" ${el.autoSize ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <label for="prop-auto-size" title="Auto-scale text size to fit boundary" style="cursor:pointer; margin:0;">Auto</label>
-        </div>
-        <div class="prop-row" style="margin:0; flex:1;">
-          <label for="prop-max-font-size">Max size</label>
-          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Maximum font size when using Auto-size" />
-        </div>
+    // Every row below sits on the same two equal columns (.prop-grid-2), so the
+    // fields line up from row to row. The Auto / BG switches live at the right
+    // of their own field's label instead of as narrow middle columns, which is
+    // what threw every row's edges out of line.
+    const inlineToggle = (k, id, checked, text, title) =>
+      `<label class="prop-inline-toggle" for="${id}" title="${title}"><input type="checkbox" data-k="${k}" id="${id}" ${checked ? 'checked' : ''} title="${title}" />${text}</label>`;
+
+    // Size (Auto) | Max size
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-font-size">Size</label>${inlineToggle('autoSize', 'prop-auto-size', el.autoSize, 'Auto', 'Auto-scale text size to fit boundary')}</div>
+        <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} title="Font Size (px)" />
+      </div>
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-max-font-size">Max size</label></div>
+        <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} title="Maximum font size when using Auto-size" />
       </div>
     </div>`);
 
     f.push(colOpac('color', 'Color'));
 
+    // Leading (Auto) | Tracking
     const autoChecked = isLineHeightAuto(el);
-    f.push(`<div class="prop-row" id="prop-spacing-row">
-          <div style="display:flex; align-items:end; gap:8px; width:100%;">
-            <div class="prop-row" style="margin:0; flex:1;">
-              <label for="prop-line-height">Leading</label>
-              <input type="number" step="0.1" min="0.1" data-k="lineHeight" id="prop-line-height" value="${el.lineHeight !== undefined ? el.lineHeight : '1.2'}" ${autoChecked ? 'disabled' : ''} style="width:100%;" title="Line height multiplier" />
-            </div>
-            <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-              <input type="checkbox" data-k="lineHeightAuto" id="prop-line-height-auto" title="Auto-calculate line height based on size" ${autoChecked ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-              <label for="prop-line-height-auto" title="Auto-calculate line height based on size" style="cursor:pointer; margin:0;">Auto</label>
-            </div>
-            <div class="prop-row" style="margin:0; flex:1;">
-              <label for="prop-letter-spacing">Tracking</label>
-              <input type="number" data-k="letterSpacing" id="prop-letter-spacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" style="width:100%;" title="Letter spacing in pixels" />
-            </div>
-          </div>
-        </div>`);
-
-    // Text background — color, toggle (BG), and opacity on one line.
-    f.push(`<div class="prop-row">
-      <div style="display:flex; align-items:end; gap:8px; width:100%;">
-        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
-          <label>BG Color</label>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} title="Choose text background color" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
-            ${hexInputBox('bg', el.bg || '#000000', '', !el.hasBg)}
-          </div>
-        </div>
-        <div class="checkbox-row" style="margin:0 12px 5px 0; font-size:11px; color:var(--text-main); gap:4px; height:22px; flex-shrink:0; white-space:nowrap;">
-          <input type="checkbox" data-k="hasBg" id="prop-has-bg" title="Enable text background" ${el.hasBg ? 'checked' : ''} style="width:12px; height:12px; margin:0;" />
-          <label for="prop-has-bg" title="Enable text background" style="cursor:pointer; margin:0;">BG</label>
-        </div>
-        <div class="prop-row" style="margin:0; width:78px; flex-shrink:0;">
-          <label for="prop-bg-opacity">Opacity %</label>
-          <input type="number" data-k="bgOpacity" id="prop-bg-opacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Text background opacity percentage" />
-        </div>
+    f.push(`<div class="prop-row prop-grid-2" id="prop-spacing-row">
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-line-height">Leading</label>${inlineToggle('lineHeightAuto', 'prop-line-height-auto', autoChecked, 'Auto', 'Auto-calculate line height based on size')}</div>
+        <input type="number" step="0.1" min="0.1" data-k="lineHeight" id="prop-line-height" value="${el.lineHeight !== undefined ? el.lineHeight : '1.2'}" ${autoChecked ? 'disabled' : ''} title="Line height multiplier" />
+      </div>
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-letter-spacing">Tracking</label></div>
+        <input type="number" data-k="letterSpacing" id="prop-letter-spacing" value="${el.letterSpacing !== undefined ? el.letterSpacing : 0}" title="Letter spacing in pixels" />
       </div>
     </div>`);
 
-    // L/R pad, T/B pad, Coverage — three compact columns on a single row.
-    f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-l">L/R Pad</label><input type="number" data-k="bgPadL" id="prop-bg-pad-l" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Left and Right padding in pixels" /></div>
-      <div style="flex:1; min-width:0;"><label for="prop-bg-pad-v">T/B Pad</label><input type="number" data-k="bgPadV" id="prop-bg-pad-v" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Top and Bottom padding in pixels" /></div>
-      <div style="flex:1; min-width:0;"><label for="prop-bg-coverage">Cover %</label><input type="number" data-k="bgCoverage" id="prop-bg-coverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Width percentage of text background coverage" /></div>
+    // Background (on/off) | Opacity — the switch heads the colour it enables.
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field">
+        <div class="prop-label-row"><label>Background</label>${inlineToggle('hasBg', 'prop-has-bg', el.hasBg, 'On', 'Enable text background')}</div>
+        <div class="prop-swatch-hex">
+          <button class="cp-trigger" data-k="bg" ${!el.hasBg ? 'disabled' : ''} title="Choose text background color" style="background:${getBgStyle(el.bg || '#000000') || '#000'}"></button>
+          ${hexInputBox('bg', el.bg || '#000000', '', !el.hasBg)}
+        </div>
+      </div>
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-bg-opacity">Opacity (%)</label></div>
+        <input type="number" data-k="bgOpacity" id="prop-bg-opacity" value="${el.bgOpacity !== undefined ? el.bgOpacity : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} title="Text background opacity percentage" />
+      </div>
+    </div>`);
+
+    // Background padding and coverage — three equal columns, same outer edges.
+    f.push(`<div class="prop-row prop-grid-3">
+      <div class="prop-field"><div class="prop-label-row"><label for="prop-bg-pad-l">Pad L/R</label></div><input type="number" data-k="bgPadL" id="prop-bg-pad-l" value="${el.bgPadL !== undefined ? el.bgPadL : 8}" min="0" ${!el.hasBg ? 'disabled' : ''} title="Left and Right padding in pixels" /></div>
+      <div class="prop-field"><div class="prop-label-row"><label for="prop-bg-pad-v">Pad T/B</label></div><input type="number" data-k="bgPadV" id="prop-bg-pad-v" value="${el.bgPadV !== undefined ? el.bgPadV : 4}" min="0" ${!el.hasBg ? 'disabled' : ''} title="Top and Bottom padding in pixels" /></div>
+      <div class="prop-field"><div class="prop-label-row"><label for="prop-bg-coverage">Cover (%)</label></div><input type="number" data-k="bgCoverage" id="prop-bg-coverage" value="${el.bgCoverage !== undefined ? el.bgCoverage : 100}" min="0" max="100" ${!el.hasBg ? 'disabled' : ''} title="Width percentage of text background coverage" /></div>
     </div>`);
   }
 
@@ -2560,91 +2577,86 @@ function renderProps() {
   // values don't visually change anything until thickness is non-zero anyway.
   const strokeSection = () => {
     const sw = el.strokeWidth !== undefined ? el.strokeWidth : 0;
+    // Same grid and the same names as every other colour / number row.
     let h = '';
-    h += `<div class="prop-row" style="display:flex; gap:10px;">
-          <div style="flex:1; min-width:0;">
-            <label>Stroke Color</label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <button class="cp-trigger" data-k="strokeColor" title="Choose stroke color" style="width:24px; height:24px; border-radius:4px; border:1px solid var(--border-light); cursor:pointer; background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
+    h += `<div class="prop-row prop-grid-2">
+          <div class="prop-field">
+            <div class="prop-label-row"><label>Stroke color</label></div>
+            <div class="prop-swatch-hex">
+              <button class="cp-trigger" data-k="strokeColor" title="Choose stroke color" style="background:transparent; box-shadow:inset 0 0 0 4px ${getBgStyle(el.strokeColor || '#ffffff') || '#fff'};"></button>
               ${hexInputBox('strokeColor', el.strokeColor || '#ffffff')}
             </div>
           </div>
-          <div style="width:78px; flex-shrink:0;">
-            <label for="prop-stroke-opacity">Opacity %</label>
-            <input type="number" data-k="strokeOpacity" id="prop-stroke-opacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke opacity percentage" />
+          <div class="prop-field">
+            <div class="prop-label-row"><label for="prop-stroke-opacity">Opacity (%)</label></div>
+            <input type="number" data-k="strokeOpacity" id="prop-stroke-opacity" value="${el.strokeOpacity !== undefined ? el.strokeOpacity : 100}" min="0" max="100" title="Stroke opacity percentage" />
           </div>
         </div>`;
-    h += `<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-width">Thickness</label><input type="number" data-k="strokeWidth" id="prop-stroke-width" value="${sw}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke thickness in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-dash">Dash</label><input type="number" data-k="strokeDash" id="prop-stroke-dash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke dash length in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-stroke-gap">Gap</label><input type="number" data-k="strokeGap" id="prop-stroke-gap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Stroke gap length in pixels" /></div>
+    h += `<div class="prop-row prop-grid-3">
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-stroke-width">Thickness</label></div><input type="number" data-k="strokeWidth" id="prop-stroke-width" value="${sw}" min="0" title="Stroke thickness in pixels" /></div>
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-stroke-dash">Dash</label></div><input type="number" data-k="strokeDash" id="prop-stroke-dash" value="${el.strokeDash !== undefined ? el.strokeDash : 0}" min="0" title="Stroke dash length in pixels" /></div>
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-stroke-gap">Gap</label></div><input type="number" data-k="strokeGap" id="prop-stroke-gap" value="${el.strokeGap !== undefined ? el.strokeGap : 0}" min="0" title="Stroke gap length in pixels" /></div>
         </div>`;
     return h;
   };
 
-  if (el.type === 'rect') { f.push(colOpac('color', 'Fill')); f.push(num('radius', 'Radius')); f.push(strokeSection()); }
+  if (el.type === 'rect') {
+    f.push(colOpac('color', 'Fill'));
+    f.push(`<div class="prop-row prop-grid-2"><div class="prop-field"><div class="prop-label-row"><label for="prop-radius">Radius</label></div><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : ''}" title="${propTooltips.radius || 'Corner radius in pixels'}" /></div></div>`);
+    f.push(strokeSection());
+  }
   if (el.type === 'circle') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
   if (el.type === 'pixel') { f.push(colOpac('color', 'Fill')); f.push(strokeSection()); }
-  if (el.type === 'line') { f.push(colOpac('color', 'Line color')); }
+  if (el.type === 'line') { f.push(colOpac('color', 'Color')); }
   if (el.type === 'button') {
-    f.push(txt('text', 'Label'));
-    // Row 1: Font and Weight
-    f.push(`<div class="prop-row">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
-        <div class="prop-row" style="margin:0"><label>Font</label>
-          <select data-k="fontFamily" title="Button Font Family">
-            ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
-          </select>
-        </div>
-        <div class="prop-row" style="margin:0"><label>Weight</label>
-          <select data-k="weight" title="Button Font Weight">
-            ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
-          </select>
-        </div>
+    // Laid out and named exactly like a text layer's fields, so the same
+    // setting reads the same everywhere: Text, Font | Weight, Size (Auto) |
+    // Max size, Color | Opacity, Pad L/R | Pad T/B.
+    f.push(txt('text', 'Text'));
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field"><div class="prop-label-row"><label>Font</label></div>
+        <select data-k="fontFamily" title="Button Font Family">
+          ${FONT_OPTIONS.map(fnt => `<option ${fnt === (el.fontFamily || 'Arial') ? 'selected' : ''} value="${fnt}">${fnt}</option>`).join('')}
+        </select>
+      </div>
+      <div class="prop-field"><div class="prop-label-row"><label>Weight</label></div>
+        <select data-k="weight" title="Button Font Weight">
+          ${getWeightsForFont(el.fontFamily || 'Arial').map(w => `<option ${String(w) === String(el.weight) ? 'selected' : ''} value="${w}">${w}</option>`).join('')}
+        </select>
       </div>
     </div>`);
 
-    // Sizing controls: the two toggles share a row, then the numeric limits
-    // (Size / Max / Wrap-threshold) sit together on the row below. "Wrap <"
-    // only appears when it's actually in play (Auto-size + Wrap both on).
+    // Size (Auto) | Max size, as on text. Below: line wrapping, whose
+    // threshold only means something while both Auto and Wrap are on, so the
+    // field stays in place but disabled otherwise (no row jumping about).
     const computedFontSize = el.autoSize ? calculateAutoSize(el, dText) : (el.fontSize || 14);
-    const showWrapMin = el.autoSize && el.wrapText;
-    f.push(`<div class="prop-row" style="margin-bottom:6px;">
-      <div style="display:flex; align-items:center; gap:18px; width:100%;">
-        <div class="checkbox-row" style="margin:0; font-size:11px; color:var(--text-main); gap:5px;">
-          <input type="checkbox" data-k="autoSize" id="prop-auto-size" title="Auto-scale the text to fit the button" ${el.autoSize ? 'checked' : ''} style="width:13px; height:13px; margin:0;" />
-          <label for="prop-auto-size" title="Auto-scale the text to fit the button" style="cursor:pointer; margin:0;">Auto-size</label>
-        </div>
-        <div class="checkbox-row" style="margin:0; font-size:11px; color:var(--text-main); gap:5px;">
-          <input type="checkbox" data-k="wrapText" id="prop-wrap-text" title="Allow the label to break onto multiple lines" ${el.wrapText ? 'checked' : ''} style="width:13px; height:13px; margin:0;" />
-          <label for="prop-wrap-text" title="Allow the label to break onto multiple lines" style="cursor:pointer; margin:0;">Wrap lines</label>
-        </div>
+    const wrapMinLive = el.autoSize && el.wrapText;
+    const wrapTip = 'When auto-size would shrink the text below this size, it wraps onto more lines instead of shrinking further. Needs Auto size and Wrap on.';
+    const btnToggle = (k, id, checked, text, title) =>
+      `<label class="prop-inline-toggle" for="${id}" title="${title}"><input type="checkbox" data-k="${k}" id="${id}" ${checked ? 'checked' : ''} title="${title}" />${text}</label>`;
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-font-size">Size</label>${btnToggle('autoSize', 'prop-auto-size', el.autoSize, 'Auto', 'Auto-scale the text to fit the button')}</div>
+        <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} title="${el.autoSize ? 'Auto size is on — turn it off to set a fixed font size' : 'Font Size (px)'}" />
+      </div>
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-max-font-size">Max size</label></div>
+        <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} title="Largest font size auto size may use" />
       </div>
     </div>`);
-    f.push(`<div class="prop-row">
-      <div style="display:flex; align-items:flex-end; gap:8px; width:100%;">
-        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
-          <label for="prop-font-size">${el.autoSize ? 'Size (auto)' : 'Size'}</label>
-          <input type="number" data-k="fontSize" id="prop-font-size" value="${computedFontSize}" ${el.autoSize ? 'disabled' : ''} style="width:100%;" title="${el.autoSize ? 'Auto-size is on — turn it off to set a fixed font size' : 'Fixed font size'}" />
-        </div>
-        <div class="prop-row" style="margin:0; flex:1; min-width:0;">
-          <label for="prop-max-font-size">Max</label>
-          <input type="number" data-k="maxFontSize" id="prop-max-font-size" value="${el.maxFontSize !== undefined ? el.maxFontSize : (el.fontSize || 72)}" ${!el.autoSize ? 'disabled' : ''} style="width:100%;" title="Largest font size auto-size may use" />
-        </div>
-        ${showWrapMin ? `<div class="prop-row" style="margin:0; flex:1; min-width:0;">
-          <label for="prop-wrap-min" title="When auto-size would shrink the label below this size, it wraps onto multiple lines instead of shrinking further.">Wrap &lt;</label>
-          <input type="number" data-k="wrapMinSize" id="prop-wrap-min" min="4" value="${el.wrapMinSize !== undefined ? el.wrapMinSize : DEFAULT_WRAP_MIN}" style="width:100%;" title="When auto-size would shrink the label below this size, it wraps onto multiple lines instead of shrinking further." />
-        </div>` : ''}
+    f.push(`<div class="prop-row prop-grid-2">
+      <div class="prop-field">
+        <div class="prop-label-row"><label for="prop-wrap-min" title="${wrapTip}">Wrap below</label>${btnToggle('wrapText', 'prop-wrap-text', el.wrapText, 'Wrap', 'Allow the text to break onto multiple lines')}</div>
+        <input type="number" data-k="wrapMinSize" id="prop-wrap-min" min="4" value="${el.wrapMinSize !== undefined ? el.wrapMinSize : DEFAULT_WRAP_MIN}" ${wrapMinLive ? '' : 'disabled'} title="${wrapTip}" />
       </div>
     </div>`);
 
-    f.push(colOpac('bg', 'BG'));
+    f.push(colOpac('bg', 'Fill'));
     f.push(col('color', 'Text color'));
-    // Radius + Padding L/R + Padding T/B share a row.
-    f.push(`<div class="prop-row" style="display:flex; gap:6px;">
-          <div style="flex:1; min-width:0;"><label for="prop-radius">Radius</label><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button corner radius in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-padding-lr">Padding L/R</label><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button horizontal padding in pixels" /></div>
-          <div style="flex:1; min-width:0;"><label for="prop-padding-tb">Padding T/B</label><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Button vertical padding in pixels" /></div>
+    f.push(`<div class="prop-row prop-grid-3">
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-radius">Radius</label></div><input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" title="Button corner radius in pixels" /></div>
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-padding-lr">Pad L/R</label></div><input type="number" data-k="paddingLR" id="prop-padding-lr" value="${el.paddingLR !== undefined ? el.paddingLR : 16}" title="Button horizontal padding in pixels" /></div>
+          <div class="prop-field"><div class="prop-label-row"><label for="prop-padding-tb">Pad T/B</label></div><input type="number" data-k="paddingTB" id="prop-padding-tb" value="${el.paddingTB !== undefined ? el.paddingTB : 0}" title="Button vertical padding in pixels" /></div>
         </div>`);
     f.push(strokeSection());
   }
@@ -2760,7 +2772,7 @@ function renderProps() {
         <input type="number" data-k="radius" id="prop-radius" value="${el.radius !== undefined ? el.radius : 0}" min="0" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Corner radius in pixels" />
       </div>
       <div style="flex:1; min-width:0;">
-        <label for="prop-opacity">Opacity %</label>
+        <label for="prop-opacity">Opacity (%)</label>
         <input type="number" data-k="opacity" id="prop-opacity" value="${el.opacity !== undefined ? el.opacity : 100}" min="0" max="100" style="width:100%; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:4px 6px; font-size:11px; outline:none;" title="Opacity percentage" />
       </div>
     </div>`);
@@ -2889,7 +2901,7 @@ function renderProps() {
       const tip = 'Bring the text background in with the text — one bar per line, filling in as that line arrives';
       return `<div class="checkbox-row" style="margin:0; ${!el.hasBg ? 'opacity:0.5; pointer-events:none;' : ''}">
         <input type="checkbox" data-k="animFadeBg" id="${id}" title="${!el.hasBg ? 'Turn on BG for this text layer to animate it' : tip}" ${on ? 'checked' : ''} ${!el.hasBg ? 'disabled' : ''}/>
-        <label for="${id}" title="${tip}" style="cursor:pointer; font-size:11px; white-space:nowrap;">Animate BG</label>
+        <label for="${id}" title="${tip}" style="cursor:pointer; font-size:11px; white-space:nowrap;">Animate background</label>
       </div>`;
     };
     const animBgOffsetHtml = () => {
@@ -2980,7 +2992,7 @@ function renderProps() {
         </div>
       `);
     } else if (isSlideLike) {
-      const currentDirection = el.animDirection || (el.animType.startsWith('slide-') ? el.animType.replace('slide-', '') : 'up');
+      const currentDirection = el.inDirClosest ? 'closest' : (el.animDirection || (el.animType.startsWith('slide-') ? el.animType.replace('slide-', '') : 'up'));
       f.push(`
         <div class="prop-row" style="margin-bottom:8px;">
           <div class="prop-grid-2">
@@ -3020,7 +3032,7 @@ function renderProps() {
         </div>
       `);
     } else if (isSwipeLike) {
-      const currentDirection = el.animType.replace('swipe-', '');
+      const currentDirection = el.inDirClosest ? 'closest' : el.animType.replace('swipe-', '');
       f.push(`
         <div class="prop-row" style="margin-bottom:8px;">
           <div class="prop-grid-2">
@@ -3036,7 +3048,8 @@ function renderProps() {
                 { val: 'up', label: 'Up' },
                 { val: 'down', label: 'Down' },
                 { val: 'left', label: 'Left' },
-                { val: 'right', label: 'Right' }
+                { val: 'right', label: 'Right' },
+                { val: 'closest', label: 'Closest edge' }
               ], currentDirection, 'Animation direction', false, 'prop-anim-direction')}
             </div>
           </div>
@@ -3077,8 +3090,9 @@ function renderProps() {
                 { val: 'up', label: 'Below' },
                 { val: 'down', label: 'Above' },
                 { val: 'left', label: 'Left' },
-                { val: 'right', label: 'Right' }
-              ], el.riseDirection || 'up', 'Which edge of the mask each unit travels out from — Below rises up, Left/Right wipe in sideways')}
+                { val: 'right', label: 'Right' },
+                { val: 'closest', label: 'Closest edge' }
+              ], el.inDirClosest ? 'closest' : (el.riseDirection || 'up'), 'Which edge of the mask each unit travels out from — Below rises up, Left/Right wipe in sideways')}
             </div>
           </div>
         </div>
@@ -3185,7 +3199,7 @@ function renderProps() {
             </div>
             <div class="checkbox-row" style="margin:0; ${el.type === 'text' && !el.hasBg ? 'opacity:0.5; pointer-events:none;' : ''}">
               <input type="checkbox" data-k="animFadeBg" id="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" ${fadeBg ? 'checked' : ''} ${el.type === 'text' && !el.hasBg ? 'disabled' : ''}/>
-              <label for="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">${el.type === 'text' ? 'Animate BG' : 'Fade BG'}</label>
+              <label for="prop-anim-fade-bg" title="Fade/Animate background block/container during transition" style="cursor:pointer; font-size:11px; white-space:nowrap;">${el.type === 'text' ? 'Animate background' : 'Fade background'}</label>
             </div>
           </div>
         </div>
@@ -3217,7 +3231,7 @@ function renderProps() {
     f.push(`<div class="prop-row" style="margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
       <label class="anim-sub-head" style="margin:0;"><svg id="fi_18562238" width="12" height="12" viewBox="0 0 100 100" style="color: var(--accent-base); flex-shrink: 0; transform: scaleX(-1);" fill="currentColor"><path d="m21.5527992 16.0015984h-16.6498918c-2.1364791 0-3.2064319 2.5830956-1.695713 4.0938129l29.9045877 29.9045887-29.9045878 29.9045868c-1.5107189 1.5107193-.4407661 4.093811 1.695713 4.093811h16.6498909c.6360168 0 1.2459831-.252655 1.695713-.7023849l31.6003047-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003036-31.6003017c-.44973-.4497299-1.0596962-.7023868-1.6957131-.7023868z"></path><path d="m63.5015984 16.0015984h-16.6498948c-2.1364784 0-3.2064323 2.5830956-1.695713 4.0938129l29.9045868 29.9045887-29.9045868 29.9045868c-1.5107193 1.5107193-.4407654 4.093811 1.695713 4.093811h16.6498947c.636013 0 1.2459831-.252655 1.695713-.7023849l31.6003038-31.6002999c.9365158-.9365158.9365158-2.4549103 0-3.3914261l-31.6003037-31.6003017c-.4497299-.4497299-1.0597-.7023868-1.695713-.7023868z"></path></svg>OUT</label>
       <div style="display:flex; align-items:center; gap:4px;" title="${startTooltip}">
-        <label for="prop-exit-start" style="font-size:9px; color:var(--text-muted); margin:0;">after</label>
+        <label for="prop-exit-start" style="font-size:9px; color:var(--text-muted); margin:0;">after (s)</label>
         <input type="number" step="0.1" min="0" data-k="exitStart" id="prop-exit-start" title="How long after the layer arrives before it begins to leave, in seconds" value="${exitValAfter}" style="width:45px; background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:4px; padding:2px 4px; font-size:11px; height:20px; outline:none;" />
         <span style="font-size:11px; color:var(--text-muted);">s</span>
       </div>
@@ -3283,8 +3297,9 @@ function renderProps() {
             { val: 'up', label: 'Up' },
             { val: 'down', label: 'Down' },
             { val: 'left', label: 'Left' },
-            { val: 'right', label: 'Right' }
-          ], exitDir, 'Exit direction', false, 'prop-exit-direction')}
+            { val: 'right', label: 'Right' },
+            { val: 'closest', label: 'Closest edge' }
+          ], el.exitDirClosest ? 'closest' : exitDir, 'Exit direction', false, 'prop-exit-direction')}
         </div>
         ${showDist ? `<div style="display:flex; flex-direction:column; gap:4px;">
           <label>Dist. (px)</label>

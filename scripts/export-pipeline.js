@@ -3417,7 +3417,7 @@ function openExportModal() {
             <span>All Selected Versions (${selectedCount})</span>
           </label>
         </div>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:6px; line-height:1.3;">"All selected versions" forces HTML5 ZIP — one folder per selected data row.</div>
+        <div style="font-size:10px; color:var(--text-muted); margin-top:6px; line-height:1.3;">"All selected versions" works with HTML5 ZIP (one folder per selected data row) and Preview portal (one file, every selected row switchable).</div>
       </div>
       ` : ''}
     </div>
@@ -3911,7 +3911,7 @@ function openExportModal() {
     png: 'A static image of the active frame, one file per size.',
     video: 'Records one loop cycle per size. H.264 MP4; falls back to WebM where MP4 encoding isn’t available.',
     gif: 'Records one loop cycle per size as a looping GIF. Capped at 256 colours, so gradients band — video keeps them clean.',
-    portal: 'One HTML file for stakeholders: the Preview Portal with the selected sizes and every data version inside. Opens offline in any browser, no Adflow needed, and plays exactly what Full preview shows.'
+    portal: 'One HTML file for stakeholders: the Preview Portal with the selected sizes inside, plus the data version you pick (or all selected ones, switchable). Opens offline in any browser, no Adflow needed, and plays exactly what Full preview shows.'
   };
   const formatSel = modalBg.querySelector('#exp-format');
   const vidSettings = (typeof wireVideoSettings === 'function' && modalBg.querySelector('#exp-video-bitrate'))
@@ -3958,10 +3958,21 @@ function openExportModal() {
     
     const selectedCanvases = selectedIds.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
 
-    // One file for the whole set, with every data version inside, so the
-    // version picker below does not apply.
+    // One file for the whole set. Data version decides what is inside it:
+    // Single Version → just that row, opening on it with no version picker;
+    // All Selected Versions → the template plus every selected row, switchable.
+    // "Skip frames marked as skipped" applies exactly as it does to the ZIP.
     if (format === 'portal') {
-      await exportPreviewPortalFile(selectedCanvases, filenamePrefix);
+      let versions;
+      if (hasVersions) {
+        if (versionChoice === 'all') versions = 'selected';
+        else {
+          const idx = parseInt(versionChoice, 10);
+          versions = (!isNaN(idx) && dm.rows[idx]) ? idx : dmActiveRowForOutput();
+          if (versions == null) versions = undefined;
+        }
+      }
+      await exportPreviewPortalFile(selectedCanvases, filenamePrefix, { versions, includeSkippedFrames });
       return;
     }
 
@@ -4933,14 +4944,40 @@ function portalPackVersions() {
 const portalPackKey = (canvasId, versionIdx, loop) =>
   `${canvasId}|${versionIdx == null ? 'd' : versionIdx}|${loop ? 1 : 0}`;
 
+// Which data versions go into the file, as the Export dialog's Data version
+// setting asks, and the key each is stored under. A key is what the portal's
+// version picker looks up (packedVersionKey in preview.html): 'd' for the
+// template, otherwise the row's position among the rows the FILE carries —
+// which after filtering is not its position in the editor's sheet.
+//   versions undefined   template + every row (no Data version setting)
+//   versions 'selected'  template + every row not deselected in the sheet
+//                        ("All Selected Versions")
+//   versions <number>    that one row and nothing else ("Single Version"):
+//                        stored as the file's only ad, so it opens on it with
+//                        no version picker
+function portalPackPlan(versions) {
+  const dm = state.dataMerge;
+  const on = !!(dm && dm.enabled && Array.isArray(dm.rows) && dm.rows.length);
+  if (typeof versions === 'number') {
+    return { entries: [{ src: on && dm.rows[versions] ? versions : null, key: 'd' }], singleRow: versions, rows: [] };
+  }
+  const entries = [{ src: null, key: 'd' }];
+  const rows = [];
+  if (on) dm.rows.forEach((row, i) => {
+    if (versions === 'selected' && row && row._selected === false) return;
+    entries.push({ src: i, key: rows.length });
+    rows.push(i);
+  });
+  return { entries, singleRow: null, rows };
+}
+
 // Generate every ad the portal can show, tokenized. Every state flag it
 // touches is restored, even on error.
-async function buildPortalPackAds(canvases, onProgress) {
+async function buildPortalPackAds(canvases, onProgress, plan = portalPackPlan(), includeSkippedFrames = false) {
   const table = makePortalResourceTable();
   const html = {};
   const kb = {};
-  const versions = portalPackVersions();
-  const total = canvases.length * versions.length;
+  const total = canvases.length * plan.entries.length;
   let done = 0;
 
   const saved = {
@@ -4949,12 +4986,13 @@ async function buildPortalPackAds(canvases, onProgress) {
     includeSkipped: state._exportIncludeSkippedFrames
   };
   // Full preview plays the whole ad; "Preview current only" is a working view.
-  // Skipped frames stay out, exactly as in the preview and the export.
+  // Skipped frames stay out unless the Export dialog's "Skip frames marked as
+  // skipped" is unticked — the same switch, read the same way, as the ZIP.
   state.previewCurrentOnly = false;
-  state._exportIncludeSkippedFrames = undefined;
+  state._exportIncludeSkippedFrames = includeSkippedFrames ? true : undefined;
   try {
     for (const c of canvases) {
-      for (const v of versions) {
+      for (const { src: v, key } of plan.entries) {
         // Measure FIRST. addCanvasAssetsToZip subsets this version's fonts into
         // fontSubsetter's cache, and the zipless generator embeds the cached
         // subset when there is one (else the full .woff2). Measuring first
@@ -4962,7 +5000,7 @@ async function buildPortalPackAds(canvases, onProgress) {
         // output deterministic: generated before the measurement, the same ad
         // came out with the full font, after it with the subset.
         state.loopAd = saved.loopAd;
-        kb[`${c.id}|${v == null ? 'd' : v}`] = await withPortalPackVersion(v, () => calculateCanvasZipSize(c, v));
+        kb[`${c.id}|${key}`] = await withPortalPackVersion(v, () => calculateCanvasZipSize(c, v));
         for (const loop of [false, true]) {
           state.loopAd = loop;
           const raw = await withPortalPackVersion(v, () => generateExportHTML(c, null, false, { previewControls: true }));
@@ -4971,7 +5009,7 @@ async function buildPortalPackAds(canvases, onProgress) {
           if (leftovers.length) {
             throw new Error(`${c.width}×${c.height} still points at files beside it (${leftovers.slice(0, 3).join(', ')}), so it would show broken. Nothing was saved.`);
           }
-          html[portalPackKey(c.id, v, loop)] = table.dedupeBlocks(tokenized);
+          html[`${c.id}|${key}|${loop ? 1 : 0}`] = table.dedupeBlocks(tokenized);
         }
         done++;
         if (onProgress) onProgress(done / total, `${c.width}×${c.height}${v == null ? '' : ` · version ${v + 1}`}`);
@@ -4994,9 +5032,26 @@ function resolvePortalPackAd(tokenized, blocks, res) {
 }
 
 // The project as the portal reads it: what the controls and the audit list
-// need, none of the images (the precomputed ads carry those).
-function buildPortalPackState(canvases) {
-  const s = JSON.parse(JSON.stringify(state));
+// need, none of the images (the precomputed ads carry those). Its data sheet
+// holds exactly the rows the plan put in the file, so the portal's version
+// picker lists those and nothing else.
+async function buildPortalPackState(canvases, plan = portalPackPlan(), includeSkippedFrames = false) {
+  let s;
+  if (plan.singleRow != null) {
+    // One version: snapshot with that row baked into the layers (and the
+    // clickTag), so the audit list and names describe the version shown, then
+    // drop the sheet — there is nothing to switch between.
+    s = await withPortalPackVersion(plan.entries[0].src, () => JSON.parse(JSON.stringify(state)));
+    if (s.dataMerge) s.dataMerge = { ...s.dataMerge, rows: [], enabled: false, activeVersion: null };
+  } else {
+    s = JSON.parse(JSON.stringify(state));
+    if (s.dataMerge && Array.isArray(s.dataMerge.rows)) {
+      s.dataMerge.rows = plan.rows.map(i => s.dataMerge.rows[i]);
+      s.dataMerge.activeVersion = null;
+    }
+  }
+  // Frames the ads include must also be in the portal's frame picker.
+  if (includeSkippedFrames && Array.isArray(s.frames)) s.frames.forEach(f => { delete f.skip; });
   const keep = new Set(canvases.map(c => c.id));
   s.canvases = s.canvases.filter(c => keep.has(c.id));
   s.assets = {};
@@ -5063,12 +5118,16 @@ async function buildPortalPackShell() {
 }
 
 // Assemble the file in memory. Returns { html, packed, ads }.
-async function buildPortalPackFile(canvases, onProgress) {
+// opts.versions: see portalPackPlan. opts.includeSkippedFrames: the Export
+// dialog's "Skip frames marked as skipped", unticked.
+async function buildPortalPackFile(canvases, onProgress, opts = {}) {
+  const plan = portalPackPlan(opts.versions);
+  const includeSkipped = !!opts.includeSkippedFrames;
   const progress = onProgress || (() => {});
   progress(0.02, 'Reading the preview portal');
   const shell = await buildPortalPackShell();
 
-  const ads = await buildPortalPackAds(canvases, (f, label) => progress(0.08 + f * 0.82, `Rendering ${label}`));
+  const ads = await buildPortalPackAds(canvases, (f, label) => progress(0.08 + f * 0.82, `Rendering ${label}`), plan, includeSkipped);
 
   progress(0.92, 'Packing');
   if (typeof JSZip === 'undefined') throw new Error('JSZip is not loaded.');
@@ -5082,7 +5141,7 @@ async function buildPortalPackFile(canvases, onProgress) {
     appVersion: (typeof getAppVersion === 'function') ? getAppVersion() : '',
     projectName: state.projectName || 'RMIT_ad',
     exportedAt: new Date().toISOString(),
-    state: buildPortalPackState(canvases),
+    state: await buildPortalPackState(canvases, plan, includeSkipped),
     html: htmlZip,
     res: ads.res,
     kb: ads.kb
@@ -5103,7 +5162,7 @@ async function buildPortalPackFile(canvases, onProgress) {
   return { html: page, packed, ads };
 }
 
-async function exportPreviewPortalFile(canvases, filenamePrefix) {
+async function exportPreviewPortalFile(canvases, filenamePrefix, opts = {}) {
   if (!canvases || !canvases.length) { showAdflowAlert('No ads selected.'); return; }
   const safePrefix = (filenamePrefix || state.projectName || 'RMIT_ad').replace(/[^a-zA-Z0-9_-]/g, '_');
   const suggestedName = `${safePrefix}-preview.html`;
@@ -5125,7 +5184,7 @@ async function exportPreviewPortalFile(canvases, filenamePrefix) {
 
   const progress = (typeof showLoadingProgress === 'function') ? showLoadingProgress('Building preview portal…') : null;
   try {
-    const { html } = await buildPortalPackFile(canvases, (f, msg) => progress && progress.setProgress(Math.round(f * 100), msg));
+    const { html } = await buildPortalPackFile(canvases, (f, msg) => progress && progress.setProgress(Math.round(f * 100), msg), opts);
     const blob = new Blob([html], { type: 'text/html' });
     if (handle) {
       const w = await handle.createWritable();

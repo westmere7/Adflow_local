@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.63.2" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.64.0" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.63.2"></script>
+  <script src="lib/jszip.min.js?v=0.64.0"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.63.2" />
+  <link rel="stylesheet" href="styles.css?v=0.64.0" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -190,379 +190,11 @@
       text-decoration: underline;
     }
     
-    .swatches {
-      display: flex;
-      gap: 8px;
-    }
-    
-    .swatch {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 2px solid transparent;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-      transition: transform 0.1s ease;
-    }
-    
-    .swatch:hover {
-      transform: scale(1.1);
-    }
-    
-    .swatch.active {
-      border-color: var(--accent-base);
-    }
-    
-    /* Swatch previews. Each now maps to a REAL app theme from styles.css
-       (the old bespoke "slate" palette had no app equivalent, so it became
-       Nordic), keeping this page inside the editor's design system. */
-    .swatch-adflow   { background: #0b0c0f; }
-    .swatch-light    { background: #f1f5f9; }
-
-    .swatch-chess {
-      background-color: #f1f1f1;
-      background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
-                        linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
-                        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
-                        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
-      background-size: 8px 8px;
-      background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-    }
-    
-    .playback-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    /* Play / Stop / Restart / Static — four equal icon buttons. Layout only,
-       like the rule below: colour and the .primary "current mode" fill come
-       from styles.css. */
-    .playback-icons {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-    .sidebar .playback-icons .btn {
-      height: 34px;
-      padding: 0;
-    }
-    
-    /* Colour, hover, :disabled and .primary all come from styles.css so this
-       portal's buttons ARE the editor's buttons. These rules add only the
-       flex/gap layout the sidebar rows need.
-
-       Scoped, and LAYOUT ONLY, on purpose: an unscoped `.btn` that also set
-       colour would either lose to `.btn.primary` or (once scoped, becoming
-       specificity-equal and later in the cascade) beat it and silently strip
-       the accent fill off every primary button. `flex: none` because these sit
-       in column containers — a growable basis lets flex dictate their height;
-       the side-by-side rows set `flex:1` inline, which still wins. */
-    .sidebar .btn,
-    .main-header .btn {
-      flex: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    /* Empty state — takes the grid's place until something is loaded. */
-    #pv-empty {
-      flex: 1;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 32px;
-      text-align: center;
-      overflow: auto;
-    }
-    #pv-empty.visible { display: flex; }
-    #pv-empty-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-bright);
-      margin-top: 2px;
-    }
-    #pv-empty-sub {
-      font-size: 12px;
-      color: var(--text-muted);
-      max-width: 420px;
-      line-height: 1.5;
-    }
-    #pv-empty-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 8px;
-    }
-    #pv-empty .btn.pv-hero {
-      flex: none;
-      height: 38px;
-      padding: 0 18px;
-      font-size: 12.5px;
-      font-weight: 600;
-    }
-    #pv-empty .btn.pv-hero.primary {
-      box-shadow: 0 2px 14px color-mix(in srgb, var(--accent-base) 42%, transparent);
-    }
-    #pv-empty-hint {
-      font-size: 11px;
-      color: var(--text-muted);
-      opacity: .85;
-    }
-    /* In-place error, so a rejected file never parks the user on a dead screen. */
-    #pv-empty-error {
-      display: none;
-      align-items: flex-start;
-      gap: 7px;
-      max-width: 440px;
-      margin-top: 4px;
-      padding: 9px 12px;
-      text-align: left;
-      font-size: 11.5px;
-      line-height: 1.45;
-      color: var(--text-main);
-      background: color-mix(in srgb, var(--danger-base) 12%, transparent);
-      border: 1px solid color-mix(in srgb, var(--danger-base) 45%, transparent);
-      border-radius: 6px;
-    }
-    #pv-empty-error.visible { display: flex; }
-    #pv-empty-error svg { color: var(--danger-base); }
-
-    /* Main Content Area */
-    .main-viewport {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      overflow: hidden;
-    }
-    
-    .main-header {
-      height: 64px;
-      border-bottom: 1px solid var(--border-color);
-      padding: 0 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    
-    .project-name-title {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-bright);
-    }
-    
-    .canvas-grid {
-      flex: 1;
-      overflow: auto;
-      padding: 24px;
-      position: relative;
-    }
-    
-    /* Card Styles */
-    .card {
-      position: absolute;
-      background: transparent;
-      border: none;
-      border-radius: 0;
-      overflow: visible;
-      box-shadow: none;
-      display: flex;
-      flex-direction: column;
-      transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1), top 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-    
-    .card-header {
-      padding: 0 0 10px 0;
-      border-bottom: none;
-      display: flex;
-      justify-content: flex-start;
-      align-items: center;
-      background: transparent;
-      height: 24px;
-    }
-    
-    .card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-bright);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .badge {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      text-transform: uppercase;
-    }
-    
-    .badge.info {
-      background: rgba(124, 92, 255, 0.15);
-      color: var(--accent-light);
-    }
-    
-    .badge.success {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--success-base);
-    }
-    
-    .badge.warning {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--warning-base);
-      cursor: pointer;
-    }
-    
-    .badge.danger {
-      background: rgba(239, 104, 104, 0.15);
-      color: var(--danger-base);
-    }
-    
-    .card-body {
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      min-height: auto;
-    }
-    
-    /* Checkered banner backdrop, now driven off one body class so cards rebuilt
-       by renderCanvases inherit it instead of silently losing the per-card
-       class. Dark by default; the app's Light theme gets the light checker. */
-    body.preview-checkered .card-body {
-      background-color: #161b22;
-      background-image: linear-gradient(45deg, #21262d 25%, transparent 25%),
-                        linear-gradient(-45deg, #21262d 25%, transparent 25%),
-                        linear-gradient(45deg, transparent 75%, #21262d 75%),
-                        linear-gradient(-45deg, transparent 75%, #21262d 75%);
-      background-size: 16px 16px;
-      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-    }
-    body.preview-checkered.theme-light .card-body {
-      background-color: #f1f1f1;
-      background-image: linear-gradient(45deg, #e0e0e0 25%, transparent 25%),
-                        linear-gradient(-45deg, #e0e0e0 25%, transparent 25%),
-                        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
-                        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
-    }
-    
-    .iframe-wrapper {
-      position: relative;
-      box-shadow: none;
-      border: none;
-      background: transparent;
-    }
-    
-    iframe.preview-iframe {
-      border: none;
-      display: block;
-      overflow: hidden;
-    }
-    
-    .card-audit {
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 10px 16px;
-      background: var(--bg-card);
-      font-size: 11px;
-      display: none;
-      margin-top: 8px;
-    }
-    
-    .card-audit.visible {
-      display: block;
-    }
-    
-    .audit-item {
-      font-size: 11.5px;
-      display: flex;
-      gap: 6px;
-      align-items: flex-start;
-      margin-bottom: 4px;
-      line-height: 1.4;
-    }
-    
-    .audit-item:last-child {
-      margin-bottom: 0;
-    }
-    
-    .audit-bullet {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      margin-top: 5px;
-      flex-shrink: 0;
-    }
-    
-    .audit-bullet.warning { background: var(--warning-base); }
-    .audit-bullet.a11y { background: var(--accent-light); }
-    
-    /* Drag & Drop Overlay */
-    .drag-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(11, 15, 23, 0.9);
-      border: 4px dashed var(--accent-base);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      gap: 16px;
-    }
-    
-    .drag-overlay.active {
-      display: flex;
-    }
-    
-    .drag-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text-bright);
-    }
-    
-    /* Full Portal Loader */
-    .portal-loader {
-      position: fixed;
-      inset: 0;
-      background: #0b0f17;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      gap: 16px;
-      opacity: 1;
-      transition: opacity 0.5s ease;
-    }
-    
-    .spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid var(--accent-base);
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
     /* Packed portal (Export ▸ Preview portal): a single offline file with one
        project baked in. Everything that needs the network or other files —
        downloads (they re-fetch fonts and art), opening another project, the
        third-party ad player, the drop target — is hidden. Set on <html>, not
-       <body>, because applyPreviewAppearance() rewrites body.className. */
+       <body>, so it stays out of the way of the theme class on <body>. */
     html.pv-packed #btn-download-all,
     html.pv-packed #btn-drag-trigger,
     html.pv-packed #drag-overlay,
@@ -588,7 +220,7 @@
     <div id="props"></div>
   </div>
 </head>
-<!-- Default Adflow theme; the sidebar swatches switch it at runtime. -->
+<!-- Always the default Adflow theme. -->
 <body>
 
   <!-- PORTAL LOADING OVERLAY -->
@@ -722,16 +354,6 @@
       </div>
       
 
-      
-      <!-- PRESENTATION THEME -->
-      <div class="control-group">
-        <div class="control-label">Presentation Grid / BG</div>
-        <div class="swatches">
-          <div class="swatch swatch-adflow active" data-theme="default" title="Adflow (default)"></div>
-          <div class="swatch swatch-light" data-theme="light" title="Light"></div>
-          <div class="swatch swatch-chess" data-theme="chess" title="Checkered banner backdrop"></div>
-        </div>
-      </div>
       
     </div>
   </div>
@@ -912,13 +534,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.63.2"></script>
-  <script src="scripts/render-runtime.js?v=0.63.2"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.63.2"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.63.2"></script>
-  <script src="scripts/data-merge.js?v=0.63.2"></script>
-  <script src="scripts/font-subset.js?v=0.63.2"></script>
-  <script src="scripts/export-pipeline.js?v=0.63.2"></script>
+  <script src="scripts/numeric-wheel.js?v=0.64.0"></script>
+  <script src="scripts/render-runtime.js?v=0.64.0"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.64.0"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.64.0"></script>
+  <script src="scripts/data-merge.js?v=0.64.0"></script>
+  <script src="scripts/font-subset.js?v=0.64.0"></script>
+  <script src="scripts/export-pipeline.js?v=0.64.0"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -1109,39 +731,10 @@
       };
     }
     
-    // Theme Management
-    // Presentation swatches. The first two are real app themes applied exactly
-    // the way the editor applies them (canvas-render.js sets body.className to
-    // the single theme class), so this page can't drift from the editor's look.
-    // "Chess" is not a theme — it's a checkered banner backdrop layered over
-    // whichever theme is active, driven by a body class so cards rebuilt by
-    // renderCanvases keep it.
-    let previewTheme = 'default';
-    let previewCheckered = false;
+    // (The Presentation Grid / BG swatches — Adflow, Light and a checkered
+    // backdrop — were removed: the portal always shows the default Adflow
+    // theme, as the batch portal does.)
 
-    function applyPreviewAppearance() {
-      document.body.className = (previewTheme && previewTheme !== 'default') ? 'theme-' + previewTheme : '';
-      if (previewCheckered) document.body.classList.add('preview-checkered');
-    }
-
-    document.querySelectorAll('.swatch').forEach(swatch => {
-      swatch.onclick = () => {
-        const theme = swatch.dataset.theme;
-        if (theme === 'chess') {
-          // Toggles independently of the theme swatches.
-          previewCheckered = !previewCheckered;
-          swatch.classList.toggle('active', previewCheckered);
-        } else {
-          previewTheme = theme;
-          document.querySelectorAll('.swatch').forEach(s => {
-            if (s.dataset.theme !== 'chess') s.classList.remove('active');
-          });
-          swatch.classList.add('active');
-        }
-        applyPreviewAppearance();
-      };
-    });
-    
     // Play / Static only state control
     function setPlayState(playing, triggerReload = true) {
       isPlaying = playing;
@@ -1203,6 +796,25 @@
 
     // Inject a static-freeze stylesheet into every banner so it shows `frameId`
     // with all animations stopped. Used by the Static-only button.
+    // Static mode shows a frame with CSS rather than letting the ad switch to
+    // it, so the repaint the ad does on every real frame change (nextFrame /
+    // adflowPlayFrom set the page and #ad to the frame's background) never
+    // runs. The page keeps the FIRST frame's colour from load (html, body in
+    // the generated ad), and wherever the iframe and the ad box differ by a
+    // fraction of a pixel it shows as a hairline round the banner — red behind
+    // a navy frame 2. So repaint it here, from the frame's own background,
+    // exactly as the runtime would.
+    function paintFrozenFrameBackground(doc, frameId, canvasObj) {
+      if (!doc) return;
+      const fe = doc.getElementById('frame-' + frameId);
+      const bg = (fe && fe.style.background) || (canvasObj ? getCanvasBg(canvasObj, frameId) : '');
+      if (!bg) return;
+      doc.documentElement.style.background = bg;
+      if (doc.body) doc.body.style.background = bg;
+      const adEl = doc.getElementById('ad');
+      if (adEl) adEl.style.background = bg;
+    }
+
     function freezeFrame(frameId) {
       document.querySelectorAll('iframe').forEach(iframe => {
         const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
@@ -1224,13 +836,10 @@
             transition-delay: 0s !important;
           }
         `;
-        // Repaint ad background to match this frame
+        // Repaint the background behind the ad to match this frame.
         const card = iframe.closest('.card');
         const canvasObj = card && state.canvases.find(c => c.id === card.dataset.canvasId);
-        if (canvasObj) {
-          const adEl = doc.getElementById('ad');
-          if (adEl) adEl.style.background = getCanvasBg(canvasObj, frameId);
-        }
+        paintFrozenFrameBackground(doc, frameId, canvasObj);
         if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
           const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
           if (idx !== -1) iframe.contentWindow.updatePersistentLayersVisibility(idx);
@@ -1515,6 +1124,7 @@
             const val = selectFrame.value;
             if (val !== 'play') {
               const frameId = parseInt(val);
+              paintFrozenFrameBackground(iframe.contentDocument, frameId, c);
               if (iframe.contentWindow && iframe.contentWindow.frames && iframe.contentWindow.updatePersistentLayersVisibility) {
                 const idx = iframe.contentWindow.frames.findIndex(f => f.id === frameId);
                 if (idx !== -1) {
@@ -1600,6 +1210,7 @@
           const val = selectFrame.value;
           if (val !== 'play') {
             const frameId = parseInt(val);
+            paintFrozenFrameBackground(newIframe.contentDocument, frameId, c);
             if (newIframe.contentWindow && newIframe.contentWindow.frames && newIframe.contentWindow.updatePersistentLayersVisibility) {
               const idx = newIframe.contentWindow.frames.findIndex(f => f.id === frameId);
               if (idx !== -1) {

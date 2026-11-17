@@ -360,6 +360,11 @@ function renderImmediate(skipProps = false) {
     }
   }
 
+  // "Closest edge" directions follow each layer's position on its own canvas.
+  // After the live-link sweep above, which copies the source's concrete
+  // direction onto its linked copies; this puts each copy's own edge back.
+  if (typeof applyClosestEdgeDirectionsAll === 'function') applyClosestEdgeDirectionsAll(state.canvases);
+
   document.querySelector('.app').classList.toggle('preview-lock', !!(state.isPreviewMode || state.singlePreviewId));
 
   const isolationOutline = document.getElementById('workspace-isolation-outline');

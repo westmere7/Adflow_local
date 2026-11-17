@@ -499,10 +499,9 @@ outside the Settings grid ever read them. The scrollbar block's comment is the
 tell — it was written to brag that one `color-mix` rule covered "all twelve
 themes", which is work that only existed because the themes did.
 
-The Preview Portal's **Presentation Grid / BG** swatches are the same two themes
-applied the same way (`preview.html` sets `body.className` exactly as
-`canvas-render.js` does), plus a **checkered** toggle that is *not* a theme — it
-is a `body.preview-checkered` class layered over whichever theme is active.
+The Preview Portal always shows the default Adflow theme. Its Presentation
+Grid / BG swatches (Adflow, Light and a checkered backdrop) were removed in
+v0.64.0.
 
 ---
 

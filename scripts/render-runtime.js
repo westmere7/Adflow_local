@@ -652,6 +652,73 @@ function riseDirSpec(el) {
   return RISE_DIR_ANIMS[(el && el.riseDirection) || 'up'] || RISE_DIR_ANIMS.up;
 }
 
+// ---- "Closest edge" for every four-direction preset ------------------------
+// Slide, Swipe and Reveal entrances, and Slide and Swipe exits, can each be set
+// to "Closest edge": the layer arrives from (or leaves by) whichever canvas edge
+// its centre is nearest. That is a flag on the layer — inDirClosest for the
+// entrance, exitDirClosest for the exit — while the preset's ordinary direction
+// field keeps holding a real direction, recomputed here from the layer's
+// position on its own canvas. render() runs this on every pass, so moving a
+// layer, resizing it, or a linked copy on another size each get their own
+// edge, and everything that reads directions (playback, timeline, export,
+// both portals) needs no notion of "closest" at all.
+//
+// The presets do not share one convention, hence three maps from the nearest
+// edge to the value each one stores:
+//   moving   Slide in / Swipe in: the direction of travel. Near the left edge
+//            the layer travels right, so it comes in from the left.
+//            Swipe out stores the reverse of its entrance, so it uses this too:
+//            near the right edge it wipes away toward the right.
+//   from     Reveal ("From"): the side it emerges from. Up = Below, Down = Above.
+//   toward   Slide out: the direction it leaves in.
+const CLOSEST_EDGE_DIR = {
+  moving: { left: 'right', right: 'left', top: 'down', bottom: 'up' },
+  from:   { left: 'left',  right: 'right', top: 'down', bottom: 'up' },
+  toward: { left: 'left',  right: 'right', top: 'up',   bottom: 'down' }
+};
+
+// Nearest canvas edge to the layer's centre. Ties resolve left, right, top,
+// bottom — the order the original Slide "closest" used, so files made with it
+// keep their direction.
+function closestCanvasEdge(el, canvas) {
+  const cx = (el.x || 0) + (el.width || 0) / 2;
+  const cy = (el.y || 0) + (el.height || 0) / 2;
+  const d = { left: cx, right: canvas.width - cx, top: cy, bottom: canvas.height - cy };
+  const min = Math.min(d.left, d.right, d.top, d.bottom);
+  return ['left', 'right', 'top', 'bottom'].find(k => d[k] === min);
+}
+
+// Returns true when it changed anything.
+function applyClosestEdgeDirections(el, canvas) {
+  if (!el || !canvas) return false;
+  // Files from before the flag stored Slide's choice as animDirection 'closest'.
+  if (el.animDirection === 'closest') el.inDirClosest = true;
+  if (!el.inDirClosest && !el.exitDirClosest) return false;
+  const edge = closestCanvasEdge(el, canvas);
+  let changed = false;
+  const set = (k, v) => { if (el[k] !== v) { el[k] = v; changed = true; } };
+  if (el.inDirClosest) {
+    const t = el.animType || '';
+    const moving = CLOSEST_EDGE_DIR.moving[edge];
+    if (t.startsWith('swipe-')) set('animType', 'swipe-' + moving);
+    else if (t === 'rise') set('riseDirection', CLOSEST_EDGE_DIR.from[edge]);
+    else if (t.startsWith('slide-')) set('animType', 'slide-' + moving);   // legacy fixed-distance slides
+    if (!t.startsWith('swipe-') && t !== 'rise') set('animDirection', moving);
+  }
+  if (el.exitDirClosest) {
+    set('exitDirection', el.exitType === 'swipe' ? CLOSEST_EDGE_DIR.moving[edge] : CLOSEST_EDGE_DIR.toward[edge]);
+  }
+  return changed;
+}
+
+function applyClosestEdgeDirectionsAll(canvases) {
+  let changed = false;
+  (canvases || []).forEach(c => (c.elements || []).forEach(el => {
+    if (applyClosestEdgeDirections(el, c)) changed = true;
+  }));
+  return changed;
+}
+
 const ANIM_IN_PRESETS = [
   { val: 'none', label: 'None' },
   { val: 'fade-in', label: 'Fade In' },
