@@ -1,6 +1,35 @@
 RMIT Adflow - Version & Changelog History
 
-v0.61.1 (Current) - September 2026 — Engine v3.0
+v0.62.0 (Current) - November 2026 — Engine v3.0
+- Ctrl+S saves over your file. Once a project has been saved to a .flow file, Save to
+  File and Ctrl+S write straight back to that file instead of opening the save dialog
+  every time, with a short "Saved to ..." note. The file is remembered across a reload;
+  the first save after a restart may ask once for permission to edit it.
+- New: File > Save > Save to File As... always asks where to save, starting in the
+  current file's folder. The file you pick becomes the one later saves go to.
+- Saves never land in the wrong file. The remembered file belongs to one project:
+  opening any project, or starting a new one, forgets it, including a copy of a .flow
+  that looks like the same project. Saves go to the file's original location; after
+  moving or renaming it, use Save to File As... to point Adflow at it again. A file
+  that cannot be written at all (its folder is gone) makes Adflow ask where to save
+  instead of failing. Browsers without a native save dialog (Firefox, Safari) still
+  download every save.
+- Hovering a canvas's Preview link no longer draws the selection box, handles, badges,
+  safezones or guides over the playing ad. They come back when you move away.
+- Mac launchers: run-server.command starts Adflow in a browser on a Mac, like
+  run-server.bat on Windows. The Mac desktop app is built for Apple Silicon and Intel on
+  GitHub Actions (Build macOS app), so producing it no longer needs a Mac.
+  MAC-README.txt covers allowing an unsigned app on macOS 15.
+
+v0.61.2 - September 2026 — Engine v3.0
+- [ and ] step to the previous and next frame, stopping at the first and last. With
+  Ctrl/Cmd held they still move the selected layer through the stacking order.
+- One version number everywhere: the footer, splash badge and About box all read the
+  running version from the same place. The new-version banner's button says Update.
+- The Shortcuts dialog and the manual list frame stepping, double-clicking a canvas's
+  size label to zoom to it, and double-clicking a layer or canvas row to rename it.
+
+v0.61.1 - September 2026 — Engine v3.0
 - Dragging is now essentially free. Moving an element no longer rebuilds anything at
   all: the dragged layers, their selection outline and the snap guides are moved
   directly, and the full redraw waits until you let go. A drag that used to cost 62

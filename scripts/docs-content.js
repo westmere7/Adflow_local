@@ -413,7 +413,7 @@ const DOCS_SECTIONS = [
       `},
       { id: 'flow-files', title: '.flow files', body: `
         <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to the browser's IndexedDB database.</p>
-        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>: the browser's native save dialog where it offers one (Chrome, Edge), otherwise a download to your downloads folder.</p>
+        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save to File As…</b> always asks, and the file you pick becomes the one later saves go to. Opening or starting a project forgets the file, so the first save after that asks again. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -552,7 +552,7 @@ const DOCS_SECTIONS = [
           <thead><tr><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Shortcut</th><th style="text-align:left; padding:6px 8px; border-bottom:1px solid var(--border-light);">Action</th></tr></thead>
           <tbody>
           ${[
-            ['Ctrl + S','Save project to a .flow file (native save dialog where available, otherwise a download)'],
+            ['Ctrl + S','Save project to its .flow file (asks the first time, then saves over the same file)'],
             ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
             ['Ctrl + Z / Ctrl + Shift + Z','Undo / Redo'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
@@ -863,6 +863,26 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.62.0',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Ctrl+S Saves Over Your File: once a project has been saved to a .flow file, Save to File and Ctrl+S write straight back to that same file instead of opening the save dialog every time. A short “Saved to …” note says where it went. The file is remembered across a reload, so closing and reopening Adflow does not lose it; the first save after a restart may ask once for permission to edit the file.",
+      "New: Save to File As…: File ▸ Save ▸ Save to File As… always asks where to save, opening in the folder of the current file. Whatever you pick becomes the file later saves go to, which is how you keep a copy, or start a new version alongside the old one.",
+      "Saves Never Land in the Wrong File: the remembered file belongs to one project. Opening any project, or starting a new one, forgets it, so the first save after that asks again. That holds even for a copy of a .flow, which would otherwise look like the same project. Saves go to the file's original location: if you have moved or renamed it, use Save to File As… to point Adflow at it again. If the file cannot be written at all, for example because its folder is gone, Adflow asks where to save rather than failing. Browsers without a native save dialog (Firefox, Safari) still download every save, as before.",
+      "Hover Preview Hides the Editor Chrome: pointing at a canvas's own Preview link plays that ad in place, but the selection box, its handles, the link and data badges, safezones and guides stayed drawn on top of it. They are hidden now while the preview plays and come back the moment you move away.",
+      "Mac Launchers: run-server.command starts Adflow in your browser on a Mac, the same as run-server.bat on Windows. The Mac desktop app is now built for both Apple Silicon and Intel on GitHub's own Macs (Actions ▸ Build macOS app), so it no longer needs a Mac to produce. MAC-README.txt covers the macOS 15 way of allowing an unsigned app."
+    ]
+  },
+  {
+    version: 'v0.61.2',
+    date: 'September 2026 — Engine v3.0',
+    items: [
+      "[ and ] Step Through Frames: the bracket keys move to the previous and next frame and stop at the first and last. With Ctrl or Cmd held they still move the selected layer through the stacking order.",
+      "One Version Number Everywhere: the footer, the splash badge and the About box all read the running version from the same place, so they can no longer disagree with each other or with what is installed. The new-version banner's button now says Update.",
+      "Shortcuts Reference Catches Up: the Shortcuts dialog and this manual now list frame stepping, double-clicking a canvas's size label to zoom to it, and double-clicking a layer or canvas row to rename it."
+    ]
+  },
   {
     version: 'v0.61.1',
     date: 'September 2026 — Engine v3.0',

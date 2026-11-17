@@ -174,26 +174,120 @@ async function buildFlowBlob(isTemplate = false, opts = {}) {
   return { blob, exportState, savedAt, suggestedName };
 }
 
-async function saveProjectAsFlow() {
+// ---------------------------------------------------------------------------
+// The project's own .flow file
+// ---------------------------------------------------------------------------
+// Once a project has been saved to a file, Save to File and Ctrl+S write straight
+// back to that file instead of asking every time. File ▸ Save ▸ Save to File As…
+// always asks, and the file it picks becomes the new one.
+//
+// The handle lives in IndexedDB beside the autosave, so it survives a reload just
+// as the project does. It is keyed to state.projectId so another project can
+// never write into it, and opening any project forgets it outright, because a
+// copy of a .flow carries the same projectId as the file it was copied from.
+//
+// File System Access API only (Chromium and the desktop app). Without it every
+// save is a download, as before: a download cannot overwrite anything.
+const FLOW_FILE_IDB_KEY = 'flow-file-handle';
+let _flowFile = null;          // { projectId, handle, name } once known
+let _flowFileLoaded = false;   // IndexedDB read at most once per page load
+
+async function getProjectFlowFile() {
+  if (!_flowFileLoaded) {
+    _flowFileLoaded = true;
+    try { _flowFile = (await _idbGet(FLOW_FILE_IDB_KEY)) || null; } catch (e) { _flowFile = null; }
+  }
+  if (!_flowFile || !_flowFile.handle || _flowFile.projectId !== state.projectId) return null;
+  return _flowFile;
+}
+
+async function rememberProjectFlowFile(handle) {
+  _flowFile = { projectId: state.projectId, handle, name: handle.name };
+  _flowFileLoaded = true;
+  try { await _idbPut(FLOW_FILE_IDB_KEY, _flowFile); }
+  catch (e) { console.warn('Could not remember the project file:', e); }
+}
+
+function forgetProjectFlowFile() {
+  _flowFile = null;
+  _flowFileLoaded = true;
+  _idbPut(FLOW_FILE_IDB_KEY, null).catch(() => {});
+}
+
+// A handle restored from IndexedDB starts without write permission. Asking needs
+// the user's keypress or click still to be "fresh", which is why the save asks
+// before building the .flow rather than after.
+async function _canWriteFlowFile(handle) {
+  const opts = { mode: 'readwrite' };
+  try {
+    if (handle.queryPermission && (await handle.queryPermission(opts)) === 'granted') return true;
+    if (handle.requestPermission && (await handle.requestPermission(opts)) === 'granted') return true;
+  } catch (e) { /* no permission API, or the prompt was refused: ask with the picker */ }
+  return false;
+}
+
+async function _writeFlowBlob(handle, blob) {
+  const writable = await handle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
+// opts.saveAs — always show the save dialog (File ▸ Save ▸ Save to File As…).
+// Menu listeners pass a click Event here, which has no saveAs, so they save.
+async function saveProjectAsFlow(opts) {
+  const saveAs = !!(opts && opts.saveAs === true);
+  const canPick = !!window.showSaveFilePicker;
+
+  let remembered = null;
+  let target = null;
+  if (canPick) {
+    remembered = await getProjectFlowFile();
+    if (remembered && !saveAs && await _canWriteFlowFile(remembered.handle)) target = remembered.handle;
+  }
+
   let built;
   try { built = await buildFlowBlob(); }
   catch (e) { showAdflowAlert(e.message || 'Save failed'); return; }
   const { blob, exportState, suggestedName } = built;
 
-  if (window.showSaveFilePicker) {
+  if (canPick) {
+    let handle = null;
+    if (target) {
+      try {
+        await _writeFlowBlob(target, blob);
+        handle = target;
+      } catch (e) {
+        // Unwritable now (folder gone, locked, permission revoked). Forget it and
+        // ask. A file merely deleted is recreated at its old path by the browser,
+        // so that case never reaches here.
+        console.warn(`Could not save to ${target.name}, asking where to save instead:`, e);
+        forgetProjectFlowFile();
+        remembered = null;
+      }
+    }
     try {
-      const handle = await window.showSaveFilePicker({
-        types: [{ description: 'Ad Flow Project', accept: { 'application/octet-stream': ['.flow'] } }],
-        suggestedName
-      });
-      const writable = await handle.createWritable();
-      await writable.write(blob);
-      await writable.close();
+      if (!handle) {
+        const pickerOpts = {
+          types: [{ description: 'Ad Flow Project', accept: { 'application/octet-stream': ['.flow'] } }],
+          suggestedName
+        };
+        // Save As opens in the folder of the file it is replacing.
+        if (remembered) pickerOpts.startIn = remembered.handle;
+        handle = await window.showSaveFilePicker(pickerOpts);
+        await _writeFlowBlob(handle, blob);
+      }
+      await rememberProjectFlowFile(handle);
       await addRecentProject(exportState);
       _fileSaveStatus = 'saved';
       _lastFileSaveTime = new Date();
       updateSaveStatusUI();
-    } catch (e) { if (e.name !== 'AbortError') console.error('Save failed:', e); }
+      // No dialog appeared, so say where it went.
+      if (handle === target) showCanvasNotification(`Saved to ${handle.name}`, { type: 'success' });
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.error('Save failed:', e);
+      showCanvasNotification('Could not save the file: ' + (e.message || e), { type: 'error' });
+    }
   } else {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -384,6 +478,8 @@ async function loadProjectFromState(loadedState) {
 
   Object.assign(state, loadedState);
   delete state.isTemplate;
+  // A different project, or another copy of this one: the next Save to File asks.
+  forgetProjectFlowFile();
   // Snapshots written by the cloud-era build may carry share pointers and cloud
   // stamps; none of them mean anything in the local edition.
   stripLegacyCloudFields(state);
@@ -511,6 +607,10 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     progress.setProgress(95, 'Syncing application assets...');
     Object.assign(state, loadedState);
     delete state.isTemplate; // Always ensure isTemplate is removed at runtime
+    // Opening a file never adopts it as the save target: it may be a template, a
+    // legacy .cook/.zip, or a copy that shares this projectId with another file.
+    // The first Save to File after opening asks; later ones reuse that answer.
+    forgetProjectFlowFile();
     // Files written by the cloud-era build may carry share pointers and cloud
     // stamps; none of them mean anything in the local edition.
     stripLegacyCloudFields(state);
@@ -717,6 +817,7 @@ document.getElementById('menu-file-save-browser').addEventListener('click', asyn
   showCanvasNotification('Project saved to browser', { type: 'success' });
 });
 document.getElementById('menu-file-save-file').addEventListener('click', saveProjectToZip);
+document.getElementById('menu-file-save-file-as').addEventListener('click', () => saveProjectAsFlow({ saveAs: true }));
 document.getElementById('menu-file-save-template').addEventListener('click', saveTemplateAsFlow);
 // Arrow wrappers: these two live in project-dialogs.js which loads AFTER this
 // file — referencing them directly here throws at load time and kills all the

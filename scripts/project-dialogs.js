@@ -2511,7 +2511,7 @@ document.getElementById('menu-help-shortcuts').addEventListener('click', () => {
     </style>
     <table class="shortcuts-table">
       <tr class="shortcuts-sec"><td colspan="2">Saving &amp; history</td></tr>
-      <tr><td><b>Save to File (.flow)</b> <span style="color:var(--text-muted);">(native save dialog where the browser has one, otherwise a download)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
+      <tr><td><b>Save to File (.flow)</b> <span style="color:var(--text-muted);">(asks once, then saves over the same file; Save to File As… in the menu picks another)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Save to browser database</b> <span style="color:var(--text-muted);">(silent IndexedDB force-save)</span></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Shift</span> + <span class="kbd">S</span></td></tr>
       <tr><td><b>Undo</b></td><td style="text-align: right;"><span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
       <tr><td><b>Redo</b></td><td style="text-align: right;"><span class="kbd">⇧</span> + <span class="kbd">⌘ / Ctrl</span> + <span class="kbd">Z</span></td></tr>
