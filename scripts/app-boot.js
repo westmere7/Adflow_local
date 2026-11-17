@@ -1992,7 +1992,7 @@ let _appUpdatePollTimer = null;
 // Do not put a version string anywhere else. Three of them had already drifted
 // apart when this was written.
 // ---------------------------------------------------------------------------
-const APP_VERSION_FALLBACK = 'v0.64.0';
+const APP_VERSION_FALLBACK = 'v0.64.1';
 
 function getAppVersion() {
   return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;

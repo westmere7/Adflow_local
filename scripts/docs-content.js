@@ -873,6 +873,15 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.64.1',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Preview Portal Layout Restored: v0.64.0 removed the backdrop swatches' styles along with a large part of the page's own layout, so the Preview Portal, and any preview file exported from v0.64.0, opened as an unstyled column. The layout is back exactly as it was. Re-export any preview file made with v0.64.0.",
+      "A Data Version No Longer Leaks Into Your Layers: opening the Export dialog, or the size badges and image checks that run in the background, could leave a data version's text, image or clickTag written into the template layers, and move the active version, because several of them baked rows in at the same time and undid each other's work in the wrong order. Baking a version is now one at a time: runs for the same version share one bake, runs for another version wait their turn, and the layers always return to exactly what they were.",
+      "No Warnings in the Preview Portal: the per-banner warning badges and their audit list are gone. The portal is for looking at the ads; the checks live in the editor's Validation and Audit, where they can be fixed."
+    ]
+  },
+  {
     version: 'v0.64.0',
     date: 'November 2026 — Engine v3.0',
     items: [

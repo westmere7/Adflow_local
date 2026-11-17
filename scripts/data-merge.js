@@ -797,16 +797,55 @@ function dmBakeRow(rowIdx) {
 // bundling step). It also points activeVersion at the row so the synchronous bake
 // inside generateExportHTML targets the same row (nested = balanced). activeVersion is
 // restored afterwards so the editor's current selection is untouched.
-async function dmRunExport(rowIdx, fn) {
+//
+// rowIdx: a row index, or null for "whatever is active" (callers pass
+// dmActiveRowForOutput()). opts.template: run against the template, with no
+// row, even when a version is active.
+//
+// ONE BAKE AT A TIME. A bake writes the row's values into the live elements
+// and remembers what was there; restoring writes that back. Two runs that
+// overlap across an await (the Export dialog sizes every canvas in parallel;
+// the size badges and image scans run in the background) used to interleave:
+// the second remembered the FIRST run's baked values as "the original", the
+// first restored the template, then the second restored the row — leaving a
+// version's text, images and clickTag written into the layers, and the
+// active version moved. So all runs share one bake:
+//   same row as the bake in progress  → join it (no second bake)
+//   a different row                   → wait until it has finished
+// The bake is undone, and activeVersion put back, when the last run sharing
+// it finishes. Nesting works for the same row (the common case: a run that
+// measures a zip calls dmRunExport again for that row). Never nest a
+// DIFFERENT row inside a run: it would wait for its own caller.
+let _dmBake = null;   // { row, depth, savedActive, restore, idle, release }
+
+async function dmRunExport(rowIdx, fn, opts = {}) {
   const dm = state.dataMerge;
   // Projects saved before data-merge existed (and hand-built files) have no
   // dataMerge block at all — there is nothing to bake, so just run the body.
   if (!dm) return await fn();
-  const savedActive = dm.activeVersion;
-  if (rowIdx != null) dm.activeVersion = rowIdx;
-  const restore = (dm.enabled && dm.activeVersion != null) ? dmBakeRow(dm.activeVersion) : null;
-  try { return await fn(); }
-  finally { if (restore) restore(); dm.activeVersion = savedActive; }
+  const target = opts.template ? null : (rowIdx != null ? rowIdx : dm.activeVersion);
+  while (_dmBake && _dmBake.row !== target) await _dmBake.idle;
+  if (_dmBake) {
+    _dmBake.depth++;
+  } else {
+    let release;
+    const idle = new Promise(r => { release = r; });
+    const savedActive = dm.activeVersion;
+    dm.activeVersion = target;
+    const restore = (dm.enabled && target != null) ? dmBakeRow(target) : null;
+    _dmBake = { row: target, depth: 1, savedActive, restore, idle, release };
+  }
+  try {
+    return await fn();
+  } finally {
+    const b = _dmBake;
+    if (b && --b.depth === 0) {
+      _dmBake = null;
+      if (b.restore) b.restore();
+      dm.activeVersion = b.savedActive;
+      b.release();
+    }
+  }
 }
 function dmActiveRowForOutput() {
   const dm = state.dataMerge;

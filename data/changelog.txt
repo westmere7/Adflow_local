@@ -1,6 +1,17 @@
 RMIT Adflow - Version & Changelog History
 
-v0.64.0 (Current) - November 2026 — Engine v3.0
+v0.64.1 (Current) - November 2026 — Engine v3.0
+- Preview Portal layout restored. v0.64.0 removed much of the page's own layout CSS
+  along with the backdrop swatches, so the portal (and preview files exported from
+  v0.64.0) opened unstyled. Re-export any preview file made with v0.64.0.
+- A data version no longer leaks into the template layers. Opening the Export dialog,
+  or the background size badges and image checks, could leave a version's text, image
+  or clickTag written into the layers and move the active version, because concurrent
+  runs undid each other's bakes out of order. Version bakes are now one at a time:
+  same-version runs share one bake, other versions wait.
+- Preview Portal no longer shows per-banner warning badges or audit lists.
+
+v0.64.0 - November 2026 — Engine v3.0
 - Closest edge for every directional animation: Slide, Swipe and Reveal entrances and
   Slide and Swipe exits all offer it (only Slide's entrance did before). The layer comes
   in from, or leaves by, its nearest canvas edge and follows the layer as it moves;

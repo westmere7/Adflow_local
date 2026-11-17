@@ -3808,14 +3808,14 @@ function openExportModal() {
     for (let vIdx of versionIndices) {
       if (isCancelled) return;
       
-      const savedActive = dm ? dm.activeVersion : null;
-      if (dm && vIdx != null) dm.activeVersion = vIdx;
-      const restore = (dm && dm.enabled && dm.activeVersion != null) ? dmBakeRow(vIdx) : null;
-      
-      try {
+      // Through dmRunExport, not a hand-held dmBakeRow: the bake is held across
+      // awaits here, and only dmRunExport's lock stops other runs (size badges,
+      // image scans) interleaving with it and leaving a row written into the
+      // layers. null = the template, as the progress label says.
+      await dmRunExport(vIdx, async () => {
         for (let canvas of selectedCanvases) {
           if (isCancelled) return;
-          
+
           scannedCount++;
           const pct = Math.round((scannedCount / totalCombinations) * 30);
           const verName = vIdx !== null ? `Version ${vIdx + 1}` : 'Template';
@@ -3834,10 +3834,7 @@ function openExportModal() {
             }
           }
         }
-      } finally {
-        if (restore) restore();
-        if (dm) dm.activeVersion = savedActive;
-      }
+      }, { template: vIdx == null });
     }
 
     if (isCancelled) return;
@@ -4583,9 +4580,10 @@ function runAllVersionsValidator() {
     if (bar) bar.style.width = `${progressPct}%`;
     if (txt) txt.textContent = `Auditing Row ${currentIdx + 1} of ${totalRows}: "${rowName}"...`;
 
-    // Bake row elements temporarily
-    const restore = dmBakeRow(currentIdx);
-    try {
+    // Bake the row for the duration of the checks — through dmRunExport, so the
+    // bake is shared with the zip measurement below (same row) and can't
+    // interleave with any other run.
+    await dmRunExport(currentIdx, async () => {
       for (const c of state.canvases) {
         const ctCol = dm.mappings['clicktag::url'];
         const ct = (ctCol && row[ctCol]) ? row[ctCol] : (state.clickTag || 'No clickTag');
@@ -4650,9 +4648,7 @@ function runAllVersionsValidator() {
           });
         }
       }
-    } finally {
-      restore();
-    }
+    });
 
     currentIdx++;
     setTimeout(processNextRow, 30);
@@ -4924,12 +4920,10 @@ function findPortalPackRelativeRefs(html) {
 // way the portal's version switcher sets it. dmRunExport alone would leave the
 // editor's current version in place for null.
 async function withPortalPackVersion(versionIdx, fn) {
-  const dm = state.dataMerge;
-  if (!dm) return await fn();
-  const saved = dm.activeVersion;
-  dm.activeVersion = versionIdx;
-  try { return await dmRunExport(versionIdx, fn); }
-  finally { dm.activeVersion = saved; }
+  // template:true for null, so the template really is the template even while
+  // the editor has a version active — dmRunExport(null) alone means "whatever
+  // is active". Going through dmRunExport keeps this inside its one-bake lock.
+  return await dmRunExport(versionIdx, fn, { template: versionIdx == null });
 }
 
 // The versions the portal can show. Its lookup key uses the same expression
