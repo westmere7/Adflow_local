@@ -864,6 +864,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.62.1',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Canvas Labels and Buttons Stay the Same Size at Any Zoom: the size label, the auto-arrange button, the frame controls and the Preview link under each canvas used to scale with the workspace — too small to read when zoomed out, oversized when zoomed in. They now stay the same size on screen whatever the zoom, still pinned to the canvas edges. The canvases themselves do not move on the board as you zoom.",
+      "Auto-Arrange and Preview Are Easier to See: both were drawn in the dimmest text colour and read as disabled against the dark board. They are now a step brighter, go fully bright on hover, and follow the Light theme properly instead of using a fixed dark-theme grey."
+    ]
+  },
+  {
     version: 'v0.62.0',
     date: 'November 2026 — Engine v3.0',
     items: [

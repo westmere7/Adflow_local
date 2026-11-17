@@ -2610,7 +2610,38 @@ body.theme-light {
     }
 
 
+    /* The header box reserves a fixed 28px of BOARD space above the canvas (the
+       old 22px row + 6px gap), so a canvas never moves on the board as you zoom.
+       What you see is .canvas-chrome inside it, counter-zoomed to stay the same
+       size on screen — see wrapCanvasChrome() in canvas-render.js. */
     .canvas-header {
+
+      position: relative;
+
+      height: 28px;
+
+      cursor: move;
+
+      user-select: none;
+
+    }
+
+
+    .canvas-chrome {
+
+      position: absolute;
+
+      left: 0;
+
+      right: 0;
+
+      bottom: 0;
+
+      height: 28px;
+
+      padding-bottom: 6px;
+
+      box-sizing: border-box;
 
       display: flex;
 
@@ -2618,9 +2649,9 @@ body.theme-light {
 
       gap: 8px;
 
-      height: 22px;
+      white-space: nowrap;
 
-      margin-bottom: 6px;
+      zoom: calc(1 / var(--z, 1));
 
       font-size: 10px;
 
@@ -2664,7 +2695,36 @@ body.theme-light {
     }
 
 
-    .canvas-frame.active .canvas-header::before {
+    /* Below the canvas, so counter-zooming it directly moves nothing. */
+    .canvas-footer {
+
+      zoom: calc(1 / var(--z, 1));
+
+      white-space: nowrap;
+
+    }
+
+
+    /* Auto-arrange (header) and Preview / Back (footer). They were --text-muted,
+       which on the dark board read as disabled; --text-label is one step up and
+       still quieter than the size label. Hover goes to full brightness. */
+    .canvas-auto-align-btn,
+    .single-preview-btn {
+
+      color: var(--text-label);
+
+    }
+
+
+    .canvas-auto-align-btn:hover,
+    .single-preview-btn:hover {
+
+      color: var(--text-bright);
+
+    }
+
+
+    .canvas-frame.active .canvas-chrome::before {
 
       content: '';
 

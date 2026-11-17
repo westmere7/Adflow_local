@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.62.0 (Current) - November 2026 — Engine v3.0
+v0.62.1 (Current) - November 2026 — Engine v3.0
+- The size label, auto-arrange button, frame controls and Preview link around each
+  canvas stay the same size on screen at any zoom level, instead of shrinking when
+  zoomed out and growing when zoomed in. Canvases do not move on the board as you zoom.
+- Auto-arrange and Preview are a step brighter (they read as disabled before), go
+  fully bright on hover, and follow the Light theme instead of a fixed dark grey.
+
+v0.62.0 - November 2026 — Engine v3.0
 - Ctrl+S saves over your file. Once a project has been saved to a .flow file, Save to
   File and Ctrl+S write straight back to that file instead of opening the save dialog
   every time, with a short "Saved to ..." note. The file is remembered across a reload;

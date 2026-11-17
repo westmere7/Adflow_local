@@ -931,7 +931,7 @@ function previewFrameNode(c) {
   titleSpan.innerHTML = `<span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span><span class="dim" style="margin-left:8px;">&bull; <span style="color:var(--accent-base); font-size:12px; font-weight:700;">${kb} KB</span></span>`;
 
   header.appendChild(titleSpan);
-  frame.appendChild(header);
+  frame.appendChild(wrapCanvasChrome(header));
 
   const canvas = document.createElement('div');
   canvas.className = 'canvas';
@@ -981,6 +981,7 @@ function previewFrameNode(c) {
   frame.appendChild(canvas);
 
   const footer = document.createElement('div');
+  footer.className = 'canvas-footer';
   footer.style.display = 'flex';
   footer.style.justifyContent = 'flex-start';
   footer.style.marginTop = '6px';
@@ -1191,6 +1192,32 @@ function startGuideDrag(e, type, existingGuideId = null) {
   onMove(e);
 }
 
+// ============================================================================
+// Canvas chrome stays the same size on screen at every zoom level.
+// ----------------------------------------------------------------------------
+// The workspace is scaled with CSS `zoom`, so anything inside it grows and
+// shrinks with the zoom level. That is right for the ads and wrong for the
+// interface around them: the size label, the auto-arrange button, the frame
+// controls and the Preview link were unreadable when zoomed out and huge when
+// zoomed in. Both get `zoom: calc(1 / var(--z))` in styles.css, which cancels
+// the workspace zoom (render() keeps --z equal to it).
+//
+// The FOOTER can be counter-zoomed directly: it sits below the canvas, so its
+// size moves nothing. The HEADER cannot: it sits ABOVE the canvas in the frame's
+// normal flow, so if its height changed with zoom, every canvas would slide up
+// and down on the board as you zoomed. So the header box keeps a fixed 28px of
+// board space, and its contents go into this absolutely positioned
+// `.canvas-chrome`, anchored to the canvas's top edge and counter-zoomed. At
+// low zoom it simply grows upward out of that box.
+// ============================================================================
+function wrapCanvasChrome(header) {
+  const chrome = document.createElement('div');
+  chrome.className = 'canvas-chrome';
+  while (header.firstChild) chrome.appendChild(header.firstChild);
+  header.appendChild(chrome);
+  return header;
+}
+
 function canvasFrameNode(c) {
   const frame = document.createElement('div');
   let frameClass = 'canvas-frame';
@@ -1213,7 +1240,8 @@ function canvasFrameNode(c) {
   if (!isSinglePreview) {
     const autoAlignBtn = document.createElement('button');
     autoAlignBtn.className = "canvas-auto-align-btn";
-    autoAlignBtn.style.cssText = "background:none; border:none; cursor:pointer; color:var(--text-muted); display:flex; align-items:center; justify-content:center; transition:color 0.15s; padding:2px; margin:0; margin-left:auto;";
+    // Colour (rest + hover) lives in styles.css so it follows the theme.
+    autoAlignBtn.style.cssText = "background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:color 0.15s; padding:2px; margin:0; margin-left:auto;";
     autoAlignBtn.innerHTML = `
       <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -1227,8 +1255,6 @@ function canvasFrameNode(c) {
       e.stopPropagation();
       runAutoArrange(c.id);
     });
-    autoAlignBtn.onmouseover = () => autoAlignBtn.style.color = '#fff';
-    autoAlignBtn.onmouseout = () => autoAlignBtn.style.color = '#5a6178';
     header.appendChild(autoAlignBtn);
   }
   header.addEventListener('mousedown', (e) => {
@@ -1263,7 +1289,7 @@ function canvasFrameNode(c) {
     onCanvasHeaderDrag(e, c);
   });
 
-  frame.appendChild(header);
+  frame.appendChild(wrapCanvasChrome(header));
 
   if (state.singlePreviewId && !isSinglePreview) {
     frame.style.opacity = '0.3';
@@ -1690,6 +1716,7 @@ function canvasFrameNode(c) {
 
   // Single preview footer
   const footer = document.createElement('div');
+  footer.className = 'canvas-footer';
   footer.style.marginTop = '6px';
   footer.style.display = 'flex';
   footer.style.justifyContent = 'space-between';
@@ -1721,11 +1748,10 @@ function canvasFrameNode(c) {
 
   const rightSideBtn = document.createElement('button');
   rightSideBtn.className = "single-preview-btn";
-  rightSideBtn.style.cssText = "background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:9px; text-decoration:underline; font-weight:500; transition:color 0.15s; padding:0;";
+  // Colour (rest + hover) lives in styles.css so it follows the theme.
+  rightSideBtn.style.cssText = "background:none; border:none; cursor:pointer; font-size:9px; text-decoration:underline; font-weight:500; transition:color 0.15s; padding:0;";
   rightSideBtn.innerHTML = isSinglePreview ? 'Back' : 'Preview';
   rightSideBtn.title = isSinglePreview ? 'Go back to edit mode' : 'Preview interactive animation for this canvas';
-  rightSideBtn.onmouseover = () => rightSideBtn.style.color = '#9aa1b6';
-  rightSideBtn.onmouseout = () => rightSideBtn.style.color = '#5a6178';
   // With hover preview armed, pointing at this link plays THIS canvas in place —
   // the per-canvas counterpart of pointing at "Full preview" (see
   // startCanvasHoverPreview in toolbar-import.js, which loads after this file,
