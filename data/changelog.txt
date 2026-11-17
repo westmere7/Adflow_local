@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.0 (Current) - November 2026 — Engine v3.0
+v0.65.1 (Current) - November 2026 — Engine v3.0
+- Export header tidied: Filename prefix, Format, Ad server and Data version in one row
+  of equal columns (label, control, note), controls on one line. Ad server stays in
+  place, dimmed, outside HTML5 ZIP. Data version list first, Single / All Selected as
+  two options beneath it. Video and GIF settings open as their own row.
+
+v0.65.0 - November 2026 — Engine v3.0
 - Export for Adobe Advertising: new Ad server setting in the Export dialog (HTML5 ZIP).
   Standard clickTag is unchanged (CM360, DV360, most ad servers). Adobe Advertising
   follows Adobe's HTML5 creative spec: AMOLibrary.js on the first line of <head>,

@@ -882,6 +882,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.65.1',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Tidier Export Header: Filename prefix, Format, Ad server and Data version now sit in one row of equal columns, each a label, a control and a short note, with every control on the same line. Ad server has its own column instead of hanging under Format; outside HTML5 ZIP it stays in place, dimmed, so changing the format never reshuffles the header. The data version list comes first, with Single Version and All Selected Versions as two options on one line beneath it. Video and GIF settings open as their own row under the header."
+    ]
+  },
+  {
     version: 'v0.65.0',
     date: 'November 2026 — Engine v3.0',
     items: [

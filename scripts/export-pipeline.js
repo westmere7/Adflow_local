@@ -3525,53 +3525,59 @@ function openExportModal() {
     <!-- Header: filename, format, skip-frames toggle, version (when data
          versions exist). The filename is a build-time override only —
          it doesn't touch state.projectName. -->
-    <div style="display:grid; grid-template-columns: ${hasVersions ? '1.2fr 1fr 1.1fr' : '1.4fr 1fr'}; gap:14px; margin-bottom:14px;">
+    <!-- One row of equal columns, each the same shape: label, a 30px control,
+         a short note. Ad server keeps its column for every format (disabled
+         outside HTML5 ZIP) so switching format never reflows the header. -->
+    <style>
+      .exp-head { display:grid; grid-template-columns:repeat(${hasVersions ? 4 : 3}, minmax(0, 1fr)); gap:16px; align-items:start; margin-bottom:14px; }
+      .exp-head > div { min-width:0; transition:opacity .15s; }
+      .exp-head .exp-lbl { display:block; font-size:11px; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em; white-space:nowrap; }
+      .exp-head .exp-ctl { display:block; width:100%; height:30px; box-sizing:border-box; padding:0 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit; }
+      .exp-head .exp-note { font-size:10px; color:var(--text-muted); margin-top:5px; line-height:1.4; }
+      .exp-head .exp-modes { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:6px; }
+      .exp-head .exp-modes label { display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; color:var(--text-main); white-space:nowrap; }
+      .exp-head .exp-modes input { margin:0; }
+      .exp-head .is-off { opacity:.45; }
+    </style>
+    <div class="exp-head">
       <div>
-        <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Filename prefix</label>
-        <input type="text" id="exp-filename" value="${defaultPrefix}" placeholder="${defaultPrefix}" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; font-family:ui-monospace,Consolas,monospace;" title="Just renames the download files. Does NOT change the project name." />
-        <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Each file is named <code style="background:var(--bg-input); padding:1px 4px; border-radius:3px;">prefix_WxH</code>. Renaming here doesn't change the project name.</div>
+        <label class="exp-lbl" for="exp-filename">Filename prefix</label>
+        <input type="text" class="exp-ctl" id="exp-filename" value="${defaultPrefix}" placeholder="${defaultPrefix}" style="font-family:ui-monospace,Consolas,monospace;" title="Just renames the download files. Does NOT change the project name." />
+        <div class="exp-note">Files are named <code style="background:var(--bg-input); padding:1px 4px; border-radius:3px;">prefix_WxH</code>. The project name doesn't change.</div>
       </div>
       <div>
-        <label for="exp-format" style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Format</label>
-        <select id="exp-format" title="What to produce for each selected size" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;">
+        <label class="exp-lbl" for="exp-format">Format</label>
+        <select class="exp-ctl" id="exp-format" title="What to produce for each selected size">
           <option value="zip" selected>HTML5 ZIP</option>
           <option value="png">PNG (static)</option>
           <option value="video">Video (MP4)</option>
           <option value="gif">Animated GIF</option>
           <option value="portal">Preview portal (single HTML file)</option>
         </select>
-        <div id="exp-format-note" style="font-size:10px; color:var(--text-muted); margin-top:4px;">A self-contained HTML5 package per size — the standard ad-server deliverable.</div>
-        <div id="exp-adserver-wrap" style="margin-top:8px;">
-          <label for="exp-adserver" style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Ad server</label>
-          <select id="exp-adserver" title="Which ad server the HTML5 ZIP is built for. Remembered for next time." style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit;">
-            <option value="standard" ${getExportAdServer() === 'standard' ? 'selected' : ''}>Standard clickTag</option>
-            <option value="adobe" ${getExportAdServer() === 'adobe' ? 'selected' : ''}>Adobe Advertising</option>
-          </select>
-          <div id="exp-adserver-note" style="font-size:10px; color:var(--text-muted); margin-top:4px; line-height:1.35;"></div>
-        </div>
-        <div id="exp-video-opts" style="display:none; margin-top:6px;">${typeof buildVideoSettingsHTML === 'function' ? buildVideoSettingsHTML('exp') : ''}</div>
+        <div class="exp-note" id="exp-format-note">A self-contained HTML5 package per size — the standard ad-server deliverable.</div>
+      </div>
+      <div id="exp-adserver-wrap">
+        <label class="exp-lbl" for="exp-adserver">Ad server</label>
+        <select class="exp-ctl" id="exp-adserver" title="Which ad server the HTML5 ZIP is built for. Remembered for next time.">
+          <option value="standard" ${getExportAdServer() === 'standard' ? 'selected' : ''}>Standard clickTag</option>
+          <option value="adobe" ${getExportAdServer() === 'adobe' ? 'selected' : ''}>Adobe Advertising</option>
+        </select>
+        <div class="exp-note" id="exp-adserver-note"></div>
       </div>
       ${hasVersions ? `
       <div>
-        <label style="display:block; font-size:11px; color:var(--text-muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:.04em;">Data version</label>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-main);">
-            <input type="radio" name="exp-version-mode" value="single" checked title="Export only the data version currently showing" style="margin:0;" />
-            <span>Single Version</span>
-          </label>
-          <select id="exp-version" style="width:100%; padding:6px 8px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; outline:none; font-family:inherit; margin-left:18px; width:calc(100% - 18px);" title="Pick which data row to bake into the export.">
-            ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
-          </select>
-          
-          <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px; font-weight:600; color:var(--text-main); margin-top:2px;">
-            <input type="radio" name="exp-version-mode" value="all" title="Export every row of the data sheet, each as its own set of banners" style="margin:0;" />
-            <span>All Selected Versions (${selectedCount})</span>
-          </label>
+        <label class="exp-lbl" for="exp-version">Data version</label>
+        <select class="exp-ctl" id="exp-version" title="Pick which data row to bake into the export.">
+          ${dm.rows.map((row, i) => `<option value="${i}" ${i === activeVersionIdx ? 'selected' : ''}>${(versionLabel(i) || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</option>`).join('')}
+        </select>
+        <div class="exp-modes">
+          <label title="Export only the version picked above"><input type="radio" name="exp-version-mode" value="single" checked /><span>Single Version</span></label>
+          <label title="Export every selected row of the data sheet, each as its own set of banners. HTML5 ZIP: one folder per version. Preview portal: one file, every version switchable."><input type="radio" name="exp-version-mode" value="all" /><span>All Selected Versions (${selectedCount})</span></label>
         </div>
-        <div style="font-size:10px; color:var(--text-muted); margin-top:6px; line-height:1.3;">"All selected versions" works with HTML5 ZIP (one folder per selected data row) and Preview portal (one file, every selected row switchable).</div>
       </div>
       ` : ''}
     </div>
+    <div id="exp-video-opts" style="display:none; max-width:560px; margin:-4px 0 14px;">${typeof buildVideoSettingsHTML === 'function' ? buildVideoSettingsHTML('exp') : ''}</div>
 
     <div style="margin-bottom:14px; padding:8px 10px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px;">
       <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
@@ -4061,7 +4067,7 @@ function openExportModal() {
     png: 'A static image of the active frame, one file per size.',
     video: 'Records one loop cycle per size. H.264 MP4; falls back to WebM where MP4 encoding isn’t available.',
     gif: 'Records one loop cycle per size as a looping GIF. Capped at 256 colours, so gradients band — video keeps them clean.',
-    portal: 'One HTML file for stakeholders: the Preview Portal with the selected sizes inside, plus the data version you pick (or all selected ones, switchable). Opens offline in any browser, no Adflow needed, and plays exactly what Full preview shows.'
+    portal: 'One offline HTML file for stakeholders with every ticked size. Plays exactly what Full preview shows.'
   };
   const formatSel = modalBg.querySelector('#exp-format');
   const vidSettings = (typeof wireVideoSettings === 'function' && modalBg.querySelector('#exp-video-bitrate'))
@@ -4084,22 +4090,30 @@ function openExportModal() {
     if (vidOpts) vidOpts.style.display = isMotion ? 'block' : 'none';
     if (isMotion && typeof setVideoSettingsFormat === 'function') setVideoSettingsFormat(modalBg, 'exp', fmt);
     if (vidSettings) vidSettings.refresh();
-    const adWrap = modalBg.querySelector('#exp-adserver-wrap');
-    if (adWrap) adWrap.style.display = fmt === 'zip' ? 'block' : 'none';
+    syncAdServerColumn();
   });
 
   // Ad server: remembered per installation; the table re-measures because the
   // Adobe build converts WebP images and checks the landing-page domain length.
+  // Outside HTML5 ZIP the column stays in place, dimmed, so the header never reflows.
   const AD_SERVER_NOTES = {
     standard: 'Clicks open the clickTag URL. For Google CM360, DV360 and most ad servers.',
-    adobe: 'For Adobe Advertising: loads Adobe’s AMOLibrary.js and routes clicks through amo.onAdClick, and converts WebP images to JPEG/PNG. The library comes from Adobe’s server, so clicks are tracked once uploaded.'
+    adobe: 'Adds Adobe’s AMOLibrary.js click tracking and converts WebP to JPEG/PNG, for upload to Adobe Advertising.',
+    off: 'Applies to HTML5 ZIP only.'
   };
+  const adServerWrap = modalBg.querySelector('#exp-adserver-wrap');
   const adServerSel = modalBg.querySelector('#exp-adserver');
   const adServerNote = modalBg.querySelector('#exp-adserver-note');
-  if (adServerNote) adServerNote.textContent = AD_SERVER_NOTES[getExportAdServer()];
+  function syncAdServerColumn() {
+    const on = formatSel.value === 'zip';
+    if (adServerSel) adServerSel.disabled = !on;
+    if (adServerWrap) adServerWrap.classList.toggle('is-off', !on);
+    if (adServerNote) adServerNote.textContent = on ? AD_SERVER_NOTES[getExportAdServer()] : AD_SERVER_NOTES.off;
+  }
+  syncAdServerColumn();
   adServerSel?.addEventListener('change', () => {
     setExportAdServer(adServerSel.value);
-    if (adServerNote) adServerNote.textContent = AD_SERVER_NOTES[getExportAdServer()];
+    syncAdServerColumn();
     updateExportTableDetails();
   });
   // The size estimate scales with how many sizes are ticked.
