@@ -142,23 +142,8 @@ function updateSaveStatusUI() {
     barEl.className = '';
   }
 
-  // Update the status dot next to the project name
-  const dotEl = document.getElementById('project-save-status-dot');
-  if (dotEl) {
-    if (_localSaveStatus === 'error') {
-      dotEl.className = 'status-error';
-      dotEl.setAttribute('title', 'Save error');
-    } else if (_localSaveStatus === 'saving') {
-      dotEl.className = 'status-saving';
-      dotEl.setAttribute('title', 'Saving changes...');
-    } else if (_localSaveStatus === 'unsaved' || _fileSaveStatus === 'unsaved') {
-      dotEl.className = 'status-unsaved';
-      dotEl.setAttribute('title', 'Unsaved changes');
-    } else {
-      dotEl.className = '';
-      dotEl.setAttribute('title', 'All changes saved');
-    }
-  }
+  // (The save icon next to the project name was removed in v0.62.2. The name
+  // itself shows the file state — see updateProjectTitle in project-io.js.)
 
   // Update the tooltip on the project-meta-container so the user can inspect detailed status on hover
   const containerEl = document.getElementById('project-meta-container');
@@ -211,10 +196,9 @@ function scheduleAutosave() {
   if (_autosaveSuspended) return;
   if (_localSaveStatus !== 'saving') setLocalSaveStatus('unsaved');
 
-  if (_fileSaveStatus === 'saved') {
-    _fileSaveStatus = 'unsaved';
-    updateSaveStatusUI();
-  }
+  // The file status is NOT flipped here any more: render() calls this on every
+  // pass, including selection and zoom, which changed nothing in the file.
+  // updateProjectTitle() (project-io.js) derives it from the undo history.
 
   if (_autosaveTimer) clearTimeout(_autosaveTimer);
   const intervalSecs = state.autosaveInterval !== undefined ? state.autosaveInterval : 10;

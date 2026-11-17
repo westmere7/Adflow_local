@@ -1239,15 +1239,35 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Autosave makes leaving seamless — no "unsaved changes" prompt. If a debounced
-// write is still pending, flush it best-effort (IndexedDB may not finish, but the
-// previous autosave is at most a few seconds old).
-window.addEventListener('beforeunload', () => {
+// Leaving the page.
+//
+// 1. Always save to the browser first. A debounced autosave still pending is
+//    written now (best effort: IndexedDB may not finish during unload, but the
+//    previous autosave is at most a few seconds old).
+// 2. If the project has changes that are in no .flow file — never saved to one, or
+//    modified since (the "*" in the title) — ask the browser to confirm leaving.
+//    Browsers show their own fixed wording; a custom message is not allowed.
+//    In the desktop app, electron/main.js turns this into a native dialog.
+function _flushAutosaveOnLeave() {
   if (_autosaveTimer) {
     clearTimeout(_autosaveTimer);
     _autosaveTimer = null;
     if (!_autosaveSuspended) writeAutosave();
   }
+}
+
+window.addEventListener('beforeunload', (e) => {
+  _flushAutosaveOnLeave();
+  if (typeof isProjectModified === 'function' && isProjectModified()) {
+    e.preventDefault();
+    e.returnValue = '';   // older Chromium needs returnValue set as well
+  }
+});
+
+// Hiding the tab (switching away, minimising, closing on mobile) is the last
+// reliable moment to write; beforeunload does not always fire.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') _flushAutosaveOnLeave();
 });
 
 
@@ -1972,7 +1992,7 @@ let _appUpdatePollTimer = null;
 // Do not put a version string anywhere else. Three of them had already drifted
 // apart when this was written.
 // ---------------------------------------------------------------------------
-const APP_VERSION_FALLBACK = 'v0.62.1';
+const APP_VERSION_FALLBACK = 'v0.62.2';
 
 function getAppVersion() {
   return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;

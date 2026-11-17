@@ -448,15 +448,12 @@ function renderImmediate(skipProps = false) {
   }
 
 
-  const projectNameDisp = document.getElementById('project-name-display');
-  if (projectNameDisp && document.activeElement !== projectNameDisp && projectNameDisp.contentEditable !== 'true') {
-    projectNameDisp.innerText = state.projectName || 'RMIT_ad';
-  }
-  // Keep the browser tab title in sync with the project name. Driven from
-  // render() so every project-rename / load / new / undo path picks it up
-  // automatically — no need to thread updates through each call site.
-  const desiredTitle = (state.projectName || 'RMIT_ad') + ' - RMIT Adflow';
-  if (document.title !== desiredTitle) document.title = desiredTitle;
+  // Top-bar name and browser tab title: "RMIT_ad.flow" once saved to a file, a
+  // "*" while it differs from that file, otherwise the project name. Driven from
+  // render() so every rename / load / new / undo / edit path picks it up with no
+  // threading. updateProjectTitle lives in project-io.js (loads later; render()
+  // only runs after boot).
+  if (typeof updateProjectTitle === 'function') updateProjectTitle();
   const clicktagEl = document.getElementById('clicktag');
   if (clicktagEl && document.activeElement !== clicktagEl) {
     clicktagEl.value = state.clickTag || 'https://www.rmit.edu.au/';

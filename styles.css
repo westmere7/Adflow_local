@@ -4679,38 +4679,8 @@ body.fullscreen-mode #ruler-h, body.fullscreen-mode #ruler-v, body.fullscreen-mo
   100% { opacity: 0; }
 }
 
-#project-save-status-dot {
-  width: 14px;
-  height: 14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #10b981; /* Green */
-  vertical-align: middle;
-  transition: all 0.3s ease;
-  flex-shrink: 0;
-  margin-left: 4px;
-}
-
-#project-save-status-dot.status-saving {
-  color: var(--accent-base, #7c5cff); /* Purple */
-  filter: drop-shadow(0 0 2px var(--accent-base, #7c5cff));
-  animation: save-dot-pulse 1s infinite alternate;
-}
-
-#project-save-status-dot.status-unsaved {
-  color: #f59e0b; /* Amber */
-}
-
-#project-save-status-dot.status-error {
-  color: #ef4444; /* Red */
-  filter: drop-shadow(0 0 2px #ef4444);
-}
-
-@keyframes save-dot-pulse {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  100% { transform: scale(1.1); opacity: 1; }
-}
+/* The save icon beside the project name was removed in v0.62.2: the name itself
+   now says it ("RMIT_ad.flow", "*" while modified). */
 
 #project-name-display {
   display: inline-block;

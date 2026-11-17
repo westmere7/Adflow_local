@@ -213,6 +213,8 @@ async function createProjectFromDefaultStartup({ name, compressFormat, overrides
   state.projectId = uid('proj_');
 
   pushHistory();
+  // A brand-new project: nothing to lose yet, and no file to show.
+  if (typeof markProjectClean === 'function') markProjectClean(null);
   render();
   if (typeof writeAutosave === 'function') await writeAutosave();
 }

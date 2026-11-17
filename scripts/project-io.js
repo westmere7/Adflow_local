@@ -167,10 +167,12 @@ async function buildFlowBlob(isTemplate = false, opts = {}) {
 
   const blob = await zip.generateAsync({ type: 'blob' });
   const projName = (state.projectName || 'RMIT_ad').replace(/[^a-zA-Z0-9_-]/g, '_');
-  const datePart = savedAt.slice(0, 10);
-  const suggestedName = isTemplate 
-    ? `${projName}.template.flow` 
-    : `${projName}-${datePart}.flow`;
+  // A project has ONE file that later saves overwrite, so it is named after the
+  // project alone (RMIT_ad.flow): a date in the name would be wrong after the
+  // first re-save. The save time is in meta.json.
+  const suggestedName = isTemplate
+    ? `${projName}.template.flow`
+    : `${projName}.flow`;
   return { blob, exportState, savedAt, suggestedName };
 }
 
@@ -188,22 +190,52 @@ async function buildFlowBlob(isTemplate = false, opts = {}) {
 //
 // File System Access API only (Chromium and the desktop app). Without it every
 // save is a download, as before: a download cannot overwrite anything.
+//
+// The same record also answers "does the project still match its file?", which
+// drives the title ("RMIT_ad.flow", "RMIT_ad.flow*", or plain "RMIT_ad") and the
+// leave-page prompt:
+//   handle / name  the file Adflow wrote, or null when the project matches a file
+//                  Adflow did not write (it was opened from one, or downloaded)
+//   clean          the undo-history snapshot (history[historyIndex]) the project
+//                  had at that moment. It is "modified" whenever the current
+//                  snapshot differs — so undoing back to the saved state clears
+//                  the "*" again, and selection or zoom changes never set it.
 const FLOW_FILE_IDB_KEY = 'flow-file-handle';
-let _flowFile = null;          // { projectId, handle, name } once known
+let _flowFile = null;          // { projectId, handle, name, clean } once known
 let _flowFileLoaded = false;   // IndexedDB read at most once per page load
 
-async function getProjectFlowFile() {
-  if (!_flowFileLoaded) {
-    _flowFileLoaded = true;
-    try { _flowFile = (await _idbGet(FLOW_FILE_IDB_KEY)) || null; } catch (e) { _flowFile = null; }
-  }
-  if (!_flowFile || !_flowFile.handle || _flowFile.projectId !== state.projectId) return null;
-  return _flowFile;
+function _currentProjectSnapshot() {
+  return historyIndex >= 0 ? history[historyIndex] : null;
 }
 
-async function rememberProjectFlowFile(handle) {
-  _flowFile = { projectId: state.projectId, handle, name: handle.name };
+async function _loadFlowFileRecord() {
+  if (_flowFileLoaded) return;
   _flowFileLoaded = true;
+  try { _flowFile = (await _idbGet(FLOW_FILE_IDB_KEY)) || null; } catch (e) { _flowFile = null; }
+}
+
+// The record for THIS project (synchronous; null until IndexedDB has answered).
+function currentFlowRecord() {
+  return (_flowFile && _flowFile.projectId === state.projectId) ? _flowFile : null;
+}
+
+async function getProjectFlowFile() {
+  await _loadFlowFileRecord();
+  const r = currentFlowRecord();
+  return (r && r.handle) ? r : null;
+}
+
+// Record that the project now matches a file: one Adflow just wrote (pass its
+// handle), or one it was opened from / downloaded to (pass null).
+async function markProjectClean(handle) {
+  _flowFile = {
+    projectId: state.projectId,
+    handle: handle || null,
+    name: handle ? handle.name : null,
+    clean: _currentProjectSnapshot()
+  };
+  _flowFileLoaded = true;
+  updateProjectTitle();
   try { await _idbPut(FLOW_FILE_IDB_KEY, _flowFile); }
   catch (e) { console.warn('Could not remember the project file:', e); }
 }
@@ -213,6 +245,54 @@ function forgetProjectFlowFile() {
   _flowFileLoaded = true;
   _idbPut(FLOW_FILE_IDB_KEY, null).catch(() => {});
 }
+
+// True when the project has changes that are in no file. Without a record (a new
+// project, or one restored from before this existed) any undoable change counts.
+function isProjectModified() {
+  const r = currentFlowRecord();
+  if (r && r.clean != null) return _currentProjectSnapshot() !== r.clean;
+  return historyIndex > 0;
+}
+
+// Title shown in the top bar and the browser tab:
+//   saved by Adflow to a file   "RMIT_ad.flow", "*" appended while it differs
+//   anything else               the project name, no extension
+// Called from every render() and after every save.
+function updateProjectTitle() {
+  const r = currentFlowRecord();
+  const savedToFile = !!(r && r.handle && r.name);
+  const modified = isProjectModified();
+  const text = (savedToFile ? r.name : (state.projectName || 'RMIT_ad')) + (savedToFile && modified ? '*' : '');
+
+  const disp = document.getElementById('project-name-display');
+  if (disp && document.activeElement !== disp && disp.contentEditable !== 'true' && disp.textContent !== text) {
+    disp.textContent = text;
+  }
+  const tabTitle = text + ' - RMIT Adflow';
+  if (document.title !== tabTitle) document.title = tabTitle;
+
+  // The hover tooltip and Project Settings read this.
+  const fileStatus = (r && r.clean != null) ? (modified ? 'unsaved' : 'saved') : 'none';
+  if (fileStatus !== _fileSaveStatus) {
+    _fileSaveStatus = fileStatus;
+    updateSaveStatusUI();
+  }
+}
+
+// "No matter what, always save to the browser too": every save action writes the
+// autosave immediately instead of waiting out its debounce, so the browser copy
+// and the file never disagree.
+function flushAutosaveNow() {
+  if (typeof _autosaveTimer !== 'undefined' && _autosaveTimer) {
+    clearTimeout(_autosaveTimer);
+    _autosaveTimer = null;
+  }
+  if (typeof writeAutosave === 'function') return writeAutosave();
+}
+
+// Read the record as soon as this script runs so the first paint after boot can
+// already show the file name.
+_loadFlowFileRecord().then(() => { if (typeof render === 'function') updateProjectTitle(); });
 
 // A handle restored from IndexedDB starts without write permission. Asking needs
 // the user's keypress or click still to be "fresh", which is why the save asks
@@ -237,6 +317,12 @@ async function _writeFlowBlob(handle, blob) {
 async function saveProjectAsFlow(opts) {
   const saveAs = !!(opts && opts.saveAs === true);
   const canPick = !!window.showSaveFilePicker;
+
+  // Settle a pending nudge into history first, so the "clean" snapshot recorded
+  // below is the state actually written. Then save to the browser regardless of
+  // what happens to the file (cancelled dialog included).
+  if (typeof flushPendingHistory === 'function') flushPendingHistory();
+  flushAutosaveNow();
 
   let remembered = null;
   let target = null;
@@ -276,11 +362,9 @@ async function saveProjectAsFlow(opts) {
         handle = await window.showSaveFilePicker(pickerOpts);
         await _writeFlowBlob(handle, blob);
       }
-      await rememberProjectFlowFile(handle);
-      await addRecentProject(exportState);
-      _fileSaveStatus = 'saved';
       _lastFileSaveTime = new Date();
-      updateSaveStatusUI();
+      await markProjectClean(handle);   // title becomes "<file>.flow", no "*"
+      await addRecentProject(exportState);
       // No dialog appeared, so say where it went.
       if (handle === target) showCanvasNotification(`Saved to ${handle.name}`, { type: 'success' });
     } catch (e) {
@@ -294,14 +378,18 @@ async function saveProjectAsFlow(opts) {
     a.download = suggestedName;
     a.click();
     URL.revokeObjectURL(a.href);
-    await addRecentProject(exportState);
-    _fileSaveStatus = 'saved';
     _lastFileSaveTime = new Date();
-    updateSaveStatusUI();
+    // A download is a file Adflow cannot write to again, so no handle: the title
+    // keeps the project name, but the leave-page prompt knows nothing is unsaved.
+    await markProjectClean(null);
+    await addRecentProject(exportState);
   }
 }
 
 async function saveTemplateAsFlow() {
+  // A template is a different file from the project's own, so it does not change
+  // the title or the "*". It still saves the project to the browser.
+  flushAutosaveNow();
   let built;
   try { built = await buildFlowBlob(true); }
   catch (e) { showAdflowAlert(e.message || 'Save failed'); return; }
@@ -317,9 +405,6 @@ async function saveTemplateAsFlow() {
       await writable.write(blob);
       await writable.close();
       showCanvasNotification('Template saved successfully', { type: 'success' });
-      _fileSaveStatus = 'saved';
-      _lastFileSaveTime = new Date();
-      updateSaveStatusUI();
     } catch (e) {
       if (e.name !== 'AbortError') {
         console.error('Save failed:', e);
@@ -337,9 +422,6 @@ async function saveTemplateAsFlow() {
     // (The showSaveFilePicker branch above shows "saved successfully" because
     // it awaits the actual write.)
     showCanvasNotification('Template download started — check your downloads.', { type: 'info' });
-    _fileSaveStatus = 'saved';
-    _lastFileSaveTime = new Date();
-    updateSaveStatusUI();
   }
 }
 
@@ -478,8 +560,6 @@ async function loadProjectFromState(loadedState) {
 
   Object.assign(state, loadedState);
   delete state.isTemplate;
-  // A different project, or another copy of this one: the next Save to File asks.
-  forgetProjectFlowFile();
   // Snapshots written by the cloud-era build may carry share pointers and cloud
   // stamps; none of them mean anything in the local edition.
   stripLegacyCloudFields(state);
@@ -501,6 +581,9 @@ async function loadProjectFromState(loadedState) {
     historyIndex = -1;
     pushHistory();
   }
+  // A different project, or another copy of this one: the next Save to File asks,
+  // and what was just opened is the unmodified baseline.
+  markProjectClean(null);
 
   render();
   // Startup view: always centered. initApp() owns the scroll + resume toast.
@@ -607,10 +690,6 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     progress.setProgress(95, 'Syncing application assets...');
     Object.assign(state, loadedState);
     delete state.isTemplate; // Always ensure isTemplate is removed at runtime
-    // Opening a file never adopts it as the save target: it may be a template, a
-    // legacy .cook/.zip, or a copy that shares this projectId with another file.
-    // The first Save to File after opening asks; later ones reuse that answer.
-    forgetProjectFlowFile();
     // Files written by the cloud-era build may carry share pointers and cloud
     // stamps; none of them mean anything in the local edition.
     stripLegacyCloudFields(state);
@@ -632,9 +711,7 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
     const positionsMigrated = normalizeCanvasPositions();
     await syncRmitAssets();
     setLocalSaveStatus('saved');
-    _fileSaveStatus = 'saved';
-    _lastFileSaveTime = new Date();
-  
+
     if (!positionsMigrated && restoredHistory && Array.isArray(restoredHistory) && restoredHistory.length > 0) {
       history.length = 0;
       history.push(...restoredHistory);
@@ -644,7 +721,12 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
       historyIndex = -1;
       pushHistory();
     }
-  
+    // Opening a file never adopts it as the save target: it may be a template, a
+    // legacy .cook/.zip, or a copy that shares this projectId with another file.
+    // So no handle (the first Save to File asks), but what was opened is the
+    // unmodified baseline for the "*" and the leave-page prompt.
+    markProjectClean(null);
+
     render();
     progress.setProgress(100, 'Done!');
     setTimeout(() => {
@@ -879,6 +961,9 @@ function startRenameProject() {
   const disp = document.getElementById('project-name-display');
   if (!disp) return;
 
+  // The bar may be showing the file name ("RMIT_ad.flow*"); renaming edits the
+  // project name, so start from that.
+  disp.textContent = state.projectName || 'RMIT_ad';
   disp.contentEditable = 'true';
   disp.focus();
 
@@ -910,7 +995,7 @@ function startRenameProject() {
       pushHistory();
       render();
     } else {
-      disp.innerText = originalName;
+      updateProjectTitle();   // back to "RMIT_ad.flow" etc., whatever it showed
     }
   };
 

@@ -1676,7 +1676,7 @@ function renderProps() {
     } else if (el && el.isMask) {
       // Masks don't participate in dynamic data — show a permanent notice.
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
-        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-bright);">
           <span>Dynamic Data</span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
@@ -1729,13 +1729,13 @@ function renderProps() {
       dynamicHtml += `</div>`;
     } else {
       dynamicHtml = `<div class="panel-section highlighted" id="panel-section-dynamic-data" data-permanent="true">
-        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-label);">
+        <h3 class="panel-header-collapsible" id="header-dynamic-data" style="cursor: pointer; user-select: none; color: var(--text-bright);">
           <span>Dynamic Data</span>
           <svg class="collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="transition: transform 0.2s ease;">
             <polyline points="6 9 12 15 18 9"></polyline>
           </svg>
         </h3>
-        <div class="prop-row" style="font-size:11px; color:var(--text-muted); line-height:1.4; margin-bottom:10px;">
+        <div class="prop-row" style="font-size:11px; color:var(--text-main); line-height:1.45; margin-bottom:10px;">
           Connect layer properties (text, image, colors) to a spreadsheet to generate multiple version variants of this banner set automatically.
         </div>
         <button class="btn primary dm-control" id="dm-open-from-props" title="Open spreadsheet view to edit dynamic data and banner versions" style="width:100%;font-size:11px;">Data and Versions...</button>

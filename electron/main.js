@@ -97,6 +97,26 @@ function createWindow(url, opts = {}) {
     }
   });
 
+  // The editor asks before closing with changes that are in no .flow file (its
+  // beforeunload handler in app-boot.js). A browser shows its own "Leave site?"
+  // dialog for that; Electron shows nothing and simply refuses to close, which
+  // would leave the window impossible to close. So ask natively here, and on
+  // "Close anyway" let the unload go ahead. The browser copy is already saved by
+  // then: the page writes its autosave before it asks.
+  win.webContents.on('will-prevent-unload', (event) => {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'warning',
+      buttons: ['Close anyway', 'Keep editing'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Unsaved changes',
+      message: 'This project has changes that are not saved to a .flow file.',
+      detail: 'Adflow keeps a copy in this app, so they will be here next time you open it. '
+            + 'To keep them in a file, choose Keep editing and press Ctrl+S (Cmd+S on a Mac).'
+    });
+    if (choice === 0) event.preventDefault();   // preventDefault = ignore the page's objection
+  });
+
   return win;
 }
 

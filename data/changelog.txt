@@ -1,6 +1,20 @@
 RMIT Adflow - Version & Changelog History
 
-v0.62.1 (Current) - November 2026 — Engine v3.0
+v0.62.2 (Current) - November 2026 — Engine v3.0
+- The top bar and browser tab show the project's file name once it is saved to one
+  (RMIT_ad.flow), with "*" while there are changes the file doesn't have. Undoing back
+  to the saved state clears it; selecting, zooming and scrolling never set it. Before
+  the first save to a file it shows the project name with no extension. New projects
+  are offered as RMIT_ad.flow instead of a dated name.
+- Closing the tab or the desktop app with changes that are in no .flow file asks to
+  confirm first. The work stays in the browser either way.
+- Every save also writes the browser copy immediately: Ctrl+S, Save to File As..., a
+  cancelled save dialog, and closing or switching away from the tab.
+- Removed the save icon next to the project name; hovering the name still shows the
+  detailed save status.
+- The Dynamic Data panel's description and heading are brighter and easier to read.
+
+v0.62.1 - November 2026 — Engine v3.0
 - The size label, auto-arrange button, frame controls and Preview link around each
   canvas stay the same size on screen at any zoom level, instead of shrinking when
   zoomed out and growing when zoomed in. Canvases do not move on the board as you zoom.

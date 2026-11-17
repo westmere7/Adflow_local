@@ -414,6 +414,8 @@ const DOCS_SECTIONS = [
       { id: 'flow-files', title: '.flow files', body: `
         <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to the browser's IndexedDB database.</p>
         <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save to File As…</b> always asks, and the file you pick becomes the one later saves go to. Opening or starting a project forgets the file, so the first save after that asks again. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead.</p>
+        <p><b>The name in the top bar tells you where you stand.</b> Once the project is saved to a file it shows that file's name, e.g. <code>RMIT_ad.flow</code>, with a <b>*</b> after it while there are changes the file doesn't have yet (undo back to the saved state and the * goes away). Before it has been saved to a file it shows the project name with no extension. Double-click it to rename the project; that doesn't rename the file.</p>
+        <p><b>Every save also saves to the browser</b> — Ctrl+S, Save to File As…, even a cancelled save dialog — so the copy in this browser never falls behind the file. If you close the tab or the app with changes that are in no file, Adflow asks first. Your work is still kept in the browser either way; the question is only whether you meant to leave it out of a file.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -863,6 +865,17 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.62.2',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "The Project Name Shows the File: once a project is saved to a file, the top bar and the browser tab show that file's name — RMIT_ad.flow — with a * after it while there are changes the file doesn't have. Undo back to the saved state and the * goes away; selecting, zooming and scrolling never set it. Before the project has been saved to a file, the bar shows the project name with no extension. New projects are now offered as RMIT_ad.flow rather than a dated name, since later saves keep going to that one file.",
+      "Closing With Unsaved Changes Asks First: closing the tab, or the desktop app, with changes that are in no .flow file now asks you to confirm. The work is still kept in the browser either way — the question is only whether you meant to leave it out of a file.",
+      "Every Save Also Saves to the Browser: Ctrl+S, Save to File As… and even a cancelled save dialog write the browser copy straight away instead of waiting for the next autosave, and so does closing or switching away from the tab.",
+      "The Save Icon Is Gone: the coloured disk icon next to the project name duplicated what the name now says. Hovering the name still shows the detailed save status.",
+      "Easier-to-Read Dynamic Data Panel: the description under Dynamic Data used the dimmest text colour and was hard to read on its purple panel. It and the panel heading are now brighter."
+    ]
+  },
   {
     version: 'v0.62.1',
     date: 'November 2026 — Engine v3.0',

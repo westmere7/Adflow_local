@@ -7,9 +7,9 @@
   <title>RMIT Adflow</title>
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   <!-- Vendored libraries (lib/) — no CDN, so the app runs with no internet access. -->
-  <script src="lib/jszip.min.js?v=0.62.1"></script>
-  <script src="lib/iro.min.js?v=0.62.1"></script>
-  <link rel="stylesheet" href="styles.css?v=0.62.1" />
+  <script src="lib/jszip.min.js?v=0.62.2"></script>
+  <script src="lib/iro.min.js?v=0.62.2"></script>
+  <link rel="stylesheet" href="styles.css?v=0.62.2" />
   <style>
     /* Splash screen — shown on initial load, faded out by initApp.
        Inlined so it paints before styles.css finishes parsing. */
@@ -205,7 +205,7 @@
     <div class="app-splash-inner">
       <div class="app-splash-logo">
         <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" data-adflow-logo />
-        <span class="app-splash-version">v0.62.1</span>
+        <span class="app-splash-version">v0.62.2</span>
       </div>
       <div class="app-splash-status" id="app-splash-status">Warming up…</div>
       <div class="app-splash-bar"><div class="app-splash-bar-fill" id="app-splash-bar-fill"></div></div>
@@ -338,13 +338,6 @@
         <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
         <div id="project-meta-container" style="display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; border-radius:4px; padding:2px 6px; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.06)'" onmouseout="this.style.backgroundColor='transparent'" title="Click to open project settings / Double-click to rename">
           <span id="project-name-display" style="font-size:12px; font-weight:600; color:var(--text-bright); outline:none; white-space:nowrap;">RMIT_ad</span>
-          <span id="project-save-status-dot" title="All changes saved">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-              <polyline points="17 21 17 13 7 13 7 21"></polyline>
-              <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-          </span>
         </div>
         <div style="height:20px; width:1px; background-color:var(--border-light); margin: 0 8px; flex-shrink:0;"></div>
       </div>
@@ -629,7 +622,7 @@
         </div>
         <div class="workspace-footer" id="workspace-footer">
           <button id="zoom-level-display" class="workspace-footer-btn" title="Click to reset zoom">Zoom 100%</button>
-          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.62.1</button>
+          <button id="app-version-display" class="workspace-footer-btn" title="View changelog">v0.62.2</button>
         </div>
       </div>
     </div>
@@ -709,33 +702,33 @@
 
   <!-- ?v= is bumped with each release (part of the version/changelog workflow)
        so browsers and the local python server never serve stale JS. -->
-  <script src="scripts/numeric-wheel.js?v=0.62.1"></script>
-  <script src="scripts/render-runtime.js?v=0.62.1"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.62.1"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.62.1"></script>
-  <script src="scripts/docs-content.js?v=0.62.1"></script>
-  <script src="scripts/data-merge.js?v=0.62.1"></script>
-  <script src="scripts/font-subset.js?v=0.62.1"></script>
-  <script src="scripts/export-pipeline.js?v=0.62.1"></script>
-  <script src="scripts/video-export.js?v=0.62.1"></script>
-  <script src="scripts/color-picker.js?v=0.62.1"></script>
+  <script src="scripts/numeric-wheel.js?v=0.62.2"></script>
+  <script src="scripts/render-runtime.js?v=0.62.2"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.62.2"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.62.2"></script>
+  <script src="scripts/docs-content.js?v=0.62.2"></script>
+  <script src="scripts/data-merge.js?v=0.62.2"></script>
+  <script src="scripts/font-subset.js?v=0.62.2"></script>
+  <script src="scripts/export-pipeline.js?v=0.62.2"></script>
+  <script src="scripts/video-export.js?v=0.62.2"></script>
+  <script src="scripts/color-picker.js?v=0.62.2"></script>
   <!-- script.js was split into the 13 files below (v0.19.16 refactor). They are
        plain scripts sharing globals — load order matters and must be preserved. -->
-  <script src="scripts/core-state.js?v=0.62.1"></script>
-  <script src="scripts/autosave.js?v=0.62.1"></script>
-  <script src="scripts/local-library.js?v=0.62.1"></script>
-  <script src="scripts/link-system.js?v=0.62.1"></script>
-  <script src="scripts/canvas-render.js?v=0.62.1"></script>
-  <script src="scripts/interactions.js?v=0.62.1"></script>
-  <script src="scripts/canvases-panel.js?v=0.62.1"></script>
-  <script src="scripts/layers-assets.js?v=0.62.1"></script>
-  <script src="scripts/props-panel.js?v=0.62.1"></script>
-  <script src="scripts/sequencer.js?v=0.62.1"></script>
-  <script src="scripts/toolbar-import.js?v=0.62.1"></script>
-  <script src="scripts/project-io.js?v=0.62.1"></script>
-  <script src="scripts/project-dialogs.js?v=0.62.1"></script>
-  <script src="scripts/modals.js?v=0.62.1"></script>
-  <script src="scripts/app-boot.js?v=0.62.1"></script>
+  <script src="scripts/core-state.js?v=0.62.2"></script>
+  <script src="scripts/autosave.js?v=0.62.2"></script>
+  <script src="scripts/local-library.js?v=0.62.2"></script>
+  <script src="scripts/link-system.js?v=0.62.2"></script>
+  <script src="scripts/canvas-render.js?v=0.62.2"></script>
+  <script src="scripts/interactions.js?v=0.62.2"></script>
+  <script src="scripts/canvases-panel.js?v=0.62.2"></script>
+  <script src="scripts/layers-assets.js?v=0.62.2"></script>
+  <script src="scripts/props-panel.js?v=0.62.2"></script>
+  <script src="scripts/sequencer.js?v=0.62.2"></script>
+  <script src="scripts/toolbar-import.js?v=0.62.2"></script>
+  <script src="scripts/project-io.js?v=0.62.2"></script>
+  <script src="scripts/project-dialogs.js?v=0.62.2"></script>
+  <script src="scripts/modals.js?v=0.62.2"></script>
+  <script src="scripts/app-boot.js?v=0.62.2"></script>
 </body>
 
 </html>
