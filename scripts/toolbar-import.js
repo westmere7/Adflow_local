@@ -1680,9 +1680,17 @@ function stopHoverPreview(immediate = false) {
 // button, exactly where they are. Any real render() wipes the workspace and
 // takes the iframe with it, so nothing has to unwind it by hand.
 const CANVAS_HOVER_IFRAME_CLASS = 'canvas-hover-preview-iframe';
+// Put on the canvas surface while its preview plays. The selection box, its
+// handles and badges, safezones, guides and the other editor overlays are
+// siblings of the iframe inside `.canvas`, so without this they draw on top of
+// the playing ad. CSS (styles.css) hides them; a real render() rebuilds the
+// surface without the class, so it can never stick.
+const CANVAS_HOVER_SURFACE_CLASS = 'canvas-hover-previewing';
 
 function stopCanvasHoverPreview() {
   document.querySelectorAll('.' + CANVAS_HOVER_IFRAME_CLASS).forEach(f => f.remove());
+  document.querySelectorAll('.' + CANVAS_HOVER_SURFACE_CLASS)
+    .forEach(s => s.classList.remove(CANVAS_HOVER_SURFACE_CLASS));
 }
 
 function startCanvasHoverPreview(c) {
@@ -1705,6 +1713,7 @@ function startCanvasHoverPreview(c) {
   iframe.style.background = getCanvasBg(c, firstF && firstF.id);
   iframe.srcdoc = generateExportHTML(c, null, false, { previewControls: false });
   surface.appendChild(iframe);
+  surface.classList.add(CANVAS_HOVER_SURFACE_CLASS);
 }
 
 // Same escape hatches the Full-preview hover uses.

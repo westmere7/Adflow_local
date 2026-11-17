@@ -1322,6 +1322,16 @@ body.theme-light {
       color: var(--text-bright);
     }
 
+    /* Per-canvas hover preview (startCanvasHoverPreview): the ad plays in an
+       iframe laid over the canvas, and every editor overlay — selection box,
+       handles, link/data badges, safezones, guides — is a sibling of that iframe
+       inside .canvas. Hide them all so the preview reads as the finished ad.
+       The elements layer (.canvas-inner) sits under the iframe anyway.
+       visibility, not display, so nothing that measures these nodes moves. */
+    .canvas.canvas-hover-previewing > :not(.canvas-hover-preview-iframe):not(.canvas-inner) {
+      visibility: hidden !important;
+    }
+
 
     .workspace {
 
