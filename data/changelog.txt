@@ -1,6 +1,20 @@
 RMIT Adflow - Version & Changelog History
 
-v0.63.1 (Current) - November 2026 — Engine v3.0
+v0.63.2 (Current) - November 2026 — Engine v3.0
+- Canvas labels and buttons stay within the canvas's own width. The frame controls and
+  Preview link under a small active canvas used to stretch the space around it and push
+  the auto-arrange button off the right edge, even at 100%. When there is not room,
+  the frame controls go first (the toolbar has them too), then auto-arrange, then
+  Preview, and the size label finally shortens with an ellipsis. Each returns on its own
+  as you zoom in.
+- Canvas labels and buttons are 30% larger (still constant at every zoom). The active
+  canvas's dot is part of its size label, so a zoomed-out active canvas keeps its label.
+- Preview under each canvas is an icon: the play triangle the canvas menu and Canvas
+  Settings use, outlined to preview and filled while previewing. Hover preview unchanged.
+- The project name in the top bar gets 240px (was 140px), and only a name that is
+  actually cut off fades, over its last few letters; short names are no longer dimmed.
+
+v0.63.1 - November 2026 — Engine v3.0
 - Preview Portal playback is one row of four icon buttons: Play, Stop, Restart and
   Static, each labelled in its tooltip. The highlighted one is the current mode.
 - New: Stop freezes every banner exactly where it is, mid-animation. Play, Restart or

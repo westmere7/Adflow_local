@@ -873,6 +873,16 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.63.2',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Canvas Labels No Longer Spill Past the Canvas: the frame controls and the Preview link under the active canvas are wider than a small canvas, and they used to stretch the space around it, pushing the auto-arrange button off the canvas's right edge (even at 100% on a 160-wide size). Each canvas's labels and buttons now stay within its own width. When there is not room for everything, the frame controls go first (the toolbar has the same ones), then the auto-arrange button, then Preview, and finally the size label shortens with an ellipsis. Each comes back on its own as you zoom in.",
+      "Bigger Canvas Labels and Buttons: the size label, auto-arrange button, frame controls and Preview under each canvas are 30% larger, still the same size at every zoom. The active canvas's dot is now part of its size label, so a zoomed-out active canvas keeps its label (shortened) instead of losing it.",
+      "Preview Is an Icon: the underlined Preview and Back words under each canvas are now the play triangle the canvas menu and Canvas Settings already use for Preview: outline to preview, filled while that canvas is previewing. Hover preview works on it as before.",
+      "More Room for the Project Name: the name in the top bar has 240px instead of 140px before it is cut off, and only a name that is actually cut off fades, over its last few letters. Before, the end of every name was dimmed, even a short one."
+    ]
+  },
+  {
     version: 'v0.63.1',
     date: 'November 2026 — Engine v3.0',
     items: [

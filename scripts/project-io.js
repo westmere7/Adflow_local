@@ -268,6 +268,10 @@ function updateProjectTitle() {
   if (disp && document.activeElement !== disp && disp.contentEditable !== 'true' && disp.textContent !== text) {
     disp.textContent = text;
   }
+  // Fade the end of the name only when it is actually cut off (styles.css).
+  if (disp && disp.contentEditable !== 'true') {
+    disp.classList.toggle('is-overflowing', disp.scrollWidth > disp.clientWidth + 1);
+  }
   const tabTitle = text + ' - RMIT Adflow';
   if (document.title !== tabTitle) document.title = tabTitle;
 

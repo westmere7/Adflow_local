@@ -981,7 +981,7 @@ function previewFrameNode(c) {
   footer.className = 'canvas-footer';
   footer.style.display = 'flex';
   footer.style.justifyContent = 'flex-start';
-  footer.style.marginTop = '6px';
+  footer.style.marginTop = '4px';
   footer.appendChild(createCanvasActions(c));
   frame.appendChild(footer);
 
@@ -1714,7 +1714,7 @@ function canvasFrameNode(c) {
   // Single preview footer
   const footer = document.createElement('div');
   footer.className = 'canvas-footer';
-  footer.style.marginTop = '6px';
+  footer.style.marginTop = '4px';
   footer.style.display = 'flex';
   footer.style.justifyContent = 'space-between';
   footer.style.alignItems = 'center';
@@ -1726,7 +1726,7 @@ function canvasFrameNode(c) {
   if (state.activeCanvasId === c.id && !isSinglePreview) {
     const opts = state.frames.map((f, i) => `<option value="${f.id}" ${f.id === state.activeFrameId ? 'selected' : ''} style="${f.skip ? 'color: var(--text-muted); font-style: italic;' : ''}">Frame ${i + 1}</option>`).join('');
     leftSide.innerHTML = `
-      <div style="display:flex; align-items:center; gap:3px;">
+      <div class="canvas-footer-frames" style="display:flex; align-items:center; gap:3px;">
         <button class="btn-prev-inline" title="Previous frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&lsaquo;</button>
         <select class="frame-select-inline" title="Select active frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); border-radius:3px; padding:0 2px; font-size:9px; height:18px; outline:none; cursor:pointer;">
           ${opts}
@@ -1746,9 +1746,14 @@ function canvasFrameNode(c) {
   const rightSideBtn = document.createElement('button');
   rightSideBtn.className = "single-preview-btn";
   // Colour (rest + hover) lives in styles.css so it follows the theme.
-  rightSideBtn.style.cssText = "background:none; border:none; cursor:pointer; font-size:9px; text-decoration:underline; font-weight:500; transition:color 0.15s; padding:0;";
-  rightSideBtn.innerHTML = isSinglePreview ? 'Back' : 'Preview';
-  rightSideBtn.title = isSinglePreview ? 'Go back to edit mode' : 'Preview interactive animation for this canvas';
+  // An icon, sized like auto-arrange in the header, and the SAME icon the app
+  // already uses for this action (the canvas menu's Preview / Exit Preview and
+  // the Canvas Settings Preview button): an outline play triangle, filled while
+  // this canvas is previewing. The words live in the tooltip and aria-label.
+  rightSideBtn.style.cssText = "background:none; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:color 0.15s; padding:2px; margin:0;";
+  rightSideBtn.innerHTML = `<svg viewBox="0 0 24 24" width="12" height="12" fill="${isSinglePreview ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+  rightSideBtn.title = isSinglePreview ? 'Exit preview and go back to editing' : 'Preview this canvas — click to play it on its own; with hover preview on, point at it to play it in place';
+  rightSideBtn.setAttribute('aria-label', isSinglePreview ? 'Exit preview' : 'Preview this canvas');
   // With hover preview armed, pointing at this link plays THIS canvas in place —
   // the per-canvas counterpart of pointing at "Full preview" (see
   // startCanvasHoverPreview in toolbar-import.js, which loads after this file,

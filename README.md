@@ -6,7 +6,7 @@
 
 [![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
 [![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-v0.63.1-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Version](https://img.shields.io/badge/version-v0.63.2-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
@@ -220,7 +220,7 @@ Because saving a template deliberately strips the asset library, the portals reg
 A small toggle sits beside **Full preview**, marked with a pointer and a motion arc. Armed, pointing at something previews it in place, with no camera movement, no panel hiding and no fullscreen:
 
 - **The Full preview button** → every canvas starts playing at once, through the whole frame sequence.
-- **A canvas's own Preview link** → that one canvas plays inside its own frame; nothing else moves.
+- **A canvas's own Preview icon** (the play triangle under it) → that one canvas plays inside its own frame; nothing else moves.
 - **A row in a Version dropdown** → the board renders that data version, so you can flick down the list. Works in the toolbar switcher while editing and in the floating bar during single-canvas and full preview.
 
 Every Version dropdown carries **‹ / › cycling arrows** for stepping between versions without opening the list, and because the top bar is hidden while previewing, the floating preview bar carries **its own copy of the toggle** beside those arrows. It is the same switch — flipping either updates both.
