@@ -3653,6 +3653,26 @@ body.theme-light {
     }
 
 
+    /* A small menu anchored to a button (the Link Groups header's Auto-Link
+       choice), looking exactly like the right-click menu. */
+    .anchored-menu {
+      position: fixed;
+      background: var(--bg-input);
+      border: 1px solid var(--border-light);
+      border-radius: 6px;
+      box-shadow: 0 8px 24px var(--shadow-medium);
+      padding: 4px 0;
+      min-width: 150px;
+      z-index: 999999;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ctx-item.disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
     .ctx-item.highlight {
       color: var(--accent-base);
       font-weight: 500;
@@ -3737,6 +3757,12 @@ body.theme-light {
     .ctx-item.highlight:hover {
       background: var(--accent-base);
       color: var(--text-bright);
+    }
+
+    /* Unavailable choice (e.g. "Selected layers" with nothing selected). */
+    .ctx-item.disabled:hover {
+      background: transparent;
+      color: var(--text-main);
     }
 
     /* Destructive menu items. These used to carry an INLINE color:#ef4444, which

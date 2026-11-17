@@ -6,7 +6,7 @@
 
 [![Desktop](https://img.shields.io/badge/desktop-windows%20%C2%B7%20macos-0078d4?style=for-the-badge)](ELECTRON.md)
 [![Edition](https://img.shields.io/badge/edition-local%20%C2%B7%20no%20cloud-brightgreen?style=for-the-badge)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-v0.64.1-7c5cff?style=for-the-badge)](data/changelog.txt)
+[![Version](https://img.shields.io/badge/version-v0.64.2-7c5cff?style=for-the-badge)](data/changelog.txt)
 [![Engine](https://img.shields.io/badge/engine-v3.0-000f4b?style=for-the-badge)](knowledge_base.md)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-none-e61e2b?style=for-the-badge)](DEPENDENCIES.md)
 
@@ -46,7 +46,7 @@ Adflow is built around a **multi-canvas workspace**. Instead of a separate file 
 
 To avoid duplicate, manual updates across different canvases, you use **Link Groups**:
 
-- **Auto-Link Matching Elements** — pressing **Auto-Link** scans all canvases and groups elements sharing a layer name and category/type. Toggle **Selected only** to scan for matches against just the current selection.
+- **Auto-Link Matching Elements** — the **Auto-Link** icon in the Link Groups header scans all canvases and groups elements sharing a layer name and category/type; its pop-up asks **Selected layers** (match just the current selection) or **All layers**. The header's **Distribute & Link** icon copies the selection to the other canvases and links it.
 - **Granular Sync Properties** — choose exactly which properties sync for a group. Text content and styling are separated cleanly: `Colors` covers text colour; a dedicated `Background` property manages text backgrounds (colour, visibility, animation, padding, coverage); `Font size` is split from `Font settings`, so the typeface can sync across canvases while sizes stay per-canvas.
 - **Live-Link Mode (real-time sync)** — enable the sync-arrows toggle on any group and every modification (dragging, resizing, inline text editing, sidebar property changes) propagates to sibling elements on other canvases instantly.
 - **Contextual Actions** — right-click elements to manage link settings, with dynamic `Linked to: [GroupName]` / `Link to: [GroupName]` labels based on membership. **Push changes to group** broadcasts updates manually when Live-link is off.

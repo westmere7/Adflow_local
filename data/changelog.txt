@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.64.1 (Current) - November 2026 — Engine v3.0
+v0.64.2 (Current) - November 2026 — Engine v3.0
+- Link Groups: Auto-Link and Distribute & Link are icons in the section header (beside
+  Full Mode) instead of buttons under the list. Auto-Link opens a small menu under the
+  icon - Selected layers (count) or All layers - replacing the Selected only checkbox.
+  Distribute & Link is the four-dot icon beside it.
+- Link Groups: the "Select elements to manage links." placeholder is removed.
+
+v0.64.1 - November 2026 — Engine v3.0
 - Preview Portal layout restored. v0.64.0 removed much of the page's own layout CSS
   along with the backdrop swatches, so the portal (and preview files exported from
   v0.64.0) opened unstyled. Re-export any preview file made with v0.64.0.

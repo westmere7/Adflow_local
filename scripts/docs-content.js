@@ -294,7 +294,7 @@ const DOCS_SECTIONS = [
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Name your canvas layers consistently (e.g. 'Heading', 'CTA Button') so the Auto-Link scanner can automatically find and group identical elements. If you need to make custom layout tweaks to a single canvas, temporarily disable Live-Link for that group.</div>
       `},
       { id: 'auto-link', title: 'Auto-Link', body: `
-        <p><b>Auto-Link</b> in the sidebar scans all canvases and groups matching elements by layer name + type. Use <b>Selected only</b> to target just the active layer.</p>
+        <p><b>Auto-Link</b> is the link icon in the Link Groups header. It scans all canvases and groups matching elements by layer name + type; its pop-up asks whether to match the <b>Selected layers</b> only or <b>All layers</b>. Beside it, the <b>Distribute &amp; Link</b> icon copies the selected layers to the other canvases and links them, the same as the right-click menu.</p>
         <p>Best paired with consistent layer names (rename via the Layers panel).</p>
       `},
       { id: 'manual-linking', title: 'Manual linking', body: `
@@ -872,6 +872,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.64.2',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Link Groups Actions Moved to Icons: Auto-Link and Distribute & Link are now two small icons in the Link Groups header, beside Full Mode, instead of two wide buttons under the group list. Auto-Link opens a quick menu right under the icon — Selected layers (with how many) or All layers — replacing the Selected only checkbox; Selected layers is greyed out until something is selected. Distribute & Link (the four-dot icon) works on the selection as before, and says so if nothing is selected. The \"Select elements to manage links.\" placeholder is gone."
+    ]
+  },
   {
     version: 'v0.64.1',
     date: 'November 2026 — Engine v3.0',

@@ -1452,6 +1452,47 @@ function initCollapsiblePanels() {
             showSyncLayersMenu(syncBtn);
           });
         }
+
+        // Link Groups: Auto-Link and Distribute & Link as header icons, styled
+        // like the Layers header's sync icon. They used to be two full-width
+        // buttons under the group list.
+        if (parentSection.id === 'panel-section-link-groups' && !header.querySelector('.panel-autolink-btn')) {
+          const mkIcon = (cls, title, label, svg) => {
+            const b = document.createElement('button');
+            b.className = cls;
+            b.title = title;
+            b.setAttribute('aria-label', label);
+            b.style.cssText = 'cursor:pointer; display:inline-flex; align-items:center; justify-content:center; background:none; border:none; padding:0; outline:none; color:var(--text-muted); transition:color 0.15s;';
+            b.innerHTML = svg;
+            b.addEventListener('mouseenter', () => b.style.color = 'var(--text-bright)');
+            b.addEventListener('mouseleave', () => b.style.color = 'var(--text-muted)');
+            return b;
+          };
+          const autoBtn = mkIcon('panel-autolink-btn',
+            'Auto-Link — link matching layers across canvases (choose selected or all)', 'Auto-Link',
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`);
+          const distBtn = mkIcon('panel-distribute-link-btn',
+            'Distribute & Link — copy the selected layers to the other canvases and link them', 'Distribute & Link',
+            // Four points at the corners: the selection spread to every canvas.
+            `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="pointer-events:none;"><circle cx="5" cy="5" r="3"/><circle cx="19" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/></svg>`);
+          const host = collapseIcon.parentNode === header ? header : collapseIcon.parentNode;
+          host.insertBefore(autoBtn, fsBtn);
+          host.insertBefore(distBtn, fsBtn);
+          // The header pushes its first extra child right (margin-left:auto);
+          // the rest sit beside it.
+          distBtn.style.marginLeft = '6px';
+          fsBtn.style.marginLeft = '6px';
+          autoBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            if (typeof showAutoLinkMenu === 'function') showAutoLinkMenu(autoBtn);
+          });
+          distBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+            if (typeof distributeAndLinkFromHeader === 'function') distributeAndLinkFromHeader();
+          });
+        }
         
         fsBtn.addEventListener('click', (ev) => {
           ev.stopPropagation();
@@ -1992,7 +2033,7 @@ let _appUpdatePollTimer = null;
 // Do not put a version string anywhere else. Three of them had already drifted
 // apart when this was written.
 // ---------------------------------------------------------------------------
-const APP_VERSION_FALLBACK = 'v0.64.1';
+const APP_VERSION_FALLBACK = 'v0.64.2';
 
 function getAppVersion() {
   return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;

@@ -100,9 +100,9 @@ function getDefaultSync(el) {
   return defaultSync;
 }
 
-async function autoLinkElements(forceSelectedOnly = false) {
-  const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
-  const selectedOnly = forceSelectedOnly || (chkSelectedOnly ? chkSelectedOnly.checked : false);
+// selectedOnly: link just the selected layers (the Link Groups header's
+// Auto-Link menu, "Selected layers"); otherwise every matching layer.
+async function autoLinkElements(selectedOnly = false) {
 
   let allowedTargets = null;
   if (selectedOnly) {

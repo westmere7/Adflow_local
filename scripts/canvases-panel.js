@@ -430,6 +430,66 @@ function getForcedLinkSyncProps(groupId) {
 // ============================================================================
 // Link Control panel
 // ============================================================================
+// ---- Link Groups header actions ---------------------------------------------
+// Auto-Link and Distribute & Link live as icons in the Link Groups header (built
+// in initCollapsiblePanels, app-boot.js), not as buttons under the list.
+
+// Auto-Link: a small menu anchored under the icon — Selected layers or All
+// layers — in place of the old "Selected only" checkbox. Clicking the icon
+// again, clicking anywhere else or pressing Esc closes it.
+function showAutoLinkMenu(anchor) {
+  const existing = document.getElementById('lnk-autolink-menu');
+  if (existing) { existing.remove(); return; }
+
+  const n = (state.layerSelection && state.layerSelection.length) || (state.selectedElementId ? 1 : 0);
+  const menu = document.createElement('div');
+  menu.id = 'lnk-autolink-menu';
+  menu.className = 'anchored-menu';
+  menu.setAttribute('role', 'menu');
+  menu.innerHTML = `
+    <div class="ctx-item${n ? '' : ' disabled'}" role="menuitem" data-mode="selected"
+      title="${n ? 'Link the selected layers to their matches on the other canvases' : 'Select one or more layers first'}">Selected layers${n ? ` (${n})` : ''}</div>
+    <div class="ctx-item" role="menuitem" data-mode="all"
+      title="Link every matching layer across the canvases, by name and type">All layers</div>`;
+  document.body.appendChild(menu);
+
+  // Under the icon, right edges aligned, kept on screen.
+  const r = anchor.getBoundingClientRect();
+  const w = menu.offsetWidth;
+  menu.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
+  menu.style.top = (r.bottom + 4) + 'px';
+
+  const close = () => {
+    menu.remove();
+    document.removeEventListener('mousedown', onDown, true);
+    document.removeEventListener('keydown', onKey, true);
+  };
+  const onDown = (e) => { if (!menu.contains(e.target) && !anchor.contains(e.target)) close(); };
+  const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } };
+  document.addEventListener('mousedown', onDown, true);
+  document.addEventListener('keydown', onKey, true);
+
+  menu.querySelectorAll('.ctx-item').forEach(item => {
+    item.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (item.classList.contains('disabled')) return;
+      close();
+      await autoLinkElements(item.dataset.mode === 'selected');
+    });
+  });
+}
+
+// Distribute & Link: the same action as the canvas right-click menu, so the
+// whole selection travels as one composition and conflicts get a prompt.
+function distributeAndLinkFromHeader() {
+  const n = (state.layerSelection && state.layerSelection.length) || (state.selectedElementId ? 1 : 0);
+  if (!n) {
+    showCanvasNotification('Select the layers to distribute first.', { type: 'info' });
+    return;
+  }
+  distributeSelection({ link: true });
+}
+
 function renderLinkControl() {
   const panel = document.getElementById('link-control');
   if (!panel) return;
@@ -513,35 +573,9 @@ function renderLinkControl() {
     `;
   }
 
-  // 2. AUTO-LINK & LINK CONTROL SECTIONS UNDERNEATH
-  const activeEl = getSelectedElement();
-  html += `
-    <div style="margin-bottom: 12px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--bg-input);">
-      <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; width:100%; box-sizing:border-box;">
-        <button id="lnk-btn-autolink" class="btn" title="Automatically link matching layers across canvases by name and type" style="flex:1; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; box-sizing:border-box;">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-          </svg>
-          Auto-Link
-        </button>
-        <div style="display:flex; align-items:center; gap:4px; flex-shrink:0; white-space:nowrap;" title="Only auto-link elements that are currently selected">
-          <input type="checkbox" id="lnk-opt-selected-only" style="margin:0; cursor:pointer;" ${state.autoLinkSelectedOnly ? 'checked' : ''} title="Only auto-link elements that are currently selected" />
-          <label for="lnk-opt-selected-only" style="font-size:11px; color:var(--text-muted); cursor:pointer; user-select:none;" title="Only auto-link elements that are currently selected">Selected only</label>
-        </div>
-      </div>
-  `;
-
-  if (activeEl) {
-    html += `
-      <button id="lnk-btn-autoadd" class="btn" title="Distribute this element to other canvases and link them together" style="width:100%; font-size:11px; padding:6px 12px; display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom: 8px; box-sizing:border-box;">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-        Distribute & Link
-      </button>
-    `;
-  }
-
-  html += `</div>`;
+  // Auto-Link and Distribute & Link moved to icons in the Link Groups header
+  // (initCollapsiblePanels in app-boot.js); Auto-Link asks Selected or All in
+  // a pop-up there instead of a "Selected only" checkbox here.
 
   if (selectedElements.length > 0) {
     const firstEl = selectedElements[0];
@@ -730,18 +764,10 @@ function renderLinkControl() {
       html += `<div style="padding: 8px; border: 1px dashed var(--bg-input); border-radius: 4px; margin-bottom: 12px; font-size: 11px; color:#ef4444; background:rgba(239, 68, 68, 0.05); text-align:center;">Cannot link different types of elements.</div>`;
     }
     html += `</div>`;
-  } else {
-    html += `<div style="padding: 10px; border: 1px dashed var(--bg-input); border-radius: 4px; font-size: 11px; color:var(--text-muted); background:rgba(255,255,255,0.01); text-align:center;">Select elements to manage links.</div>`;
   }
+  // Nothing selected: no placeholder, the group list says enough.
 
   panel.innerHTML = html;
-
-  const btnAutolink = document.getElementById('lnk-btn-autolink');
-  if (btnAutolink) {
-    btnAutolink.onclick = async () => {
-      await autoLinkElements();
-    };
-  }
 
   const btnCreate = document.getElementById('lnk-btn-create');
   if (btnCreate) {
@@ -833,21 +859,6 @@ function renderLinkControl() {
     };
   }
 
-  // Routes through the same Distribute & Link as the right-click menu, so the
-  // whole selection travels as one composition and conflicts get a prompt.
-  // It used to call autoAddAndLink on the FIRST selected element only, which
-  // silently ignored the rest of the selection.
-  const btnAutoAdd = document.getElementById('lnk-btn-autoadd');
-  if (btnAutoAdd) {
-    btnAutoAdd.onclick = () => { distributeSelection({ link: true }); };
-  }
-
-  const chkSelectedOnly = document.getElementById('lnk-opt-selected-only');
-  if (chkSelectedOnly) {
-    chkSelectedOnly.onchange = (e) => {
-      state.autoLinkSelectedOnly = e.target.checked;
-    };
-  }
   panel.querySelectorAll('.lnk-sync-prop').forEach(cb => {
     cb.onchange = () => {
       const prop = cb.dataset.prop;
