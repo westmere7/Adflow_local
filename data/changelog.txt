@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.3 (Current) - November 2026 — Engine v3.0
+v0.65.4 (Current) - November 2026 — Engine v3.0
+- Standard clickTag ZIPs use Google's documented click pattern (DV360, CM360, Ad
+  Manager): var clickTag in <head>, click areas are <a href="javascript:
+  window.open(window.clickTag)">. Before, clickTag sat at the end of <body> and the
+  click was attached by script, which DV360's upload check can report as "no click
+  tag". The Adobe build keeps its amo.onAdClick listener; its clickTag moves to <head>.
+
+v0.65.3 - November 2026 — Engine v3.0
 - Canvases snap when you drag them by the header: edges and centres line up with other
   canvases (pink guides), the standard canvas spacing beside or below another canvas
   (pink gap marker), and ruler guides. 5 screen px at any zoom. Ctrl = 20 px grid as

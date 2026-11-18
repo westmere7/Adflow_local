@@ -883,6 +883,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.65.4',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Click Tag Where Google's Ad Servers Look for It: HTML5 ZIPs built for Standard clickTag now follow Google's documented pattern exactly. The clickTag is declared in the page's head, and each click area is a link that opens it (href=\"javascript:window.open(window.clickTag)\"). Before, the clickTag sat at the end of the page and the click was attached by script, and DV360's upload check looks for neither, so it could reject an ad as having no click tag. One click still opens one new window on the landing page. The Adobe Advertising build keeps routing clicks through Adobe's library, with its clickTag also moved to the head."
+    ]
+  },
+  {
     version: 'v0.65.3',
     date: 'November 2026 — Engine v3.0',
     items: [

@@ -2851,14 +2851,19 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     });
   });
 
+  // Standard build: Google's documented pattern (DV360, CM360, Ad Manager) — the
+  // clickTag variable in <head> and the click wired on the element itself, which
+  // is what their upload checks look for. The Adobe build routes the click
+  // through AMOLibrary in a script listener instead (see the 'load' handler).
+  const clickHref = adobeBuild ? 'javascript:void(0);' : 'javascript:window.open(window.clickTag)';
   let clickAreasHTML = '';
   if (!isImageExport) {
     if (c.fullClickArea !== false) {
-      clickAreasHTML = `<a class="clickArea" href="javascript:void(0);" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
+      clickAreasHTML = `<a class="clickArea" href="${clickHref}" style="position:absolute;inset:0;z-index:9999;display:block;"></a>`;
     } else {
       const clickBtns = c.elements.filter(e => e.type === 'button' && e.isClickArea);
       if (clickBtns.length > 0) {
-        clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="javascript:void(0);" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
+        clickAreasHTML = clickBtns.map(btn => `<a class="clickArea" href="${clickHref}" style="position:absolute;left:${btn.x}px;top:${btn.y}px;width:${btn.width}px;height:${btn.height}px;z-index:9999;display:block;"></a>`).join('\n    ');
       }
     }
   }
@@ -2920,7 +2925,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
 ${adobeBuild ? `<script src="${ADOBE_AMO_LIBRARY_URL}"></script>
 ` : ''}<meta charset="UTF-8">
 <title>Ad</title>
-<meta name="ad.size" content="width=${c.width},height=${c.height}">${adobeBuild ? `
+<meta name="ad.size" content="width=${c.width},height=${c.height}">
+<script type="text/javascript">var clickTag = ${jsStringLiteral(exitUrl)};</script>${adobeBuild ? `
 <script>amo.registerClick("clickTag", ${jsStringLiteral(exitUrl)});</script>` : ''}
 <style>
 ${fontFaceRules.join('\n')}
@@ -3042,9 +3048,6 @@ ${elsTop}
     ${clickAreasHTML}
   </div>
 
-  <script type="text/javascript">
-    var clickTag = ${jsStringLiteral(exitUrl)};
-  </script>
   <script>
     var frames = ${JSON.stringify(frameData)};
     var currentFrame = 0;
@@ -3377,16 +3380,17 @@ ${elsTop}
       }
     }
 
-    window.addEventListener('load', function () {
+    window.addEventListener('load', function () {${adobeBuild ? `
+      // Adobe Advertising: the exit goes through AMOLibrary so Adobe can track
+      // it and swap in the landing page set at upload. Opened from disk
+      // (library unreachable), fall back to the clickTag. (The Standard build
+      // has no listener: its links open window.clickTag themselves.)
       document.querySelectorAll('.clickArea').forEach(function(el) {
-        el.addEventListener('click', function (${adobeBuild ? 'clickEvt' : ''}) {${adobeBuild ? `
-          // Adobe Advertising: the exit goes through AMOLibrary so Adobe can
-          // track it and swap in the landing page set at upload. Opened from
-          // disk (library unreachable), fall back to the clickTag below.
-          if (window.amo && typeof amo.onAdClick === 'function') { amo.onAdClick('clickTag', clickEvt); return; }` : ''}
+        el.addEventListener('click', function (clickEvt) {
+          if (window.amo && typeof amo.onAdClick === 'function') { amo.onAdClick('clickTag', clickEvt); return; }
           window.open(clickTag);
         });
-      });
+      });` : ''}
 
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(function() {
