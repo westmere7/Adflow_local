@@ -1099,7 +1099,7 @@ document.addEventListener('keydown', (e) => {
 // Deliberately does NOT advance to the next frame.
 // ---------------------------------------------------------------------------
 
-const SEQ_PLAY_VARS = ['--pan-x', '--pan-y', '--pan-rotate', '--pan-opacity-start', '--zoom-target',
+const SEQ_PLAY_VARS = ['--pan-x', '--pan-y', '--pan-rotate', '--pan-opacity-start', '--pan-zoom', '--pan-zoom-inverse', '--zoom-target',
   '--spin-target', '--pulse-scale', '--pulse-scale-inverse', '--heartbeat-scale', '--heartbeat-scale-inverse',
   '--float-x', '--float-y', '--float-x-inverse', '--float-y-inverse', '--zoom-target-inverse', '--spin-target-inverse',
   '--fx-dur', '--fx-delay', '--ul-color', '--ul-size', '--ul-offset'];

@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.1 (Current) - November 2026 — Engine v3.0
+v0.65.2 (Current) - November 2026 — Engine v3.0
+- Move effect: new Target zoom (%) field. The layer scales from 100% to the target over
+  the move (pan-and-zoom in one effect). Works with Towards target, Ease, Fade and
+  Perform once; a photo inside a moving mask keeps its size. 100 = no change.
+
+v0.65.1 - November 2026 — Engine v3.0
 - Export header tidied: Filename prefix, Format, Ad server and Data version in one row
   of equal columns (label, control, note), controls on one line. Ad server stays in
   place, dimmed, outside HTML5 ZIP. Data version list first, Single / All Selected as

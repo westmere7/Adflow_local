@@ -518,11 +518,13 @@ body.theme-light {
         translate: var(--pan-x, 0px) var(--pan-y, 0px);
         rotate: var(--pan-rotate, 0deg);
         opacity: var(--pan-opacity-start, 1);
+        scale: 1;
       }
       100% {
         translate: 0 0;
         rotate: 0deg;
         opacity: 1;
+        scale: var(--pan-zoom, 1);
       }
     }
 
@@ -557,8 +559,8 @@ body.theme-light {
       70% { scale: 1; }
     }
     @keyframes eff-pan-inverse {
-      0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); }
-      100% { translate: 0 0; rotate: 0deg; }
+      0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); scale: 1; }
+      100% { translate: 0 0; rotate: 0deg; scale: var(--pan-zoom-inverse, 1); }
     }
     @keyframes eff-zoom-inverse {
       0% { scale: 1; }

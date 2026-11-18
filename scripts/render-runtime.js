@@ -987,7 +987,7 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
       const pxLocal = px * cos + py * sin;
       const pyLocal = -px * sin + py * cos;
 
-      effVars = `--pan-x:${pxLocal.toFixed(1)}px; --pan-y:${pyLocal.toFixed(1)}px; --pan-rotate:${rot}deg; --pan-opacity-start:${opStart};`;
+      effVars = `--pan-x:${pxLocal.toFixed(1)}px; --pan-y:${pyLocal.toFixed(1)}px; --pan-rotate:${rot}deg; --pan-opacity-start:${opStart}; --pan-zoom:${panZoomFactor(el)};`;
     } else if (effType === 'zoom') {
       const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
@@ -1124,7 +1124,7 @@ function getInverseElementAnimationCSS(el, isImageExport, imageEl) {
       const fill = el.effOnce ? 'forwards' : 'infinite';
       effAnims.push(`eff-pan-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
       const rot = el.panRotate !== undefined ? el.panRotate : 0;
-      effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg;`;
+      effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg; --pan-zoom-inverse:${1 / panZoomFactor(el)};`;
     } else if (effType === 'zoom') {
       const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';

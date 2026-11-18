@@ -2023,6 +2023,7 @@ function startEffectPreview(el, tempVal) {
       panMidX: el.panMidX,
       panMidY: el.panMidY,
       panRotate: el.panRotate,
+      panZoom: el.panZoom,
       panFade: el.panFade,
       effEase: el.effEase,
       effOnce: el.effOnce,
@@ -2077,6 +2078,7 @@ function startEffectPreview(el, tempVal) {
         const opStart = mergedEl.panFade ? 0 : 1;
         tNode.style.setProperty('--pan-rotate', rot + 'deg');
         tNode.style.setProperty('--pan-opacity-start', opStart);
+        tNode.style.setProperty('--pan-zoom', panZoomFactor(mergedEl));
         let ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
         if (mergedEl.panTowards || (mergedEl.panMidX !== undefined && mergedEl.panMidY !== undefined)) {
           ease = 'linear';
@@ -2175,6 +2177,7 @@ function startEffectPreview(el, tempVal) {
         const rot = mergedEl.panRotate !== undefined ? mergedEl.panRotate : 0;
         tNode.style.setProperty('--pan-rotate', (-rot) + 'deg');
         tNode.style.setProperty('--pan-opacity-start', 1);
+        tNode.style.setProperty('--pan-zoom-inverse', 1 / panZoomFactor(mergedEl));
         const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
         const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
         tNode.style.animation = `eff-pan-inverse ${effDur}s ${ease} 0s ${fill}`;

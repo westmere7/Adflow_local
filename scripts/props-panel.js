@@ -3353,6 +3353,7 @@ function renderProps() {
         <div class="prop-row"><label>From X (px)</label><input type="number" data-k="panFromX" id="prop-pan-from-x" value="${px_val}" title="X offset for starting position of Move effect" /></div>
         <div class="prop-row"><label>From Y (px)</label><input type="number" data-k="panFromY" id="prop-pan-from-y" value="${py_val}" title="Y offset for starting position of Move effect" /></div>
         <div class="prop-row"><label>Rot. Offset (°)</label><input type="number" data-k="panRotate" id="prop-pan-rotate" value="${el.panRotate !== undefined ? el.panRotate : 0}" title="Rotational offset angle in degrees" /></div>
+        <div class="prop-row"><label>Target zoom (%)</label><input type="number" data-k="panZoom" id="prop-pan-zoom" min="1" value="${el.panZoom !== undefined ? el.panZoom : 100}" title="Size the layer reaches by the end of the move: it starts at 100% and scales to this. 100 = no zoom." /></div>
       </div>
       <div style="display:flex; gap:16px; margin-top:8px; flex-wrap:wrap;">
         <div class="checkbox-row"><input type="checkbox" data-k="effEase" id="prop-eff-ease" title="Apply smooth ease in/out curve" ${el.effEase !== false ? 'checked' : ''}/><label for="prop-eff-ease" title="Apply smooth ease in/out curve" style="cursor:pointer;">Ease</label></div>

@@ -1122,12 +1122,19 @@ function getSplitClipPath(angleDeg) {
   return `polygon(${projected.join(', ')})`;
 }
 
+// Move effect's Target zoom (%) as a scale factor. 100% (or unset) = no zoom.
+function panZoomFactor(el) {
+  const z = Number(el.panZoom);
+  return (Number.isFinite(z) && z > 0) ? z / 100 : 1;
+}
+
 // Helper to calculate the keyframes for a curved motion path Move effect
 function getPanCurveKeyframes(el) {
   const px = el.panFromX !== undefined ? el.panFromX : 0;
   const py = el.panFromY !== undefined ? el.panFromY : -50;
   const rot = el.panRotate !== undefined ? el.panRotate : 0;
   const opStart = el.panFade ? 0 : 1;
+  const zoom = panZoomFactor(el);
   const animName = `eff-pan-${el.id}`;
 
   const angle = (el.rotation || 0) * Math.PI / 180;
@@ -1148,11 +1155,13 @@ function getPanCurveKeyframes(el) {
     const by = factor * py;
     const r = (1 - t) * rot;
     const o = (1 - t) * opStart + t * 1.0;
+    // Target zoom: 100% at the start of the move, the target at the end.
+    const s = 1 + (zoom - 1) * t;
 
     const bxLocal = bx * cos + by * sin;
     const byLocal = -bx * sin + by * cos;
 
-    steps.push(`      ${pct}% { translate: ${bxLocal.toFixed(1)}px ${byLocal.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; }`);
+    steps.push(`      ${pct}% { translate: ${bxLocal.toFixed(1)}px ${byLocal.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; scale: ${s.toFixed(4)}; }`);
   }
 
   return `@keyframes ${animName} {\n${steps.join('\n')}\n    }`;
@@ -2968,7 +2977,7 @@ ${dynamicKeyframes}
   @keyframes eff-wiggle { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
   @keyframes eff-spin { 100% { transform: rotate(var(--spin-target, 360deg)); } }
   @keyframes eff-heartbeat { 0% { scale: 1; } 14% { scale: var(--heartbeat-scale, 1.3); } 28% { scale: 1; } 42% { scale: var(--heartbeat-scale, 1.3); } 70% { scale: 1; } }
-  @keyframes eff-pan { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); opacity: var(--pan-opacity-start, 1); } 100% { translate: 0 0; rotate: 0deg; opacity: 1; } }
+  @keyframes eff-pan { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); opacity: var(--pan-opacity-start, 1); scale: 1; } 100% { translate: 0 0; rotate: 0deg; opacity: 1; scale: var(--pan-zoom, 1); } }
   @keyframes eff-zoom { 0% { scale: 1; } 100% { scale: var(--zoom-target, 1.5); } }
   /* Underline — keep byte-identical to the copy in styles.css. See the comment
      block there for why the rule is the text span's own background rather than
@@ -2980,7 +2989,7 @@ ${dynamicKeyframes}
   @keyframes eff-wiggle-inverse { 0%, 100% { rotate: 5deg; } 50% { rotate: -5deg; } }
   @keyframes eff-spin-inverse { 100% { rotate: var(--spin-target-inverse, -360deg); } }
   @keyframes eff-heartbeat-inverse { 0% { scale: 1; } 14% { scale: var(--heartbeat-scale-inverse, 0.7692); } 28% { scale: 1; } 42% { scale: var(--heartbeat-scale-inverse, 0.7692); } 70% { scale: 1; } }
-  @keyframes eff-pan-inverse { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); } 100% { translate: 0 0; rotate: 0deg; } }
+  @keyframes eff-pan-inverse { 0% { translate: var(--pan-x, 0px) var(--pan-y, 0px); rotate: var(--pan-rotate, 0deg); scale: 1; } 100% { translate: 0 0; rotate: 0deg; scale: var(--pan-zoom-inverse, 1); } }
   @keyframes eff-zoom-inverse { 0% { scale: 1; } 100% { scale: var(--zoom-target-inverse, 0.6667); } }
 
   /* html/body intentionally transparent (no width/height/background).
