@@ -119,6 +119,7 @@ const DOCS_SECTIONS = [
       { id: 'alignment-snapping', title: 'Alignment & snapping', body: `
         <ul>
           <li><b>Magnetic snap:</b> canvas edges, centres, sibling layers, custom guides. Toggle in the workspace right-click menu.</li>
+          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone.</li>
           <li><b>Rulers & guides:</b> enable rulers, drag from a ruler into a canvas to drop a guide. Drag the guide back to the ruler to remove.</li>
           <li><b>Nudging:</b> arrow keys = 1px; <span class="kbd">Shift</span>+arrows = 10px.</li>
         </ul>
@@ -881,6 +882,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.3',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Canvases Snap When You Move Them: drag a canvas by its header and it lines up with the other canvases, the way layers already do. Its left, centre or right meets another canvas's left, centre or right (and top, middle or bottom likewise), and pink guide lines show what it lined up with. Beside or below another canvas it also snaps to the standard canvas spacing, with a pink marker showing the gap, and to ruler guides when rulers are on. The pull is 5 screen pixels at any zoom (Settings ▸ Snapping threshold). Hold Ctrl for the 20 px grid instead, as before. Settings ▸ Snapping has a new Snap canvases to each other switch.",
+      "Moving a Canvas Can Be Undone: dragging a canvas to a new spot is now an ordinary change. Ctrl+Z puts it back, and a saved file shows its * until you save again. Before, a canvas move was not in the undo history at all."
+    ]
+  },
   {
     version: 'v0.65.2',
     date: 'November 2026 — Engine v3.0',

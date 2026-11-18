@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.2 (Current) - November 2026 — Engine v3.0
+v0.65.3 (Current) - November 2026 — Engine v3.0
+- Canvases snap when you drag them by the header: edges and centres line up with other
+  canvases (pink guides), the standard canvas spacing beside or below another canvas
+  (pink gap marker), and ruler guides. 5 screen px at any zoom. Ctrl = 20 px grid as
+  before. New switch: Settings > Snapping > Snap canvases to each other.
+- Moving a canvas is now undoable (Ctrl+Z) and marks a saved file "*".
+
+v0.65.2 - November 2026 — Engine v3.0
 - Move effect: new Target zoom (%) field. The layer scales from 100% to the target over
   the move (pan-and-zoom in one effect). Works with Towards target, Ease, Fade and
   Perform once; a photo inside a moving mask keeps its size. 100 = no change.

@@ -450,6 +450,7 @@ function renderImmediate(skipProps = false) {
     state.canvases.forEach(c => workspaceEl.appendChild(previewFrameNode(c)));
   } else {
     state.canvases.forEach(c => workspaceEl.appendChild(canvasFrameNode(c)));
+    drawCanvasSnapGuides();
   }
 
 
@@ -1218,6 +1219,42 @@ function wrapCanvasChrome(header) {
   while (header.firstChild) chrome.appendChild(header.firstChild);
   header.appendChild(chrome);
   return header;
+}
+
+// Guides for canvas-to-canvas snapping (interactions.js snapCanvasPosition),
+// in workspace units. A canvas's surface sits below its header, so y values get
+// the header height added: guides land on the visible canvas edges.
+// How far a canvas's visible surface sits below its workspaceY: the header
+// above it (28 px in board units, styles.css .canvas-header).
+function canvasSurfaceOffsetY() {
+  const hdr = workspaceEl && workspaceEl.querySelector('.canvas-frame .canvas-header');
+  return (hdr && parseFloat(getComputedStyle(hdr).height)) || 28;
+}
+
+function drawCanvasSnapGuides() {
+  const guides = state.activeCanvasGuides;
+  if (!guides || !guides.length) return;
+  const off = canvasSurfaceOffsetY();
+  const add = (cls, l, t, w, h, label) => {
+    const d = document.createElement('div');
+    d.className = 'canvas-snap-guide ' + cls;
+    d.style.left = l + 'px';
+    d.style.top = (t + off) + 'px';
+    if (w != null) d.style.width = w + 'px';
+    if (h != null) d.style.height = h + 'px';
+    if (label != null) {
+      const s = document.createElement('span');
+      s.textContent = label;
+      d.appendChild(s);
+    }
+    workspaceEl.appendChild(d);
+  };
+  guides.forEach(g => {
+    if (g.dir === 'v') add('v', g.x, g.y1, null, g.y2 - g.y1);
+    else if (g.dir === 'h') add('h', g.x1, g.y, g.x2 - g.x1, null);
+    else if (g.dir === 'gap-x') add('gap-x', g.x1, g.y, g.x2 - g.x1, null, g.label);
+    else if (g.dir === 'gap-y') add('gap-y', g.x, g.y1, null, g.y2 - g.y1, g.label);
+  });
 }
 
 function canvasFrameNode(c) {

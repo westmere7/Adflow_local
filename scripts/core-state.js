@@ -290,6 +290,7 @@ const state = {
   snapToElements: true,
   snapToCanvas: true,
   snapToGuides: true,
+  snapCanvases: true,     // moving a canvas snaps to other canvases (edges, centres, spacing)
   cropToCanvas: false,
   tempTopDuringDrag: false,
   loopAd: false,

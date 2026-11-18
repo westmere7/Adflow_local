@@ -742,6 +742,102 @@ function onMultiRotateMouseDown(e, elements, bb) {
 // ============================================================================
 // Canvas-level drag (re-position a canvas in the workspace)
 // ============================================================================
+// --- Canvas-to-canvas snapping ----------------------------------------------
+// Where the dragged canvas's top-left may snap, in workspace units (the canvas
+// surface's top-left is (workspaceX, workspaceY)):
+//   align  an edge or centre of the dragged canvas on an edge or centre of
+//          another canvas (left/centre/right, top/middle/bottom)
+//   gap    the standard canvas spacing (state.canvasSpacing, what Auto-arrange
+//          uses) beside / above / below another canvas — only while the two sit
+//          side by side (gap X) or one above the other (gap Y)
+//   guide  a ruler guide, as layers snap to them
+// Settings ▸ Snapping: the master switch and "Snap canvases to each other";
+// "Snap to guides" for the ruler guides. Ctrl/Cmd keeps the 20 px grid.
+function canvasSnapTargets(c) {
+  const gap = state.canvasSpacing !== undefined ? state.canvasSpacing : 60;
+  const xs = [], ys = [];
+  const ax = [0, c.width / 2, c.width], ay = [0, c.height / 2, c.height];
+  state.canvases.forEach(o => {
+    if (o === c) return;
+    const ox = o.workspaceX || 0, oy = o.workspaceY || 0;
+    [ox, ox + o.width / 2, ox + o.width].forEach(at => ax.forEach(a => xs.push({ pos: at - a, kind: 'align', at, other: o })));
+    [oy, oy + o.height / 2, oy + o.height].forEach(at => ay.forEach(a => ys.push({ pos: at - a, kind: 'align', at, other: o })));
+    xs.push({ pos: ox + o.width + gap, kind: 'gap', from: ox + o.width, to: ox + o.width + gap, other: o });
+    xs.push({ pos: ox - gap - c.width, kind: 'gap', from: ox - gap, to: ox, other: o });
+    ys.push({ pos: oy + o.height + gap, kind: 'gap', from: oy + o.height, to: oy + o.height + gap, other: o });
+    ys.push({ pos: oy - gap - c.height, kind: 'gap', from: oy - gap, to: oy, other: o });
+  });
+  if (state.snapToGuides !== false && state.showRulers) {
+    // Ruler guides are drawn at board coordinates, while a canvas's visible
+    // surface sits a header's height below its workspaceY — so a horizontal
+    // guide meets the visible edge at g.pos minus that offset.
+    const offY = (typeof canvasSurfaceOffsetY === 'function') ? canvasSurfaceOffsetY() : 28;
+    (state.guides || []).forEach(g => {
+      if (g.type === 'v') ax.forEach(a => xs.push({ pos: g.pos - a, kind: 'guide', at: g.pos }));
+      if (g.type === 'h') ay.forEach(a => ys.push({ pos: g.pos - offY - a, kind: 'guide', at: g.pos - offY }));
+    });
+  }
+  return { xs, ys, gap };
+}
+
+// Snap a proposed top-left. Returns the position and the guides to draw
+// (state.activeCanvasGuides, drawn by renderImmediate in workspace units).
+function snapCanvasPosition(c, nx, ny, T, thr) {
+  const overlapY = (o, y) => y < (o.workspaceY || 0) + o.height && y + c.height > (o.workspaceY || 0);
+  const overlapX = (o, x) => x < (o.workspaceX || 0) + o.width && x + c.width > (o.workspaceX || 0);
+  const pick = (list, v, ok) => {
+    let best = null;
+    for (const t of list) {
+      if (!ok(t)) continue;
+      const d = Math.abs(t.pos - v);
+      if (d < thr && (!best || d < best.d)) best = { ...t, d };
+    }
+    return best;
+  };
+  const bx = pick(T.xs, nx, t => t.kind !== 'gap' || overlapY(t.other, ny));
+  const x = bx ? bx.pos : nx;
+  const by = pick(T.ys, ny, t => t.kind !== 'gap' || overlapX(t.other, x));
+  const y = by ? by.pos : ny;
+
+  // Draw every target the final position lands on, not just the winner, so
+  // lining up with two canvases at once shows both lines.
+  const guides = [];
+  const span = (a1, a2, b1, b2) => [Math.min(a1, b1), Math.max(a2, b2)];
+  if (bx) {
+    T.xs.forEach(t => {
+      if (Math.abs(t.pos - x) > 0.5) return;
+      if (t.kind === 'gap') {
+        if (!overlapY(t.other, y)) return;
+        const oy = t.other.workspaceY || 0;
+        const top = Math.max(y, oy), bot = Math.min(y + c.height, oy + t.other.height);
+        guides.push({ dir: 'gap-x', x1: t.from, x2: t.to, y: (top + bot) / 2, label: T.gap });
+      } else if (t.kind === 'guide') {
+        guides.push({ dir: 'v', x: t.at, y1: y, y2: y + c.height });
+      } else {
+        const [y1, y2] = span(y, y + c.height, t.other.workspaceY || 0, (t.other.workspaceY || 0) + t.other.height);
+        guides.push({ dir: 'v', x: t.at, y1, y2 });
+      }
+    });
+  }
+  if (by) {
+    T.ys.forEach(t => {
+      if (Math.abs(t.pos - y) > 0.5) return;
+      if (t.kind === 'gap') {
+        if (!overlapX(t.other, x)) return;
+        const ox = t.other.workspaceX || 0;
+        const l = Math.max(x, ox), r = Math.min(x + c.width, ox + t.other.width);
+        guides.push({ dir: 'gap-y', y1: t.from, y2: t.to, x: (l + r) / 2, label: T.gap });
+      } else if (t.kind === 'guide') {
+        guides.push({ dir: 'h', y: t.at, x1: x, x2: x + c.width });
+      } else {
+        const [x1, x2] = span(x, x + c.width, t.other.workspaceX || 0, (t.other.workspaceX || 0) + t.other.width);
+        guides.push({ dir: 'h', y: t.at, x1, x2 });
+      }
+    });
+  }
+  return { x, y, guides: guides.length ? guides : null };
+}
+
 function onCanvasHeaderDrag(e, c) {
   if (isSpaceDown || e.button === 1) return;
   e.stopPropagation();
@@ -751,18 +847,34 @@ function onCanvasHeaderDrag(e, c) {
   const z = state.zoom || 1;
   const startX = e.clientX, startY = e.clientY;
   const origX = c.workspaceX, origY = c.workspaceY;
+  const snapOn = state.snapEnabled !== false && state.snapCanvases !== false;
+  const targets = snapOn ? canvasSnapTargets(c) : null;
   const onMove = (ev) => {
     let nx = origX + (ev.clientX - startX) / z;
     let ny = origY + (ev.clientY - startY) / z;
+    let guides = null;
     if (ev.ctrlKey || ev.metaKey) {
+      // Ctrl/Cmd: the 20 px grid instead of snapping, as before.
       nx = Math.round(nx / 20) * 20;
       ny = Math.round(ny / 20) * 20;
+    } else if (targets) {
+      const snapped = snapCanvasPosition(c, nx, ny, targets, (state.snapDistance !== undefined ? state.snapDistance : 5) / z);
+      nx = snapped.x; ny = snapped.y; guides = snapped.guides;
     }
     c.workspaceX = Math.max(0, Math.round(nx));
     c.workspaceY = Math.max(0, Math.round(ny));
+    state.activeCanvasGuides = guides;
     render();
   };
-  const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    const hadGuides = !!state.activeCanvasGuides;
+    state.activeCanvasGuides = null;
+    // A move is a change like any other: undoable, and it marks the file "*".
+    if (c.workspaceX !== origX || c.workspaceY !== origY) pushHistory();
+    if (hadGuides) render();
+  };
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
   render();

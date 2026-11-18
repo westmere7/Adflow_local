@@ -2743,6 +2743,7 @@ function openSettings() {
     snapToElements: state.snapToElements !== false,
     snapToCanvas: state.snapToCanvas !== false,
     snapToGuides: state.snapToGuides !== false,
+    snapCanvases: state.snapCanvases !== false,
     snapDistance: state.snapDistance !== undefined ? state.snapDistance : 5,
     savedHistoryLimit: state.savedHistoryLimit !== undefined ? state.savedHistoryLimit : 50,
     autosaveInterval: state.autosaveInterval !== undefined ? state.autosaveInterval : 10,
@@ -2906,6 +2907,7 @@ function openSettings() {
                   ${row('set-snap-el', 'Snap to other elements', tempSettings.snapToElements)}
                   ${row('set-snap-cv', 'Snap to canvas bounds', tempSettings.snapToCanvas)}
                   ${row('set-snap-gd', 'Snap to guides', tempSettings.snapToGuides)}
+                  ${row('set-snap-cvs', 'Snap canvases to each other', tempSettings.snapCanvases, 'When you drag a canvas by its header: line it up with the edges and centres of other canvases, or the standard canvas spacing. Hold Ctrl for the 20 px grid instead.')}
                 </section>
 
                 <section style="display:flex; flex-direction:column; gap:10px; padding:4px 0; border-top:1px solid var(--border-light); padding-top:14px;">
@@ -3003,6 +3005,7 @@ function openSettings() {
       state.snapToElements = tempSettings.snapToElements;
       state.snapToCanvas = tempSettings.snapToCanvas;
       state.snapToGuides = tempSettings.snapToGuides;
+      state.snapCanvases = tempSettings.snapCanvases;
       state.snapDistance = tempSettings.snapDistance;
       state.savedHistoryLimit = tempSettings.savedHistoryLimit;
       state.autosaveInterval = tempSettings.autosaveInterval;
@@ -3036,6 +3039,7 @@ function openSettings() {
     state.snapToElements = initialSettings.snapToElements;
     state.snapToCanvas = initialSettings.snapToCanvas;
     state.snapToGuides = initialSettings.snapToGuides;
+    state.snapCanvases = initialSettings.snapCanvases;
     state.snapDistance = initialSettings.snapDistance;
     state.savedHistoryLimit = initialSettings.savedHistoryLimit;
     state.autosaveInterval = initialSettings.autosaveInterval;
@@ -3112,6 +3116,7 @@ function openSettings() {
   bind('set-snap-el', 'snapToElements');
   bind('set-snap-cv', 'snapToCanvas');
   bind('set-snap-gd', 'snapToGuides');
+  bind('set-snap-cvs', 'snapCanvases');
 
   // Validation checkbox bindings to tempSettings
   const bindVal = (id, key) => bg.querySelector('#' + id).addEventListener('change', (e) => {
