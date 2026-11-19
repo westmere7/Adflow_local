@@ -122,6 +122,24 @@ document.addEventListener('mousedown', (e) => {
   }
 }, true);
 
+// Paste / Paste in Place for the right-click menus. Shown only when Adflow's own
+// clipboard holds layers: a menu cannot read the system clipboard without a
+// permission prompt, and an item that might do nothing is worse than none.
+function pasteMenuHTML() {
+  const clip = state.clipboard;
+  const n = clip?.elements?.length || 0;
+  if (!n) return '';
+  const c = getActiveCanvas();
+  const same = !c || clip.sourceCanvasId === c.id
+    || (clip.sourceCanvasWidth === c.width && clip.sourceCanvasHeight === c.height);
+  const what = `${n} layer${n === 1 ? '' : 's'}`;
+  const inPlaceHint = same
+    ? `Paste the ${what} at exactly the position they were copied from, into the frame on screen (Ctrl+Shift+V)`
+    : `Paste the ${what} at the same spot relative to the canvas — copied from ${clip.sourceCanvasWidth} × ${clip.sourceCanvasHeight}, so positions are scaled to this canvas while size and animation stay the same (Ctrl+Shift+V)`;
+  return `<div class="ctx-item" id="ctx-paste" title="Paste the ${what}, offset slightly (Ctrl+V)">Paste</div>`
+    + `<div class="ctx-item" id="ctx-paste-in-place" title="${inPlaceHint}">Paste in Place</div>`;
+}
+
 // ============================================================================
 // Remembered placements — the menu, and the two scopes it can save to
 // ============================================================================
@@ -201,6 +219,21 @@ function autoArrangeMenuHtml(scope, selCount) {
     html += `<div class="ctx-item" id="${idPrefix}-global" style="white-space:nowrap;" title="Remember this placement for this canvas size in every project opened in this browser">All projects (global)</div>`;
   }
   html += `</div></div>`;
+
+  // The same save, for every canvas on the board at once — what each one shows on the
+  // frame you are looking at. Only worth offering when there is more than one canvas.
+  if ((state.canvases || []).length > 1) {
+    const fNo = Math.max(1, (state.frames || []).findIndex(f => f.id === state.activeFrameId) + 1);
+    const allTitle = `Remember where every role-assigned layer sits on all ${state.canvases.length} canvases, as each one shows frame ${fNo} now`;
+    html += `<div class="ctx-item has-submenu" title="${allTitle}">
+        <span style="white-space:nowrap;">Save placement of all canvases</span>
+        <div class="ctx-submenu">
+          <div class="ctx-item" id="ctx-all-place-project" style="white-space:nowrap;" title="Save on each canvas in this project — travels inside the .flow file">Project only</div>`;
+    if (placementLibraryOffered()) {
+      html += `<div class="ctx-item" id="ctx-all-place-global" style="white-space:nowrap;" title="Remember for each of these canvas sizes in every project opened in this browser">All projects (global)</div>`;
+    }
+    html += `</div></div>`;
+  }
 
   // Clear sits directly under Save and mirrors it — same scope, same two destinations — so
   // the pair reads as one idea with an undo. Each entry appears only when that scope
@@ -355,6 +388,62 @@ async function savePlacementGlobally(scope) {
   } catch (err) {
     console.warn('Global placement save failed:', err);
     showCanvasNotification(`Could not save the placement: ${err.message || err}`, { type: 'error' });
+  }
+}
+
+// Every canvas on the board, each with the role-assigned layers it shows on the frame
+// on screen: Always Top / Always Bottom layers plus this frame's own. Layers that
+// belong to other frames are left out, so a heading parked on frame 3 cannot stand in
+// for the one you are looking at on frame 1.
+// `ids` limits it to those canvases (the multi-canvas menu); omitted = every canvas.
+function _allCanvasPlacementTargets(ids) {
+  const onFrame = (el) => el.persistent !== false || el.frameId === state.activeFrameId;
+  return (state.canvases || [])
+    .filter(c => !ids || ids.includes(c.id))
+    .map(c => ({ c, entries: collectPlacementEntries((c.elements || []).filter(onFrame)) }))
+    .filter(t => Object.keys(t.entries).length);
+}
+
+function _allPlacementSummary(targets) {
+  const roles = targets.reduce((n, t) => n + Object.keys(t.entries).length, 0);
+  const fNo = Math.max(1, (state.frames || []).findIndex(f => f.id === state.activeFrameId) + 1);
+  return `${roles} placement${roles === 1 ? '' : 's'} on ${targets.length} canvas${targets.length === 1 ? '' : 'es'} (frame ${fNo})`;
+}
+
+function savePlacementAllProjectOnly(ids) {
+  const targets = _allCanvasPlacementTargets(ids);
+  if (!targets.length) {
+    showCanvasNotification('Nothing to remember — no canvas has a layer with a role on this frame.', { type: 'warning' });
+    return;
+  }
+  targets.forEach(({ c, entries }) => {
+    if (!c.layoutOverrides) c.layoutOverrides = {};
+    Object.keys(entries).forEach(r => { c.layoutOverrides[r] = pickPlacementGeom(entries[r]); });
+  });
+  pushHistory();
+  render();
+  showCanvasNotification(`Remembered for this project — ${_allPlacementSummary(targets)}.`, { type: 'success' });
+}
+
+async function savePlacementAllGlobally(ids) {
+  const targets = _allCanvasPlacementTargets(ids);
+  if (!targets.length) {
+    showCanvasNotification('Nothing to remember — no canvas has a layer with a role on this frame.', { type: 'warning' });
+    return;
+  }
+  // The library is keyed by size, so two canvases of the same size share one entry.
+  // Saved in board order, the later one wins — say so rather than let it be a surprise.
+  const sizes = new Set(targets.map(t => placementSizeKey(t.c.width, t.c.height)));
+  try {
+    for (const { c, entries } of targets) await savePlacementsToLibrary(c.width, c.height, entries);
+    const shared = targets.length - sizes.size;
+    showCanvasNotification(
+      `Remembered in this browser for ${sizes.size} canvas size${sizes.size === 1 ? '' : 's'} — ${_allPlacementSummary(targets)}.`
+        + (shared ? ` ${shared} canvas${shared === 1 ? ' shares' : 'es share'} a size with another, so the later one on the board was kept.` : ''),
+      { type: 'success' });
+  } catch (err) {
+    console.warn('Global placement save failed:', err);
+    showCanvasNotification(`Could not save the placements: ${err.message || err}`, { type: 'error' });
   }
 }
 
@@ -520,7 +609,50 @@ document.addEventListener('contextmenu', (e) => {
   // cheaper than the user discovering it from the result.
   const ctxHeader = (text) => `<div class="ctx-header">${text}</div><div class="ctx-divider" style="margin-top:2px;"></div>`;
 
-  if (canvasItemNode) {
+  // Right-clicking a canvas (on the board or in the Canvases panel) that is part of
+  // a multi-canvas selection (Shift+click) opens a menu for the whole selection:
+  // only what makes sense for several canvases at once. Per-canvas and per-frame
+  // things (add a layer, background, preview one canvas, guides) are left out.
+  const clickedCanvasId = canvasItemNode
+    ? canvasItemNode.dataset.canvasId
+    : ((canvasNode && !elNode) ? canvasNode.parentElement?.dataset.canvasId : null);
+  const multiCanvasIds = (clickedCanvasId && (state.canvasSelection || []).length > 1
+      && state.canvasSelection.includes(clickedCanvasId))
+    ? state.canvasSelection.filter(id => state.canvases.some(c => c.id === id))
+    : null;
+  if (multiCanvasIds && multiCanvasIds.length > 1) {
+    window._ctxMultiCanvasIds = multiCanvasIds;
+    window._ctxClickedCanvasId = clickedCanvasId;
+  } else {
+    window._ctxMultiCanvasIds = null;
+  }
+
+  if (window._ctxMultiCanvasIds) {
+    const ids = window._ctxMultiCanvasIds;
+    const n = ids.length;
+    const sizes = ids.map(id => state.canvases.find(c => c.id === id)).map(c => `${c.width}×${c.height}`);
+    html += ctxHeader(`${n} canvases selected`);
+    const exportSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    html += `<div class="ctx-item highlight" id="ctx-multi-export" title="Open Export with just these sizes ticked: ${sizes.join(', ')}" style="display:flex; align-items:center; gap:8px;">${exportSvg}Export ${n} sizes…</div>`;
+    html += `<div class="ctx-divider"></div>`;
+    const fNo = Math.max(1, (state.frames || []).findIndex(f => f.id === state.activeFrameId) + 1);
+    html += `<div class="ctx-item has-submenu" title="Remember where every role-assigned layer sits on these ${n} canvases, as each shows frame ${fNo} now">
+        <span style="white-space:nowrap;">Save placement of ${n} canvases</span>
+        <div class="ctx-submenu">
+          <div class="ctx-item" id="ctx-multi-place-project" style="white-space:nowrap;" title="Save on each of these canvases — travels inside the .flow file">Project only</div>
+          ${placementLibraryOffered() ? `<div class="ctx-item" id="ctx-multi-place-global" style="white-space:nowrap;" title="Remember for each of these canvas sizes in every project opened in this browser">All projects (global)</div>` : ''}
+        </div>
+      </div>`;
+    html += `<div class="ctx-divider"></div>`;
+    html += `<div class="ctx-item" id="ctx-multi-clone" title="Duplicate these ${n} canvases with their layers; the copies become the selection">Clone ${n} canvases</div>`;
+    html += `<div class="ctx-item" id="ctx-multi-select-one" title="Keep only the canvas you right-clicked selected">Select only this canvas</div>`;
+    html += `<div class="ctx-divider"></div>`;
+    if (n < state.canvases.length) {
+      html += `<div class="ctx-item ctx-danger" id="ctx-multi-delete" title="Delete these ${n} canvases and everything on them. Can be undone">Delete ${n} canvases</div>`;
+    } else {
+      html += `<div class="ctx-item ctx-disabled" title="Every canvas is selected — a project needs at least one, so keep one out of the selection to delete the rest">Delete ${n} canvases</div>`;
+    }
+  } else if (canvasItemNode) {
     html += ctxHeader('Canvas options');
     html += `<div class="ctx-item" id="ctx-canvas-clone" title="Duplicate this canvas, its layers and its frames as a new size on the board">Clone Canvas</div>`;
     if (state.canvases.length > 1) {
@@ -567,6 +699,7 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-cut" title="Cut the selection to the clipboard (Ctrl+X)">Cut</div>`;
     html += `<div class="ctx-item" id="ctx-copy" title="Copy the selection to the clipboard (Ctrl+C)">Copy</div>`;
     html += `<div class="ctx-item" id="ctx-clone" title="Duplicate the selection on this canvas, offset slightly (Ctrl+D)">Clone</div>`;
+    html += pasteMenuHTML();
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-reset-transform" title="Clear rotation, flip and scale, returning the layer to its natural orientation">Reset Transform</div>`;
 
@@ -760,6 +893,10 @@ document.addEventListener('contextmenu', (e) => {
       </div>
     </div>`;
     html += `<div class="ctx-divider"></div>`;
+    if (state.clipboard?.elements?.length) {
+      html += pasteMenuHTML();
+      html += `<div class="ctx-divider"></div>`;
+    }
 
     html += `<div class="ctx-item has-submenu" title="Export this canvas on its own">
       ${svgWrap(brandSetsSvg, 'Brand sets')}
@@ -823,7 +960,7 @@ document.addEventListener('contextmenu', (e) => {
     // for, so they fold into one entry. Checkmarks still show current state
     // without opening it, since the submenu label carries them.
     const viewsSvg = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z" opacity=".45"/><path d="M9 3v18M3 9h18"/></svg>`;
-    html += `<div class="ctx-item has-submenu" title="Snapping, rulers, guides, safezones and outline mode">
+    html += `<div class="ctx-item has-submenu" title="Snapping, rulers, guides, safezones, outline mode and Crop to Canvas">
       ${svgWrap(viewsSvg, 'Guides &amp; Views')}
       <div class="ctx-submenu">
         <div class="ctx-item" id="ctx-toggle-snap" style="white-space:nowrap;" title="Snap layers to other layers, canvas edges and guides while dragging">${state.snapEnabled !== false ? '✓ ' : ''}Snapping</div>
@@ -831,6 +968,7 @@ document.addEventListener('contextmenu', (e) => {
         <div class="ctx-item" id="ctx-toggle-safezones" style="white-space:nowrap;" title="Overlay the margins that copy and calls to action must stay inside">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>
         <div class="ctx-item" id="ctx-clear-guides" style="white-space:nowrap;" title="Remove every guide you have dragged onto the board">Clear All Guides</div>
         <div class="ctx-item" id="ctx-toggle-outline" style="white-space:nowrap;" title="Draw every layer as an outline only — useful for spotting overlaps and stray layers">${state.outlineMode ? '✓ ' : ''}Outline Mode</div>
+        <div class="ctx-item" id="ctx-toggle-crop" style="white-space:nowrap;" title="Hide anything that sits outside the canvas edges while you work. Exports are always cropped">${state.cropToCanvas ? '✓ ' : ''}Crop to Canvas</div>
       </div>
     </div>`;
     html += `<div class="ctx-divider"></div>`;
@@ -843,6 +981,7 @@ document.addEventListener('contextmenu', (e) => {
     html += `<div class="ctx-item" id="ctx-toggle-safezones">${state.showSafezones ? '✓ ' : ''}Show Safezones</div>`;
     html += `<div class="ctx-item" id="ctx-clear-guides">Clear All Guides</div>`;
     html += `<div class="ctx-item" id="ctx-toggle-outline">${state.outlineMode ? '✓ ' : ''}Outline Mode</div>`;
+    html += `<div class="ctx-item" id="ctx-toggle-crop" title="Hide anything that sits outside the canvas edges while you work. Exports are always cropped">${state.cropToCanvas ? '✓ ' : ''}Crop to Canvas</div>`;
     html += `<div class="ctx-divider"></div>`;
     html += `<div class="ctx-item" id="ctx-open-settings">Settings…</div>`;
   }
@@ -982,6 +1121,10 @@ document.addEventListener('contextmenu', (e) => {
       render();
     }
   });
+  // Paste goes to the canvas the menu was opened on (right-clicking a canvas makes
+  // it the active one), and into the frame on screen.
+  bind('ctx-paste', () => { if (state.clipboard) performPaste(state.clipboard, false); });
+  bind('ctx-paste-in-place', () => { if (state.clipboard) performPaste(state.clipboard, true); });
   bind('ctx-save-asset', async () => await saveSelectionAsAsset());
   bind('ctx-delete', () => {
     const c = getActiveCanvas();
@@ -1165,6 +1308,72 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-canvas-place-global',  () => savePlacementGlobally('canvas'));
   bind('ctx-el-place-project',     () => savePlacementProjectOnly('selection'));
   bind('ctx-el-place-global',      () => savePlacementGlobally('selection'));
+  bind('ctx-all-place-project',    () => savePlacementAllProjectOnly());
+  bind('ctx-all-place-global',     () => savePlacementAllGlobally());
+
+  // ---- Multi-canvas selection menu ----------------------------------------
+  const multiIds = window._ctxMultiCanvasIds || [];
+  bind('ctx-multi-place-project', () => savePlacementAllProjectOnly(multiIds));
+  bind('ctx-multi-place-global',  () => savePlacementAllGlobally(multiIds));
+  bind('ctx-multi-select-one', () => {
+    state.canvasSelection = [];
+    if (window._ctxClickedCanvasId) state.activeCanvasId = window._ctxClickedCanvasId;
+    render();
+  });
+  bind('ctx-multi-export', () => {
+    if (typeof openExportModal !== 'function') return;
+    openExportModal();
+    // Tick just the selected sizes. Change events let the dialog recount.
+    document.querySelectorAll('.export-chk').forEach(cb => {
+      const want = multiIds.includes(cb.dataset.cid);
+      if (cb.checked !== want) { cb.checked = want; cb.dispatchEvent(new Event('change', { bubbles: true })); }
+    });
+  });
+  bind('ctx-multi-clone', () => {
+    const clones = [];
+    multiIds.forEach(id => {
+      const c = state.canvases.find(x => x.id === id);
+      if (!c) return;
+      const clone = JSON.parse(JSON.stringify(c));
+      clone.id = uid();
+      clone.workspaceX += 40;
+      clone.workspaceY += 40;
+      // New ids for every layer, with the references inside the canvas (groups,
+      // the image a mask clips) following them.
+      const idMap = new Map(), gMap = new Map();
+      clone.elements.forEach(el => {
+        const nid = uid(); idMap.set(el.id, nid); el.id = nid;
+        if (el.groupId) { if (!gMap.has(el.groupId)) gMap.set(el.groupId, uid()); el.groupId = gMap.get(el.groupId); }
+      });
+      clone.elements.forEach(el => { if (el.maskTargetId && idMap.has(el.maskTargetId)) el.maskTargetId = idMap.get(el.maskTargetId); });
+      clones.push(clone);
+    });
+    if (!clones.length) return;
+    state.canvases.push(...clones);
+    state.canvasSelection = clones.map(c => c.id);
+    state.activeCanvasId = clones[0].id;
+    pushHistory();
+    render();
+    showCanvasNotification(`Cloned ${clones.length} canvases — the copies are selected, so you can drag them into place together.`, { type: 'success' });
+  });
+  bind('ctx-multi-delete', async () => {
+    const doomed = state.canvases.filter(c => multiIds.includes(c.id));
+    if (!doomed.length || doomed.length >= state.canvases.length) return;
+    const layerCount = doomed.reduce((n, c) => n + (c.elements || []).length, 0);
+    const list = doomed.map(c => `${c.width} × ${c.height}`).join(', ');
+    const ok = await showAdflowConfirm(
+      `Delete <b>${doomed.length} canvases</b> (${list}) and the ${layerCount} layer${layerCount === 1 ? '' : 's'} on them? The other canvases are not affected. This can be undone.`,
+      'Delete Canvases');
+    if (!ok) return;
+    state.canvases = state.canvases.filter(c => !multiIds.includes(c.id));
+    state.canvasSelection = [];
+    if (!state.canvases.some(c => c.id === state.activeCanvasId)) state.activeCanvasId = state.canvases[0].id;
+    state.layerSelection = [];
+    state.selectedElementId = null;
+    pushHistory();
+    render();
+    showCanvasNotification(`Deleted ${doomed.length} canvases. Undo brings them back.`, { type: 'info' });
+  });
   bind('ctx-canvas-place-clear-project', () => clearPlacementProjectOnly('canvas'));
   bind('ctx-canvas-place-clear-global',  () => clearPlacementGlobally('canvas'));
   bind('ctx-el-place-clear-project',     () => clearPlacementProjectOnly('selection'));
@@ -1177,6 +1386,16 @@ document.addEventListener('contextmenu', (e) => {
   bind('ctx-toggle-safezones', () => _toggleSafezones());
   bind('ctx-clear-guides', () => { state.guides = []; render(); });
   bind('ctx-toggle-outline', () => toggleOutlineMode());
+  // Same switch as Settings ▸ General ▸ Crop to Canvas. A view preference, so it
+  // is saved but kept out of undo.
+  bind('ctx-toggle-crop', () => {
+    state.cropToCanvas = !state.cropToCanvas;
+    render();
+    scheduleAutosave();
+    showCanvasNotification(state.cropToCanvas
+      ? 'Crop to Canvas on — anything outside the canvas edges is hidden.'
+      : 'Crop to Canvas off — layers outside the canvas edges show again.', { type: 'info' });
+  });
   bind('ctx-open-settings', () => { if (typeof openSettings === 'function') openSettings(); });
 });
 
@@ -2033,7 +2252,7 @@ let _appUpdatePollTimer = null;
 // Do not put a version string anywhere else. Three of them had already drifted
 // apart when this was written.
 // ---------------------------------------------------------------------------
-const APP_VERSION_FALLBACK = 'v0.65.7';
+const APP_VERSION_FALLBACK = 'v0.65.13';
 
 function getAppVersion() {
   return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;

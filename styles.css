@@ -2165,6 +2165,38 @@ body.theme-light {
     }
 
 
+    /* Per-frame visibility override on an Always Top / Always Bottom layer
+       (Alt+click the eye). Accent colour and ring whether it shows or hides the
+       layer on this frame, plus a badge with the frame number, so the override
+       reads as different from the plain on/off eye at a glance. */
+    .layer .icon-btn.frame-override {
+      position: relative;
+      opacity: 1;
+      color: var(--accent-base);
+      box-shadow: inset 0 0 0 1px var(--accent-base);
+    }
+    .layer .icon-btn.frame-override:not(.active) svg { opacity: 0.55; }
+    .layer .icon-btn.frame-override:not(.active)::after {
+      content: '';
+      position: absolute;
+      left: 3px; right: 3px; top: 50%;
+      height: 1.5px;
+      background: var(--accent-base);
+      transform: rotate(-35deg);
+    }
+    .layer .eye-frame-badge {
+      position: absolute;
+      right: -4px; bottom: -4px;
+      min-width: 10px; height: 10px;
+      padding: 0 2px;
+      border-radius: 5px;
+      background: var(--accent-base);
+      color: #fff;
+      font-size: 7px; font-weight: 700; line-height: 10px;
+      text-align: center;
+      pointer-events: none;
+    }
+
     /* Role-assignment icon — gray only when role === misc (unassigned);
        accent purple for every known role, whether auto-detected or manual */
 
@@ -2829,10 +2861,18 @@ body.theme-light {
     }
 
 
-    /* Frame controls (~134px) and the Preview icon (~16px) are fixed sizes, so plain
-       width thresholds: drop the frame controls first (the toolbar has the
-       same ones), and Preview only when even it alone will not fit. */
+    /* Frame controls (~129px, of which + / − take ~38px) and the Preview icon
+       (~16px) are fixed sizes, so plain width thresholds, shed in order of how
+       often they are reached for: + / − first (adding or removing a frame is rare,
+       and the toolbar has both), then the frame selector, and Preview only when
+       even it alone will not fit. */
     @container (max-width: 157px) {
+
+      .canvas-footer-frame-edit { display: none !important; }
+
+    }
+
+    @container (max-width: 119px) {
 
       .canvas-footer-frames { display: none !important; }
 

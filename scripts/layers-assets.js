@@ -934,9 +934,30 @@ function renderLayers() {
         : `Auto-resize role: Unassigned (click to assign)`;
       const roleIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>`;
 
+      // Visibility as it stands on the frame on screen. For an Always Top / Always
+      // Bottom layer that can differ from its eye: Alt+click sets a per-frame
+      // override (el.frameVis), and the eye then shows it with an accent ring and
+      // a small frame badge, so an override is never invisible state.
+      const isPersistentLayer = el.persistent !== false;
+      const hiddenNow = isElHiddenNow(el);
+      const frameOverride = isPersistentLayer && hasFrameVisOverride(el, state.activeFrameId);
+      const overrideFrames = isPersistentLayer && el.frameVis ? Object.keys(el.frameVis).length : 0;
+      const fNoNow = Math.max(1, (state.frames || []).findIndex(f => f.id === state.activeFrameId) + 1);
+      let eyeTitle;
+      if (el.isMask) {
+        eyeTitle = el.hidden ? 'Mask inactive — click to enable (Hold Shift to apply to all canvases)' : 'Mask active — click to disable (Hold Shift to apply to all canvases)';
+      } else if (frameOverride) {
+        eyeTitle = `${hiddenNow ? 'Hidden' : 'Shown'} on frame ${fNoNow} only — an override of the layer being ${el.hidden ? 'off' : 'on'} everywhere else. Alt+click to remove the override; click to switch the layer ${el.hidden ? 'on' : 'off'} on every frame (Hold Shift to apply to all canvases)`;
+      } else if (isPersistentLayer) {
+        eyeTitle = `Toggle visibility on every frame. Alt+click to ${hiddenNow ? 'show' : 'hide'} it on frame ${fNoNow} only${overrideFrames ? ` (${overrideFrames} frame${overrideFrames === 1 ? ' has' : 's have'} an override)` : ''}. Hold Shift to apply to all canvases`;
+      } else {
+        eyeTitle = 'Toggle visibility (Hold Shift to apply to all canvases)';
+      }
+      const frameBadge = frameOverride ? `<span class="eye-frame-badge" aria-hidden="true">${fNoNow}</span>` : '';
+
       div.innerHTML = `
         ${iconHtml}
-        <span class="layer-name" style="${el.hidden ? 'opacity:0.5;text-decoration:line-through' : ''}">${layerLabel(el)}</span>
+        <span class="layer-name" style="${hiddenNow ? 'opacity:0.5;text-decoration:line-through' : ''}">${layerLabel(el)}</span>
         <div class="layer-actions">
           <button class="icon-btn role-btn ${isAssigned ? 'role-assigned' : ''}" data-act="role" title="${roleTooltip}">
             ${roleIconSvg}
@@ -944,8 +965,8 @@ function renderLayers() {
           <button class="icon-btn ${el.locked ? 'active' : ''}" data-act="lock" title="Toggle lock (Hold Shift to apply to all canvases)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </button>
-          <button class="icon-btn ${!el.hidden ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''}" data-act="hide" title="${el.isMask ? (el.hidden ? 'Mask inactive — click to enable (Hold Shift to apply to all canvases)' : 'Mask active — click to disable (Hold Shift to apply to all canvases)') : 'Toggle visibility (Hold Shift to apply to all canvases)'}">
-            ${eyeIconHtml}
+          <button class="icon-btn ${!hiddenNow ? 'active' : ''} ${el.isMask ? 'mask-eye' : ''} ${frameOverride ? 'frame-override' : ''}" data-act="hide" title="${eyeTitle.replace(/"/g, '&quot;')}">
+            ${eyeIconHtml}${frameBadge}
           </button>
         </div>
       `;
@@ -1155,6 +1176,44 @@ function renderLayers() {
         }
         if (act === 'hide') {
           const toToggle = (state.layerSelection?.includes(el.id)) ? state.layerSelection : [el.id];
+          // Alt+click (Option on a Mac): per-frame override on persistent layers —
+          // flip what this frame shows without touching the other frames. Flipping
+          // it back to what the eye says removes the override rather than storing a
+          // redundant one, so "no override" stays the normal state.
+          if (e.altKey && !el.isMask) {
+            if (el.persistent === false) {
+              showCanvasNotification('Per-frame visibility is for Always Top and Always Bottom layers. This layer already belongs to one frame.', { type: 'info' });
+              return;
+            }
+            const fid = String(state.activeFrameId);
+            const showNow = !isElVisibleOnFrame(el, state.activeFrameId);
+            const applyOverride = (item) => {
+              if (!item || item.persistent === false || item.isMask) return;
+              if (showNow === !item.hidden) {
+                if (item.frameVis) {
+                  delete item.frameVis[fid];
+                  if (!Object.keys(item.frameVis).length) delete item.frameVis;
+                }
+              } else {
+                if (!item.frameVis) item.frameVis = {};
+                item.frameVis[fid] = showNow;
+              }
+            };
+            if (e.shiftKey) {
+              const targetNames = toToggle.map(id => {
+                const item = c.elements.find(x => x.id === id);
+                return item ? baseLayerLabel(item) : null;
+              }).filter(Boolean);
+              state.canvases.forEach(canvas => canvas.elements.forEach(item => {
+                if (targetNames.includes(baseLayerLabel(item))) applyOverride(item);
+              }));
+            } else {
+              toToggle.forEach(id => applyOverride(c.elements.find(x => x.id === id)));
+            }
+            pushHistory();
+            render();
+            return;
+          }
           const newHidden = !el.hidden;
           if (e.shiftKey) {
             const targetNames = toToggle.map(id => {

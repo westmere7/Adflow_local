@@ -1867,9 +1867,9 @@ function getRequiredFonts(c) {
   };
 
   c.elements.forEach(el => {
-    if (el.hidden) return;
+    if (!isElShownOnAnyFrame(el)) return;
     if (el.type !== 'text' && el.type !== 'button') return;
-    
+
     const ff = el.fontFamily;
     if (!ff) return;
 
@@ -1909,7 +1909,7 @@ async function addCanvasAssetsToZip(c, zip) {
   // synchronous HTML builder can swap in the JPEG/PNG (exportImageTranscodes).
   if (getExportAdServer() === 'adobe') {
     for (const el of c.elements) {
-      if (el.type !== 'image' || !el.assetId || el.hidden) continue;
+      if (el.type !== 'image' || !el.assetId || !isElShownOnAnyFrame(el)) continue;
       const src = state.assets[el.assetId] || el.assetId;
       if (!exportImageNeedsTranscode(src)) continue;
       try { await transcodeExportImage(src); }
@@ -2237,7 +2237,7 @@ async function exportCanvasAsPng(c, options = {}) {
     // Overwrite in-iframe calculations using the parent page's high-precision calculation
     // (using already-loaded fonts in the parent page context).
     c.elements.forEach(el => {
-      if (el.hidden) return;
+      if (isElHiddenNow(el)) return;
       if (el.autoSize && (el.type === 'text' || el.type === 'button')) {
         const elWrapper = recorderIframe.contentDocument.querySelector(`[data-id="${el.id}"]`);
         if (elWrapper) {
@@ -2446,8 +2446,12 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
   // byte-for-byte as it was before exit animations existed.
   let usesExitKeyframes = false;
 
-  const renderEl = (el, frameCtx) => {
-    if (el.hidden) return '';
+  // frameId: the frame this copy of the layer is written into. Persistent layers
+  // are written into every frame, so a per-frame visibility override decides
+  // per copy. Without one (the shared Always Top / Bottom containers), the layer
+  // is written if it shows on ANY frame and the runtime toggles it per frame.
+  const renderEl = (el, frameCtx, frameId) => {
+    if (frameId !== undefined ? !isElVisibleOnFrame(el, frameId) : !isElShownOnAnyFrame(el)) return '';
     // Mask layer: not rendered visibly — its geometry is baked into the SVG
     // mask attached to the image below it. Skip here.
     if (isActiveMask(el)) return '';
@@ -2736,8 +2740,6 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     return '';
   };
 
-  const elsBot = c.elements.filter(e => e.persistent === 'bottom').map(e => renderEl(e)).join('\n');
-  const elsTop = c.elements.filter(e => e.persistent === 'top').map(e => renderEl(e)).join('\n');
 
   // Filter out skipped frames unless (a) it's a static image export of the
   // active frame, OR (b) the caller explicitly requested skipped frames be
@@ -2810,11 +2812,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
 
     const frameElsList = [];
     if (!excludePers) {
-      c.elements.filter(e => e.persistent === 'bottom').forEach(e => frameElsList.push(renderEl(e)));
+      c.elements.filter(e => e.persistent === 'bottom').forEach(e => frameElsList.push(renderEl(e, undefined, f.id)));
     }
-    c.elements.filter(e => e.persistent === false && e.frameId === f.id).forEach(e => frameElsList.push(renderEl(e, frameCtx)));
+    c.elements.filter(e => e.persistent === false && e.frameId === f.id).forEach(e => frameElsList.push(renderEl(e, frameCtx, f.id)));
     if (!excludePers) {
-      c.elements.filter(e => e.persistent === 'top').forEach(e => frameElsList.push(renderEl(e)));
+      c.elements.filter(e => e.persistent === 'top').forEach(e => frameElsList.push(renderEl(e, undefined, f.id)));
     }
     const frameEls = frameElsList.join('\n');
 
@@ -2915,6 +2917,28 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
       }
     }
   });
+
+  // Shared Always Bottom / Always Top containers, used on frames that exclude the
+  // persistent layers from their own stack. One copy serves every such frame, so a
+  // layer whose visibility differs between the frames is wrapped and tagged with
+  // the frames it shows on (data-pfv=",1,3,"); updatePersistentLayersVisibility
+  // flips it as frames change. Its starting state is written inline for the frame
+  // shown first, which is also what a PNG capture (no script) relies on.
+  const initialFrameId = (isImageExport || (isPreviewCurrent && !isCurrentWithPrev))
+    ? state.activeFrameId
+    : (activeFrames[0] ? activeFrames[0].id : state.activeFrameId);
+  let usesFrameVis = false;   // emit the runtime toggle only when something needs it
+  const sharedLayerHTML = (tier) => c.elements.filter(e => e.persistent === tier).map(e => {
+    const html = renderEl(e);
+    if (!html) return '';
+    const shownOn = activeFrames.filter(f => isElVisibleOnFrame(e, f.id)).map(f => f.id);
+    if (shownOn.length === activeFrames.length) return html;
+    usesFrameVis = true;
+    const vis = shownOn.includes(initialFrameId) ? '' : 'visibility:hidden;';
+    return `    <div data-pfv=",${shownOn.join(',')}," style="position:absolute;inset:0;pointer-events:none;${vis}">\n${html}\n    </div>`;
+  }).join('\n');
+  const elsBot = sharedLayerHTML('bottom');
+  const elsTop = sharedLayerHTML('top');
 
   const activeFrameIdx = activeFrames.findIndex(f => f.id === state.activeFrameId);
   const initExclude = (activeFrameIdx >= 0) ? !!activeFrames[activeFrameIdx].excludePersistent : (activeFrames[0] ? !!activeFrames[0].excludePersistent : false);
@@ -3061,8 +3085,14 @@ ${elsTop}
       var topLayer = document.getElementById('layer-top');
       if (botLayer) botLayer.style.display = exclude ? 'block' : 'none';
       if (topLayer) topLayer.style.display = exclude ? 'block' : 'none';
-    }
-    
+${usesFrameVis ? `      // Per-frame visibility overrides on the shared persistent layers.
+      var tag = ',' + frames[frameIdx].id + ',';
+      var pfv = document.querySelectorAll('[data-pfv]');
+      for (var i = 0; i < pfv.length; i++) {
+        pfv[i].style.visibility = pfv[i].getAttribute('data-pfv').indexOf(tag) >= 0 ? '' : 'hidden';
+      }
+` : ''}    }
+
     function nextFrame() {
       if (frames.length <= 1) return;
       var prevFrameIdx = currentFrame;

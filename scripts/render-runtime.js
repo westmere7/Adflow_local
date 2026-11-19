@@ -65,6 +65,41 @@ function isActiveMask(el) {
   return !!(el && el.isMask && !el.persistent && !el.hidden);
 }
 
+// ---------------------------------------------------------------------------
+// Per-frame visibility for persistent layers (Always Top / Always Bottom).
+//
+// A persistent layer's eye (`el.hidden`) switches it on or off on EVERY frame.
+// `el.frameVis` overrides that for single frames: { [frameId]: true | false },
+// true = shown on that frame, false = hidden on it, whatever the eye says. Set
+// with Alt+click on the eye in the Layers panel. Per-frame layers live on one
+// frame already, so the override is ignored for them.
+// ---------------------------------------------------------------------------
+function hasFrameVisOverride(el, frameId) {
+  return !!(el && el.persistent !== false && el.frameVis
+    && Object.prototype.hasOwnProperty.call(el.frameVis, String(frameId)));
+}
+
+function isElVisibleOnFrame(el, frameId) {
+  if (!el) return false;
+  if (hasFrameVisOverride(el, frameId)) return !!el.frameVis[String(frameId)];
+  return !el.hidden;
+}
+
+// Hidden on the frame the editor is showing.
+function isElHiddenNow(el) {
+  const fid = (typeof state !== 'undefined' && state) ? state.activeFrameId : undefined;
+  return !isElVisibleOnFrame(el, fid);
+}
+
+// Shown on at least one frame — the test for what an export must carry (fonts,
+// images): a layer switched off with the eye but turned back on for one frame
+// still needs its assets.
+function isElShownOnAnyFrame(el) {
+  if (!el) return false;
+  if (!el.hidden) return true;
+  return !!(el.persistent !== false && el.frameVis && Object.values(el.frameVis).some(v => v === true));
+}
+
 function findMaskAbove(c, imageEl) {
   if (!c || !imageEl || imageEl.type !== 'image') return null;
   const idx = c.elements.indexOf(imageEl);

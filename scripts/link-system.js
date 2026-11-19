@@ -2,14 +2,48 @@
 // Element Linking System Helpers & Operations
 // ============================================================================
 
-function areStylesAndNamesEqual(el1, el2) {
+// The name Auto-Link matches on: the layer's name exactly as the Layers panel gives
+// it — its own name if it has one, otherwise the label derived from it — with the
+// panel's repeat number ("Image", "Image 2", "Image 3") counted on its own canvas.
+// Two differences from the panel, both stricter: text and button labels use the
+// FULL text rather than the panel's shortened display, and surrounding spaces are
+// ignored. Case matters.
+//
+// It used to compare the bare label, which made every unnamed image an "Image" and
+// every unnamed rectangle a "Rectangle": Auto-Link pulled all of them into one group,
+// including "Image" and "Image 2" from the same canvas, and texts that merely began
+// with the same 28 characters.
+function _autoLinkBaseName(el) {
+  if (el.customName && String(el.customName).trim()) return String(el.customName).trim();
+  if (el.type === 'text') return String(el.text || 'Text').trim() || 'Text';
+  if (el.type === 'button') return 'Button · ' + String(el.text || '').trim();
+  return baseLayerLabel(el);
+}
+
+// id → exact name, for every layer on every canvas.
+function autoLinkNameMap() {
+  const names = new Map();
+  (state.canvases || []).forEach(c => {
+    const seen = new Map();
+    (c.elements || []).forEach(el => {
+      const base = _autoLinkBaseName(el);
+      const n = (seen.get(base) || 0) + 1;
+      seen.set(base, n);
+      names.set(el.id, n > 1 ? `${base} ${n}` : base);
+    });
+  });
+  return names;
+}
+
+function areStylesAndNamesEqual(el1, el2, names = autoLinkNameMap()) {
   if (el1.type !== el2.type) return false;
   // A mask and a plain shape are not siblings even when they share a name and
   // type — they play different roles, and pairing them would sync geometry and
   // visibility between a clip silhouette and ordinary artwork. Masks auto-link
   // with masks, shapes with shapes.
   if (!!el1.isMask !== !!el2.isMask) return false;
-  return baseLayerLabel(el1) === baseLayerLabel(el2);
+  const a = names.get(el1.id), b = names.get(el2.id);
+  return a !== undefined && a === b;
 }
 
 // Is this image currently clipped by a mask directly above it? Needs the element's
@@ -117,11 +151,12 @@ async function autoLinkElements(selectedOnly = false) {
     }).filter(Boolean);
   }
 
+  const names = autoLinkNameMap();
   const allElements = [];
   state.canvases.forEach(canvas => {
     canvas.elements.forEach(el => {
       if (allowedTargets) {
-        const matchesAllowed = allowedTargets.some(target => areStylesAndNamesEqual(el, target));
+        const matchesAllowed = allowedTargets.some(target => areStylesAndNamesEqual(el, target, names));
         if (matchesAllowed) {
           allElements.push(el);
         }
@@ -142,7 +177,7 @@ async function autoLinkElements(selectedOnly = false) {
     const set = [el1];
     for (let j = i + 1; j < allElements.length; j++) {
       const el2 = allElements[j];
-      if (areStylesAndNamesEqual(el1, el2)) {
+      if (areStylesAndNamesEqual(el1, el2, names)) {
         set.push(el2);
       }
     }
@@ -160,8 +195,7 @@ async function autoLinkElements(selectedOnly = false) {
 
       let gid = existingGid;
       if (!gid) {
-        const baseName = baseLayerLabel(el1);
-        const name = baseName + " Group";
+        const name = names.get(el1.id) + " Group";
         const cat = getElementCategory(el1);
         gid = 'lg_' + uid();
 
@@ -209,7 +243,7 @@ async function autoLinkElements(selectedOnly = false) {
     if (anyLinked) {
       await showAdflowAlert("Matching elements are already linked, and no new matching elements were found.");
     } else {
-      await showAdflowAlert("No matching elements with the same layer name and style were found.");
+      await showAdflowAlert("No layers with exactly the same name were found on other canvases. Auto-Link only links layers whose names match exactly — rename them to match, or link them by hand.");
     }
   }
 }
@@ -431,6 +465,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
   if (sync.visibility) {
     if (sourceEl.hidden !== undefined) targetEl.hidden = sourceEl.hidden;
     else delete targetEl.hidden;
+    // Per-frame overrides travel with the eye: frames are shared by every canvas,
+    // so "hidden on frame 2" means the same thing on all of them.
+    if (sourceEl.frameVis && Object.keys(sourceEl.frameVis).length) targetEl.frameVis = { ...sourceEl.frameVis };
+    else delete targetEl.frameVis;
   }
   if (sync.inAnim) {
     const inAnimProps = ['inEnabled', 'animType', 'animDuration', 'animDelay', 'animFade', 'animFadeLetters', 'animFadeBg', 'zoomFrom', 'animBounce', 'animDirection', 'animDistance', 'animRotateOffset', 'animAngle', 'animateBg', 'bgOffset', 'zoomAnchor', 'animStaggerText', 'riseSplit', 'riseFade', 'inDirClosest'];
@@ -1075,7 +1113,7 @@ async function distributeElements(sel, opts = {}) {
         if (!gidMap.has(s.groupId)) gidMap.set(s.groupId, uid());
         clone.groupId = gidMap.get(s.groupId);
       }
-      if (!carryVisibility) clone.hidden = false;
+      if (!carryVisibility) { clone.hidden = false; delete clone.frameVis; }
       if (!carryLock) clone.locked = false;
       // Drop roleAuto with role, or a hand-locked role survives as a lock with
       // nothing to lock and the automatic assignment skips the copy.

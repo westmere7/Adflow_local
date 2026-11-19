@@ -1171,25 +1171,52 @@ function performPaste(parsedData, isPasteInPlace) {
   }
 
   if (parsed.length > 0) {
+    // Paste in Place (Ctrl+Shift+V), Illustrator-style:
+    //   • same canvas, any frame  → exactly where it was;
+    //   • another canvas          → the same spot RELATIVE to the canvas: the
+    //     layer's centre keeps its fraction of the width and height, so a logo in
+    //     the top-right corner of a 300×250 lands in the top-right of a 728×90.
+    // Only x/y move. Size, type, text, colours, role, links and every animation
+    // setting are copied untouched — the Move effect's offsets are relative to the
+    // layer, so they travel with it. A group is placed as one unit (its bounding
+    // box is the thing positioned) so its internal layout never pulls apart.
+    const proportional = isPasteInPlace && !(sourceCanvasId && sourceCanvasId === c.id)
+      && sourceWidth > 0 && sourceHeight > 0
+      && !(sourceWidth === c.width && sourceHeight === c.height);
+    const shiftFor = new Map();   // groupId|elementId → {dx, dy}
+    if (proportional) {
+      const units = new Map();
+      parsed.forEach(x => {
+        const key = x.groupId ? 'g:' + x.groupId : 'e:' + x.id;
+        const u = units.get(key) || { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+        u.minX = Math.min(u.minX, x.x || 0);
+        u.minY = Math.min(u.minY, x.y || 0);
+        u.maxX = Math.max(u.maxX, (x.x || 0) + (x.width || 0));
+        u.maxY = Math.max(u.maxY, (x.y || 0) + (x.height || 0));
+        units.set(key, u);
+      });
+      units.forEach((u, key) => {
+        const cx = (u.minX + u.maxX) / 2, cy = (u.minY + u.maxY) / 2;
+        shiftFor.set(key, {
+          dx: Math.round((cx / sourceWidth) * c.width - cx),
+          dy: Math.round((cy / sourceHeight) * c.height - cy)
+        });
+      });
+    }
+
     const groupMap = {};
+    const idMap = new Map();
     const newIds = [];
     const pasted = parsed.map(x => {
       const copy = JSON.parse(JSON.stringify(x));
       copy.id = uid();
+      idMap.set(x.id, copy.id);
 
-      if (isPasteInPlace) {
-        if (sourceCanvasId && sourceCanvasId === c.id) {
-          // Same canvas: keep exact original position
-        } else if (sourceWidth && sourceHeight) {
-          // Different canvas: calculate proportional position based on element center anchor
-          const w = x.width || 0;
-          const h = x.height || 0;
-          copy.x = Math.round(((x.x + w / 2) / sourceWidth) * c.width - w / 2);
-          copy.y = Math.round(((x.y + h / 2) / sourceHeight) * c.height - h / 2);
-        } else {
-          // Fallback (keep original coordinates)
-        }
-      } else {
+      if (proportional) {
+        const s = shiftFor.get(x.groupId ? 'g:' + x.groupId : 'e:' + x.id);
+        copy.x = (x.x || 0) + s.dx;
+        copy.y = (x.y || 0) + s.dy;
+      } else if (!isPasteInPlace) {
         // Normal paste: offset by 10
         copy.x += 10;
         copy.y += 10;
@@ -1205,11 +1232,22 @@ function performPaste(parsedData, isPasteInPlace) {
       newIds.push(copy.id);
       return copy;
     });
+    // A mask records which image it clips. Pasted together, the copy must clip
+    // the copied image — not reach back to the original on the source canvas.
+    pasted.forEach(p => {
+      if (p.maskTargetId && idMap.has(p.maskTargetId)) p.maskTargetId = idMap.get(p.maskTargetId);
+    });
     pasted.forEach(p => insertAtGroupEnd(c.elements, p));
     state.layerSelection = newIds;
     state.selectedElementId = newIds.length === 1 ? newIds[0] : null;
     pushHistory();
     render();
+    if (isPasteInPlace) {
+      const n = pasted.length, what = `${n} layer${n === 1 ? '' : 's'}`;
+      showCanvasNotification(proportional
+        ? `Pasted ${what} in place, scaled to this canvas’s proportions (from ${sourceWidth} × ${sourceHeight}).`
+        : `Pasted ${what} in place.`, { type: 'success' });
+    }
     return true;
   }
   return false;

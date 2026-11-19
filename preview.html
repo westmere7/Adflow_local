@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.7" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.13" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.65.7"></script>
+  <script src="lib/jszip.min.js?v=0.65.13"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.65.7" />
+  <link rel="stylesheet" href="styles.css?v=0.65.13" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -788,13 +788,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.65.7"></script>
-  <script src="scripts/render-runtime.js?v=0.65.7"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.65.7"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.65.7"></script>
-  <script src="scripts/data-merge.js?v=0.65.7"></script>
-  <script src="scripts/font-subset.js?v=0.65.7"></script>
-  <script src="scripts/export-pipeline.js?v=0.65.7"></script>
+  <script src="scripts/numeric-wheel.js?v=0.65.13"></script>
+  <script src="scripts/render-runtime.js?v=0.65.13"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.65.13"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.65.13"></script>
+  <script src="scripts/data-merge.js?v=0.65.13"></script>
+  <script src="scripts/font-subset.js?v=0.65.13"></script>
+  <script src="scripts/export-pipeline.js?v=0.65.13"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -1286,15 +1286,17 @@
       const dm = state.dataMerge;
       const activeVersionIdx = (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : null;
       
+      // The real export, exactly as the editor measures it — no preview-only
+      // playback driver, which is not in the file the ad server receives.
       try {
         if (typeof dmRunExport === 'function') {
           await dmRunExport(activeVersionIdx, async () => {
             await addCanvasAssetsToZip(c, zip);
-            zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+            zip.file('index.html', generateExportHTML(c, zip));
           });
         } else {
           await addCanvasAssetsToZip(c, zip);
-          zip.file('index.html', generateExportHTML(c, zip, false, { previewControls: true }));
+          zip.file('index.html', generateExportHTML(c, zip));
         }
       } catch (e) {
         console.error('Failed to calculate canvas ZIP size:', e);
@@ -1344,16 +1346,17 @@
           window.state = originalState;
         }
         
-        const kbSize = (new Blob([htmlContent]).size / 1024).toFixed(1);
-        const sizeLimit = state.adSizeLimit || 150;
-        const sizeClass = parseFloat(kbSize) > sizeLimit ? 'badge danger' : 'badge success';
+        // Placeholder until updateSizeBadge has the zipped size. The raw page
+        // length used to be shown here first, several times the real weight.
+        const kbSize = '…';
+        const sizeClass = 'badge';
 
         card.innerHTML = `
           <div class="card-header">
             <div class="card-title" style="display:flex; align-items:center; font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.04em;">
               <span style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span>
               <span style="margin-left:8px; margin-right:8px; color:var(--text-muted);">&bull;</span>
-              <span class="${sizeClass}" id="size-badge-${c.id}" style="font-size:11px; font-weight:700; color:var(--accent-base); padding:0; background:transparent; text-transform:none;">${kbSize} KB</span>
+              <span class="${sizeClass}" id="size-badge-${c.id}" style="font-size:11px; font-weight:700; color:var(--accent-base); padding:0; background:transparent; text-transform:none;">${kbSize}</span>
             </div>
           </div>
           

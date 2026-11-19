@@ -1044,7 +1044,7 @@ canvasArea.addEventListener('mousedown', (e) => {
 
       const groupElements = c.elements.filter(el => el.groupId === state.isolatedGroupId);
       const hitElement = [...groupElements].reverse().find(el => {
-        if (el.hidden) return false;
+        if (isElHiddenNow(el)) return false;
         const cx = el.x + el.width / 2;
         const cy = el.y + el.height / 2;
         const dx = clickX - cx;
@@ -1135,7 +1135,7 @@ canvasArea.addEventListener('mousedown', (e) => {
 
     const selectedIds = new Set();
     c.elements.forEach(el => {
-      if (el.hidden || el.locked) return;
+      if (isElHiddenNow(el) || el.locked) return;
       if (el.persistent === false && el.frameId !== state.activeFrameId) return;
       if (state.isolatedGroupId && el.groupId !== state.isolatedGroupId) return;
       const intersect = !(

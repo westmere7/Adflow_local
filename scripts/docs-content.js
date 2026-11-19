@@ -105,7 +105,16 @@ const DOCS_SECTIONS = [
           <li><b>Reorder:</b> drag layers, or <span class="kbd">Ctrl</span>+<span class="kbd">[</span> / <span class="kbd">Ctrl</span>+<span class="kbd">]</span>.</li>
           <li><b>Group:</b> select layers, <span class="kbd">Ctrl</span>+<span class="kbd">G</span>. Double-click a group to <b>isolate</b> and edit inside.</li>
           <li><b>Layer sections</b> in the panel: <i>Main Layers</i> (default — visible only on the active frame, driven by the active frame selection), <i>Always Bottom</i> (background, painted under every frame), <i>Always Top</i> (overlay painted above every frame — typical for logos and compliance text). Drag a layer between sections to change its persistence.</li>
+          <li><b>Per-frame visibility</b> (Always Top / Always Bottom layers): the eye switches the layer on or off on every frame. <span class="kbd">Alt</span>+click the eye (<span class="kbd">Option</span>+click on a Mac) to show or hide it on <i>the frame you are on</i> only — for example, a logo switched off everywhere but shown on the end frame. While a frame has an override, the eye on that frame turns accent-coloured with a ring and a small badge giving the frame number (struck through when the override hides the layer). Alt+click again to remove the override; the plain eye still sets every other frame. Add <span class="kbd">Shift</span> to apply to the same-named layer on every canvas. Overrides follow the layer into exports, previews, Link Group visibility sync and copies, and are removed with their frame.</li>
         </ul>
+      `},
+      { id: 'paste-in-place', title: 'Copy & Paste in Place', body: `
+        <p><span class="kbd">Ctrl</span>+<span class="kbd">C</span> copies the selected layers. <span class="kbd">Ctrl</span>+<span class="kbd">V</span> pastes them slightly offset. <b>Paste in Place</b> — <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">V</span> (<span class="kbd">Cmd</span>+<span class="kbd">Shift</span>+<span class="kbd">V</span> on a Mac), as in Illustrator, or <b>Paste in Place</b> on the right-click menu — puts them where they belong:</p>
+        <ul>
+          <li><b>Same canvas, another frame:</b> exactly the same position. Switch to the frame, paste in place, done.</li>
+          <li><b>Another canvas:</b> the same spot <i>relative to the canvas</i>. Each layer's centre keeps its share of the width and height, so a logo in the top-right of a 300 × 250 lands in the top-right of a 728 × 90. A group is placed as one piece, so its internal layout stays intact. A canvas of the same size gets the exact position.</li>
+        </ul>
+        <p>Only the position changes. Size, text, colours, role, links, the In / FX / Out animations and their timing are copied exactly, and a mask pasted with its image clips the copy. The layers go into the frame on screen. Because sizes are kept, a layer copied from a large canvas can overhang a much smaller one — use <b>Distribute</b> or <b>Auto-Resize</b> when you want layers scaled to fit.</p>
       `},
       { id: 'assets-panel', title: 'Assets panel', body: `
         <ul>
@@ -120,7 +129,7 @@ const DOCS_SECTIONS = [
       { id: 'alignment-snapping', title: 'Alignment & snapping', body: `
         <ul>
           <li><b>Magnetic snap:</b> canvas edges, centres, sibling layers, custom guides. Toggle in the workspace right-click menu.</li>
-          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone. To move several at once, <span class="kbd">Shift</span>-click their headers (or Shift/Ctrl-click them in the Canvases panel), then drag any of them; Escape clears the selection.</li>
+          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone. To move several at once, <span class="kbd">Shift</span>-click their headers (or Shift/Ctrl-click them in the Canvases panel), then drag any of them; Escape clears the selection. Right-click any selected canvas (on the board or in the panel) for a menu that acts on all of them: <b>Export N sizes…</b> (opens Export with just those ticked), <b>Save placement of N canvases</b>, <b>Clone N canvases</b>, <b>Select only this canvas</b> and <b>Delete N canvases</b> (asks first, and can be undone; a project always keeps at least one canvas).</li>
           <li><b>Rulers & guides:</b> enable rulers, drag from a ruler into a canvas to drop a guide. Drag the guide back to the ruler to remove.</li>
           <li><b>Nudging:</b> arrow keys = 1px; <span class="kbd">Shift</span>+arrows = 10px.</li>
         </ul>
@@ -238,7 +247,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>Timeline ▶ Play</b> (or <span class="kbd">Space</span>) — replays the <i>current frame</i> of the <i>active canvas</i>, in place on the editor canvas. Fast, and it stays inside one frame; it never advances to the next.</li>
           <li><b>Hover preview</b> — the small toggle joined to the right of <b>Full preview</b>. Switch it on, then simply point at <b>Full preview</b> and every canvas starts playing at once, immediately, through the whole frame sequence. Point away and the editor canvases come back. The same toggle also governs the <b>Version</b> dropdowns: armed, pointing at a row renders that version across the board so you can flick through them; switched off, versions only change when you click one.</li>
-          <li><b>Full preview</b> — clicking the button. Hides the panels, zooms to fit every canvas, and gives you the preview control bar (frame selector, Replay all, Download all, data-version stepper). <span class="kbd">Esc</span> returns you to exactly the view you left.</li>
+          <li><b>Full preview</b> — clicking the button. The weight beside each size is the zipped HTML5 package, the same figure the Canvases panel, Validation and the export dialog show. Hides the panels, zooms to fit every canvas, and gives you the preview control bar (frame selector, Replay all, Download all, data-version stepper). <span class="kbd">Esc</span> returns you to exactly the view you left.</li>
         </ul>
         <p><b>Hover preview in detail.</b> It builds the same iframes full preview and the exported ad use, so it is not an approximation — animations, frame transitions, durations, loop behaviour and data-merge content are all the real thing. What it deliberately does <i>not</i> do is move anything: your zoom, scroll position, panels, timeline and selection all stay exactly where they are, and it never goes fullscreen. That makes it the quickest way to check timing across every size without losing your place on the board — useful when you're iterating on one animation and want to see its effect on all sizes between edits.</p>
         <ul>
@@ -296,8 +305,8 @@ const DOCS_SECTIONS = [
         <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Name your canvas layers consistently (e.g. 'Heading', 'CTA Button') so the Auto-Link scanner can automatically find and group identical elements. If you need to make custom layout tweaks to a single canvas, temporarily disable Live-Link for that group.</div>
       `},
       { id: 'auto-link', title: 'Auto-Link', body: `
-        <p><b>Auto-Link</b> is the link icon in the Link Groups header. It scans all canvases and groups matching elements by layer name + type; its pop-up asks whether to match the <b>Selected layers</b> only or <b>All layers</b>. Beside it, the <b>Distribute &amp; Link</b> icon copies the selected layers to the other canvases and links them, the same as the right-click menu.</p>
-        <p>Best paired with consistent layer names (rename via the Layers panel).</p>
+        <p><b>Auto-Link</b> is the link icon in the Link Groups header. It scans all canvases and groups layers whose <b>names match exactly</b> and whose type is the same; its pop-up asks whether to match the <b>Selected layers</b> only or <b>All layers</b>. Beside it, the <b>Distribute &amp; Link</b> icon copies the selected layers to the other canvases and links them, the same as the right-click menu.</p>
+        <p>The name is the one the Layers panel shows, including its repeat number: on a canvas with two unnamed images, “Image” links only with other “Image” layers and “Image 2” only with other “Image 2” layers. Text layers without a name compare their full text, not just the part the panel has room for. Case matters (“Badge” and “badge” stay apart); spaces at either end are ignored. Two layers on the same canvas are never linked to each other. Name layers consistently across canvases (double-click a name in the Layers panel to rename it) and Auto-Link does the rest.</p>
       `},
       { id: 'manual-linking', title: 'Manual linking', body: `
         <p>Right-click an element → <b>Link Group</b> shows "Linked to: [Name]" if already in the group, or "Link to: [Name]" otherwise. From the Link Groups panel you can also create a new group or merge groups.</p>
@@ -359,6 +368,7 @@ const DOCS_SECTIONS = [
           <li><b>Main image fallback:</b> Choose whether to crop or contain images in portrait/landscape slots.</li>
           <li><b>Live linking toggles:</b> Control exactly which properties (Text, Fonts, Colors, Opacity, Animations) synchronize automatically in Link Groups after resizing.</li>
         </ul>
+        <p><b>Saving your own placements.</b> Once a canvas looks right, right-click it (or a layer) and open <b>Auto-arrange</b>. <b>Save placement of this layer</b> / <b>of this canvas</b> records where each role-assigned layer sits, and Auto-Resize and Auto-arrange then start from it for that canvas size. <b>Save placement of all canvases</b> does the same for every canvas on the board in one go, using what each one shows on the frame you are looking at: its Always Top / Always Bottom layers and that frame's own, not layers parked on other frames. Each save offers <b>Project only</b> (kept on the canvases, inside the .flow) or <b>All projects (global)</b> (kept in this copy of Adflow, by canvas size). Globally, two canvases of the same size share one entry, so the later one on the board is kept. A project-only save of all canvases is one step of undo.</p>
       `}
     ]
   },
@@ -425,7 +435,7 @@ const DOCS_SECTIONS = [
         <p><b>File → New Project…</b> lets you pick which canvas sizes to include, the project name, ClickTag URL, default canvas background, and ad-weight limit (default 150 KB — the industry standard).</p>
       `},
       { id: 'settings', title: 'App settings', body: `
-        <p><b>File → Settings</b>: theme (<b>Adflow</b>, the default dark palette, or <b>Light</b>), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
+        <p><b>File → Settings</b>: theme (<b>Adflow</b>, the default dark palette, or <b>Light</b>), rulers, snapping, Crop to Canvas (also a toggle on the right-click menu of an empty spot on the board, and under a canvas's <b>Guides &amp; Views</b>), history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
         <p>The theme changes Adflow's own interface only — never your ad. Switching to Light also swaps the Adflow wordmark for its light-background variant everywhere it appears.</p>
         <p><b>Backup &amp; Transfer</b> saves your settings to a file and loads them back. The file holds everything in the Settings dialog, remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices such as panel layout — and, if you tick it, the base project. Projects, autosave and Open Recent are not in it; save <code>.flow</code> files for those. Importing replaces the dialog values and remembered choices, <i>adds</i> the file's placements to yours (one for the same canvas size and role is replaced), and replaces the base project if the file carries one. Panel layout choices apply the next time Adflow opens.</p>
       `},
@@ -577,7 +587,7 @@ const DOCS_SECTIONS = [
             ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
             ['Ctrl + Z / Ctrl + Shift + Z','Undo / Redo'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
-            ['Ctrl + Shift + V','Paste in place (keeps the relative position on another canvas)'],
+            ['Ctrl + Shift + V','Paste in place — exact position on the same canvas (any frame); the same relative spot on another canvas'],
             ['Ctrl + D','Duplicate selected'],
             ['Delete / Backspace','Delete selected elements — or selected assets'],
             ['Ctrl + G / Ctrl + Shift + G','Group / Ungroup'],
@@ -884,6 +894,51 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.13',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "A Right-Click Menu for Several Canvases: with more than one canvas selected (Shift-click headers, or Shift/Ctrl-click rows in the Canvases panel), right-clicking any of them — on the board or in the panel — opens a menu for the whole selection instead of the single-canvas one. It holds only what makes sense for several canvases: Export N sizes… (opens Export with just those sizes ticked), Save placement of N canvases (Project only / All projects), Clone N canvases (the copies become the selection, ready to drag into place), Select only this canvas, and Delete N canvases, which asks first, lists the sizes and layer count, and can be undone. With every canvas selected, Delete is shown greyed out, since a project needs at least one. Right-clicking a canvas outside the selection still gives its own menu.",
+      "Frame Controls Under a Narrow Canvas Last Longer: as a canvas gets narrower on screen, the controls beneath it now give way one group at a time. Add frame / Remove frame (+ / −) go first, so the frame selector and its ‹ › arrows stay visible down to a much narrower width; only then do they go, and the Preview button last.",
+      "Move Starts With Towards Target On: choosing the Move effect for a layer now ticks Towards target, so the layer travels from the From X / From Y offset into its place on the canvas — the usual intent. Move effects that already exist keep their setting."
+    ]
+  },
+  {
+    version: 'v0.65.12',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Per-Frame Visibility for Always Top and Always Bottom Layers: the eye on a persistent layer switches it on or off on every frame. Alt+click the eye (Option+click on a Mac) to show or hide it on the frame you are on only — a logo switched off everywhere but shown on the end frame, or a CRICOS line kept off one busy frame. While the frame has an override the eye is drawn differently: accent-coloured, ringed, with a small badge giving the frame number, and struck through when the override hides the layer. Its tooltip says which way it overrides. Alt+click again removes the override; Shift+Alt applies it to the same-named layer on every canvas. Overrides are honoured everywhere the layer appears — the editor, the Timeline, previews, HTML5/PNG/video exports (including frames that keep persistent layers out of their own stack), font and image bundling, Link Group visibility sync and Distribute — and are cleared when their frame is deleted. Exports without an override are byte-for-byte unchanged."
+    ]
+  },
+  {
+    version: 'v0.65.11',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Auto-Link Only Links Exactly Matching Names: Auto-Link (Link Groups header, and Link Group ▸ Auto-Link on a layer’s right-click menu) now links layers only when their names are exactly the same — the name the Layers panel shows, repeat number included. It used to compare a rough label, so every unnamed image counted as 'Image' and every unnamed rectangle as 'Rectangle': all of them were pulled into one group, 'Image' and 'Image 2' from the same canvas together, and text layers were matched on just their first 28 characters. Now 'Image 2' links only with 'Image 2', unnamed text layers compare their full text, and case matters; spaces at either end are ignored. New groups are named after the exact layer name. Existing links are left as they are."
+    ]
+  },
+  {
+    version: 'v0.65.10',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Save Placement of All Canvases: right-click a canvas or a layer, Auto-arrange ▸ Save placement of all canvases, saves the brand placements of every canvas on the board at once — the same as saving each canvas by hand, but in one click. It uses what each canvas shows on the frame you are looking at (Always Top / Always Bottom layers plus that frame's own), so a layer parked on another frame cannot stand in for the one on screen. Project only saves onto each canvas (one step of undo); All projects (global) remembers each canvas size in this copy of Adflow, and says so if two canvases share a size. The confirmation counts what was saved, e.g. '29 placements on 6 canvases (frame 1)'."
+    ]
+  },
+  {
+    version: 'v0.65.9',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Crop to Canvas on the Right-Click Menu: right-click an empty spot on the board (or open a canvas's Guides & Views) for a Crop to Canvas toggle, ticked while it is on. It is the same switch as in Settings, so you no longer have to open Settings to hide or show layers hanging over the canvas edges.",
+      "Fixed: Full preview showed a much heavier weight than everywhere else — 111 KB for an ad the Canvases panel put at 45 KB. It measured its own preview page (uncompressed, images inlined as text, plus the preview-only playback controls) instead of the ad. It now shows the zipped HTML5 package, the figure the Canvases panel, Validation and the export dialog use, and turns red over the weight limit. The Preview Portal page no longer flashes the raw page size first, and its estimate leaves out the preview-only controls, matching the export exactly."
+    ]
+  },
+  {
+    version: 'v0.65.8',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Paste in Place Keeps Everything: Ctrl+Shift+V (Cmd+Shift+V), as in Illustrator, pastes copied layers at exactly the same position on the same canvas — so copying to another frame is copy, switch frame, paste in place — and at the same spot relative to the canvas on a different one: each layer's centre keeps its share of the width and height. Only the position changes; size, text, colours, role, links and every animation setting come across exactly. Groups are now placed as one piece, so their internal layout no longer pulls apart on a canvas of another shape, and a mask pasted with its image now clips the copy instead of pointing back at the original. Paste and Paste in Place are on the canvas and layer right-click menus too, and a short note confirms where the layers went."
+    ]
+  },
   {
     version: 'v0.65.7',
     date: 'November 2026 — Engine v3.0',

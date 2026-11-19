@@ -38,7 +38,7 @@ function collectFontSubsetSpecs(c) {
   const charsByKey = new Map(); // 'family|weight' -> Set of chars
 
   c.elements.forEach(el => {
-    if (el.hidden) return;
+    if (!isElShownOnAnyFrame(el)) return;
     if (el.type !== 'text' && el.type !== 'button') return;
     const ff = el.fontFamily;
     if (!ff || !FILES[ff]) return;

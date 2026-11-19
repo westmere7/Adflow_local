@@ -78,7 +78,7 @@ function seqHasAnimation(el) {
   return !!(b.in || b.out || b.fx);
 }
 function seqVisibleElements(c, ignoreFilter) {
-  const inFrame = (el) => !el.hidden && (el.persistent !== false || el.frameId === state.activeFrameId);
+  const inFrame = (el) => !isElHiddenNow(el) && (el.persistent !== false || el.frameId === state.activeFrameId);
   const tops = c.elements.filter(e => inFrame(e) && e.persistent === 'top');
   const frame = c.elements.filter(e => inFrame(e) && e.persistent === false);
   const bottoms = c.elements.filter(e => inFrame(e) && e.persistent === 'bottom');

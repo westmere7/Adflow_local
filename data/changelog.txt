@@ -1,6 +1,41 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.7 (Current) - November 2026 — Engine v3.0
+v0.65.13 (Current) - November 2026 — Engine v3.0
+- Multi-canvas selection gets its own right-click menu: Export N sizes, Save
+  placement, Clone, Select only this canvas, Delete (confirmed, undoable).
+- Canvas footer hides + / − before the frame selector when space is tight.
+- Move FX: Towards target is on by default for new Move effects.
+
+v0.65.12 - November 2026 — Engine v3.0
+- Always Top / Always Bottom layers: Alt+click (Option+click) the eye to show or
+  hide the layer on the current frame only, overriding the all-frames eye. The
+  eye shows an accent ring + frame badge while overridden. Honoured in editor,
+  previews and all exports; Shift+Alt applies to every canvas.
+
+v0.65.11 - November 2026 — Engine v3.0
+- Auto-Link links only layers whose names match exactly (as shown in the Layers
+  panel, repeat number included; full text for unnamed text layers; case-
+  sensitive). Unnamed images/shapes no longer all merge into one group.
+
+v0.65.10 - November 2026 — Engine v3.0
+- Auto-arrange ▸ Save placement of all canvases (Project only / All projects):
+  saves every canvas's role placements at once, from what each canvas shows on
+  the current frame.
+
+v0.65.9 - November 2026 — Engine v3.0
+- Crop to Canvas toggle on the empty-board right-click menu (and a canvas's
+  Guides & Views submenu).
+- Fixed: Full preview weights now show the zipped HTML5 package, matching the
+  Canvases panel, Validation and Export (it showed the raw preview page size).
+  Preview Portal estimates match the export too.
+
+v0.65.8 - November 2026 — Engine v3.0
+- Paste in Place (Ctrl/Cmd+Shift+V): exact position on the same canvas (any
+  frame), same relative spot on another canvas. Only x/y change; size, styling,
+  role, links and all animation settings are kept. Groups move as one piece and
+  pasted masks clip their pasted image. Paste / Paste in Place on right-click.
+
+v0.65.7 - November 2026 — Engine v3.0
 - Settings ▸ Backup & Transfer: Export settings… / Import settings… move your
   settings, remembered placements, remembered choices and (optionally) the base
   project between machines, the desktop app and browsers as one .json file.

@@ -1225,6 +1225,10 @@ function applyEffectPresetDefaults(el, val, updateProp) {
     }
     if (el.effDuration === undefined) updateProp('effDuration', 5);
     if (el.effOnce === undefined) updateProp('effOnce', true);
+    // Towards target: travel from the offset INTO the layout position, which is
+    // what a Move is nearly always for. Only on first pick — a Move that already
+    // exists keeps whatever it was set to.
+    if (el.panTowards === undefined) updateProp('panTowards', true);
   } else if (val === 'zoom') {
     if (el.zoomTarget === undefined) updateProp('zoomTarget', 150);
     if (el.effDuration === undefined) updateProp('effDuration', 5);

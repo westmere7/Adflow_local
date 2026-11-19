@@ -883,6 +883,13 @@ async function removeActiveFrame() {
 
   state.canvases.forEach(c => {
     c.elements = c.elements.filter(e => e.persistent !== false || state.frames.some(f => f.id === e.frameId));
+    // Drop per-frame visibility overrides for frames that no longer exist, so a
+    // new frame that later reuses the id does not inherit one.
+    c.elements.forEach(e => {
+      if (!e.frameVis) return;
+      Object.keys(e.frameVis).forEach(k => { if (!state.frames.some(f => String(f.id) === k)) delete e.frameVis[k]; });
+      if (!Object.keys(e.frameVis).length) delete e.frameVis;
+    });
   });
 
   deselectNonPersistentLayers();

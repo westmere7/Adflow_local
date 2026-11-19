@@ -922,16 +922,29 @@ function previewFrameNode(c) {
   frame.style.top = c.workspaceY + 'px';
 
   const html = generateExportHTML(c, null, false, { previewControls: true });
-  const kb = (new Blob([html]).size / 1024).toFixed(1);
 
   const header = document.createElement('div');
   header.className = 'canvas-header';
 
+  // The weight shown is the ad's real one: the zipped HTML5 package, the number
+  // the Canvases panel, Validation and the export dialog all report (c._valKb,
+  // from queueSizeUpdate). It used to be the length of THIS preview page, which
+  // is a different thing — uncompressed, every image inlined as base64, plus the
+  // preview-only playback driver — so it read several times heavier.
+  const limitKb = state.adSizeLimit || 150;
+  const kbColor = (kb) => parseFloat(kb) > limitKb ? '#ef4444' : 'var(--accent-base)';
   const titleSpan = document.createElement('div');
   titleSpan.style.display = 'flex';
   titleSpan.style.alignItems = 'center';
   titleSpan.style.gap = '8px';
-  titleSpan.innerHTML = `<span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span><span class="dim" style="margin-left:8px;">&bull; <span style="color:var(--accent-base); font-size:12px; font-weight:700;">${kb} KB</span></span>`;
+  const kbNow = c._valKb;
+  titleSpan.innerHTML = `<span class="dim" style="font-weight:600; color:var(--text-bright);">${c.width} &times; ${c.height}</span><span class="dim" style="margin-left:8px;">&bull; <span class="pv-kb" title="Zipped HTML5 package — the size the ad server sees" style="color:${kbNow ? kbColor(kbNow) : 'var(--text-muted)'}; font-size:12px; font-weight:700;">${kbNow ? kbNow + ' KB' : 'calc…'}</span></span>`;
+  if (!kbNow && typeof updateCanvasSizeSync === 'function') {
+    updateCanvasSizeSync(c).then(() => {
+      const el = titleSpan.querySelector('.pv-kb');
+      if (el && c._valKb) { el.textContent = c._valKb + ' KB'; el.style.color = kbColor(c._valKb); }
+    }).catch(() => {});
+  }
 
   header.appendChild(titleSpan);
   frame.appendChild(wrapCanvasChrome(header));
@@ -1451,7 +1464,7 @@ function canvasFrameNode(c) {
 
     // drag over placeholder highlight overlay
     if (state.dragOverPlaceholderId) {
-      const placeholderEl = c.elements.find(e => e.id === state.dragOverPlaceholderId && !e.hidden);
+      const placeholderEl = c.elements.find(e => e.id === state.dragOverPlaceholderId && !isElHiddenNow(e));
       if (placeholderEl) {
         canvas.appendChild(placeholderOverlay(placeholderEl));
       }
@@ -1462,7 +1475,7 @@ function canvasFrameNode(c) {
     // selection overlay (only if this canvas is active and an element is selected)
     if (c.id === state.activeCanvasId) {
       if (state.isolatedGroupId) {
-        const groupElements = c.elements.filter(e => e.groupId === state.isolatedGroupId && !e.hidden);
+        const groupElements = c.elements.filter(e => e.groupId === state.isolatedGroupId && !isElHiddenNow(e));
         if (groupElements.length > 0) {
           canvas.appendChild(isolatedGroupOverlay(groupElements));
         }
@@ -1483,7 +1496,7 @@ function canvasFrameNode(c) {
       const selIds = (state.layerSelection && state.layerSelection.length)
         ? state.layerSelection
         : (state.selectedElementId ? [state.selectedElementId] : []);
-      const sels = c.elements.filter(e => selIds.includes(e.id) && !e.hidden);
+      const sels = c.elements.filter(e => selIds.includes(e.id) && !isElHiddenNow(e));
       if (sels.length > 1) {
         const isGroup = sels[0].groupId && sels.every(e => e.groupId === sels[0].groupId);
         canvas.appendChild(multiSelectionOverlay(sels, isGroup));
@@ -1636,7 +1649,7 @@ function canvasFrameNode(c) {
           const clickY = (e.clientY - rect.top) / z;
 
           const hitElement = [...groupElements].reverse().find(el => {
-            if (el.hidden) return false;
+            if (isElHiddenNow(el)) return false;
             const cx = el.x + el.width / 2;
             const cy = el.y + el.height / 2;
             const dx = clickX - cx;
@@ -1715,7 +1728,7 @@ function canvasFrameNode(c) {
 
             const selectedIds = new Set();
             c.elements.forEach(el => {
-              if (el.hidden || el.locked) return;
+              if (isElHiddenNow(el) || el.locked) return;
               if (el.persistent === false && el.frameId !== state.activeFrameId) return;
               if (state.isolatedGroupId && el.groupId !== state.isolatedGroupId) return;
 
@@ -1777,9 +1790,10 @@ function canvasFrameNode(c) {
           ${opts}
         </select>
         <button class="btn-next-inline" title="Next frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">&rsaquo;</button>
-        <div style="width:2px"></div>
-        <button class="btn-add-frame-inline" title="Add Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">+</button>
-        <button class="btn-remove-frame-inline" title="Remove Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">-</button>
+        <span class="canvas-footer-frame-edit" style="display:flex; align-items:center; gap:3px; margin-left:2px;">
+          <button class="btn-add-frame-inline" title="Add Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">+</button>
+          <button class="btn-remove-frame-inline" title="Remove Frame" style="background:var(--bg-input); border:1px solid var(--border-light); color:var(--text-main); cursor:pointer; padding:0 4px; border-radius:3px; font-size:10px; height:18px; display:flex; align-items:center; justify-content:center;">-</button>
+        </span>
       </div>
     `;
   } else if (isSinglePreview) {
@@ -2336,7 +2350,7 @@ function elementNode(el, canvasCtx) {
   if (isDynamic) d.classList.add('dynamic-el');
   if (isAnimated) d.classList.add('animated-el');
 
-  if (el.hidden) d.style.display = 'none';
+  if (isElHiddenNow(el)) d.style.display = 'none';
   // Mask layers are functionally invisible — their geometry only drives the
   // mask SVG below — but stay selectable in the editor so the user can move /
   // resize / animate them. In preview / export the wrapper is dropped entirely.
@@ -2666,7 +2680,7 @@ function elementNode(el, canvasCtx) {
       }, 0);
     }
   });
-  if (el.hidden) d.style.setProperty('display', 'none', 'important');
+  if (isElHiddenNow(el)) d.style.setProperty('display', 'none', 'important');
 
   // Mask layer: the shape's visible body is suppressed (fills, strokes etc.
   // already rendered above are hidden). The wrapper stays in the DOM so the
