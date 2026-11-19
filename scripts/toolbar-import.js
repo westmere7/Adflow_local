@@ -1078,6 +1078,7 @@ window.addEventListener('keydown', (e) => {
     state.selectedElementId = null;
     state.editingElementId = null;
     state.layerSelection = [];
+    state.canvasSelection = [];
     if (state.isolatedGroupId) state.isolatedGroupId = null;
     render();
     return;

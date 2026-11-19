@@ -3,9 +3,11 @@
 function renderCanvasesList() {
   const esc = (s) => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   canvasesListEl.innerHTML = '';
+  const groupIds = canvasGroupIds();
   state.canvases.forEach((c, index) => {
     const div = document.createElement('div');
-    div.className = 'canvas-item' + (c.id === state.activeCanvasId ? ' active' : '');
+    div.className = 'canvas-item' + (c.id === state.activeCanvasId ? ' active' : '')
+      + (groupIds.length > 1 && groupIds.includes(c.id) ? ' canvas-selected' : '');
     div.dataset.canvasId = c.id;
 
     let sizeHtml = '';
@@ -134,6 +136,13 @@ function renderCanvasesList() {
     }
 
     div.addEventListener('click', (e) => {
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        // Pick several canvases to move together; no zoom.
+        toggleCanvasInSelection(c);
+        render();
+        return;
+      }
+      state.canvasSelection = [];
       state.activeCanvasId = c.id;
       state.selectedElementId = null;
       state.editingElementId = null;

@@ -275,6 +275,10 @@ const state = {
   activeFrameId: 1,
   canvases: PRESET_SIZES.map((p, i) => seedCanvas(p, i)),
   activeCanvasId: null,
+  // Extra canvases picked with Shift-click (header or Canvases panel), moved
+  // together by dragging any of their headers. Counts only while it includes
+  // the active canvas — see canvasGroupIds() in interactions.js. Not saved.
+  canvasSelection: [],
   selectedElementId: null,
   layerSelection: [],
   assetSelection: [],

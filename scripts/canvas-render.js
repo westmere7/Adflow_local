@@ -1263,6 +1263,9 @@ function canvasFrameNode(c) {
   if (c.id === state.activeCanvasId) {
     frameClass += ' active';
   }
+  // Part of a Shift-click selection of several canvases (moved together).
+  const groupIds = (typeof canvasGroupIds === 'function') ? canvasGroupIds() : [];
+  if (groupIds.length > 1 && groupIds.includes(c.id)) frameClass += ' canvas-selected';
   frame.className = frameClass;
   frame.dataset.canvasId = c.id;
 

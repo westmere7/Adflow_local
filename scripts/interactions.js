@@ -753,12 +753,15 @@ function onMultiRotateMouseDown(e, elements, bb) {
 //   guide  a ruler guide, as layers snap to them
 // Settings ▸ Snapping: the master switch and "Snap canvases to each other";
 // "Snap to guides" for the ruler guides. Ctrl/Cmd keeps the 20 px grid.
-function canvasSnapTargets(c) {
+// `c` may be one canvas or the bounding box of a group being moved together
+// ({ width, height }); `exclude` lists the canvases that move, which are not
+// targets.
+function canvasSnapTargets(c, exclude) {
   const gap = state.canvasSpacing !== undefined ? state.canvasSpacing : 60;
   const xs = [], ys = [];
   const ax = [0, c.width / 2, c.width], ay = [0, c.height / 2, c.height];
   state.canvases.forEach(o => {
-    if (o === c) return;
+    if (o === c || (exclude && exclude.includes(o))) return;
     const ox = o.workspaceX || 0, oy = o.workspaceY || 0;
     [ox, ox + o.width / 2, ox + o.width].forEach(at => ax.forEach(a => xs.push({ pos: at - a, kind: 'align', at, other: o })));
     [oy, oy + o.height / 2, oy + o.height].forEach(at => ay.forEach(a => ys.push({ pos: at - a, kind: 'align', at, other: o })));
@@ -838,31 +841,78 @@ function snapCanvasPosition(c, nx, ny, T, thr) {
   return { x, y, guides: guides.length ? guides : null };
 }
 
+// The canvases that move together: the Shift-click selection while it still
+// includes the active canvas, otherwise just the active canvas. Ids of
+// canvases that no longer exist drop out.
+function canvasGroupIds() {
+  const sel = (state.canvasSelection || []).filter(id => state.canvases.some(c => c.id === id));
+  if (sel.length > 1 && sel.includes(state.activeCanvasId)) return sel;
+  return state.activeCanvasId != null ? [state.activeCanvasId] : [];
+}
+
+// Shift-click a canvas (its header, or its row in the Canvases panel): add it
+// to the selection, or take it out. The first Shift-click keeps the canvas
+// that was active, so two canvases are selected.
+function toggleCanvasInSelection(c) {
+  const sel = canvasGroupIds().slice();
+  const i = sel.indexOf(c.id);
+  if (i === -1) {
+    sel.push(c.id);
+    state.activeCanvasId = c.id;
+  } else if (sel.length > 1) {
+    sel.splice(i, 1);
+    if (state.activeCanvasId === c.id) state.activeCanvasId = sel[sel.length - 1];
+  }
+  state.canvasSelection = sel;
+  state.selectedElementId = null;
+  state.editingElementId = null;
+  state.layerSelection = [];
+}
+
 function onCanvasHeaderDrag(e, c) {
   if (isSpaceDown || e.button === 1) return;
   e.stopPropagation();
+  if (e.shiftKey) {
+    // Shift-click picks canvases; it does not start a move.
+    toggleCanvasInSelection(c);
+    render();
+    return;
+  }
+  // Dragging a canvas that is not in the selection starts a new one.
+  if (!canvasGroupIds().includes(c.id)) state.canvasSelection = [];
   state.activeCanvasId = c.id;
   state.selectedElementId = null;
   state.editingElementId = null;
   const z = state.zoom || 1;
   const startX = e.clientX, startY = e.clientY;
-  const origX = c.workspaceX, origY = c.workspaceY;
+  const ids = canvasGroupIds();
+  const group = state.canvases.filter(o => ids.includes(o.id));
+  const orig = group.map(o => ({ o, x: o.workspaceX || 0, y: o.workspaceY || 0 }));
+  // The group moves and snaps as one box: its bounding box, with each canvas
+  // keeping its offset inside it.
+  const bx = Math.min(...orig.map(p => p.x)), by = Math.min(...orig.map(p => p.y));
+  const box = {
+    width: Math.max(...orig.map(p => p.x + p.o.width)) - bx,
+    height: Math.max(...orig.map(p => p.y + p.o.height)) - by,
+  };
   const snapOn = state.snapEnabled !== false && state.snapCanvases !== false;
-  const targets = snapOn ? canvasSnapTargets(c) : null;
+  const targets = snapOn ? canvasSnapTargets(group.length > 1 ? box : c, group) : null;
+  const moved = () => orig.some(p => p.o.workspaceX !== p.x || p.o.workspaceY !== p.y);
   const onMove = (ev) => {
-    let nx = origX + (ev.clientX - startX) / z;
-    let ny = origY + (ev.clientY - startY) / z;
+    let nx = bx + (ev.clientX - startX) / z;
+    let ny = by + (ev.clientY - startY) / z;
     let guides = null;
     if (ev.ctrlKey || ev.metaKey) {
       // Ctrl/Cmd: the 20 px grid instead of snapping, as before.
       nx = Math.round(nx / 20) * 20;
       ny = Math.round(ny / 20) * 20;
     } else if (targets) {
-      const snapped = snapCanvasPosition(c, nx, ny, targets, (state.snapDistance !== undefined ? state.snapDistance : 5) / z);
+      const snapped = snapCanvasPosition(group.length > 1 ? box : c, nx, ny, targets, (state.snapDistance !== undefined ? state.snapDistance : 5) / z);
       nx = snapped.x; ny = snapped.y; guides = snapped.guides;
     }
-    c.workspaceX = Math.max(0, Math.round(nx));
-    c.workspaceY = Math.max(0, Math.round(ny));
+    // Keep the whole group on the board (x, y ≥ 0) without squashing it.
+    const dx = Math.max(0, Math.round(nx)) - bx, dy = Math.max(0, Math.round(ny)) - by;
+    orig.forEach(p => { p.o.workspaceX = p.x + dx; p.o.workspaceY = p.y + dy; });
     state.activeCanvasGuides = guides;
     render();
   };
@@ -872,7 +922,7 @@ function onCanvasHeaderDrag(e, c) {
     const hadGuides = !!state.activeCanvasGuides;
     state.activeCanvasGuides = null;
     // A move is a change like any other: undoable, and it marks the file "*".
-    if (c.workspaceX !== origX || c.workspaceY !== origY) pushHistory();
+    if (moved()) pushHistory();
     if (hadGuides) render();
   };
   window.addEventListener('mousemove', onMove);
@@ -1014,6 +1064,7 @@ canvasArea.addEventListener('mousedown', (e) => {
 
   if (state.singlePreviewId) state.singlePreviewId = null;
   if (!e.shiftKey) {
+    state.canvasSelection = [];
     state.selectedElementId = null;
     state.editingElementId = null;
     state.layerSelection = [];

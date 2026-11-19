@@ -119,7 +119,7 @@ const DOCS_SECTIONS = [
       { id: 'alignment-snapping', title: 'Alignment & snapping', body: `
         <ul>
           <li><b>Magnetic snap:</b> canvas edges, centres, sibling layers, custom guides. Toggle in the workspace right-click menu.</li>
-          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone.</li>
+          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone. To move several at once, <span class="kbd">Shift</span>-click their headers (or Shift/Ctrl-click them in the Canvases panel), then drag any of them; Escape clears the selection.</li>
           <li><b>Rulers & guides:</b> enable rulers, drag from a ruler into a canvas to drop a guide. Drag the guide back to the ruler to remove.</li>
           <li><b>Nudging:</b> arrow keys = 1px; <span class="kbd">Shift</span>+arrows = 10px.</li>
         </ul>
@@ -882,6 +882,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.5',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Move Several Canvases at Once: Shift-click canvas headers on the board, or Shift- or Ctrl-click rows in the Canvases panel, to select more than one canvas. Selected canvases get the accent outline. Drag the header of any of them and they all move together, keeping their spacing, and the group snaps as one block to the edges, centres and standard spacing of the other canvases and to ruler guides. Hold Ctrl for the 20 px grid. Shift-click a selected canvas to drop it from the selection; a plain click on another canvas, a click on empty board or Escape clears it. The whole move is one undo step."
+    ]
+  },
   {
     version: 'v0.65.4',
     date: 'November 2026 — Engine v3.0',

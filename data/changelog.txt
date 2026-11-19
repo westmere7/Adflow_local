@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.4 (Current) - November 2026 — Engine v3.0
+v0.65.5 (Current) - November 2026 — Engine v3.0
+- Move several canvases at once: Shift-click canvas headers (or Shift/Ctrl-click rows
+  in the Canvases panel) to select them, then drag any selected header to move them
+  together. The group snaps as one block to the other canvases and guides. Shift-click
+  a selected canvas to drop it; click elsewhere or press Escape to clear. One undo step.
+
+v0.65.4 - November 2026 — Engine v3.0
 - Standard clickTag ZIPs use Google's documented click pattern (DV360, CM360, Ad
   Manager): var clickTag in <head>, click areas are <a href="javascript:
   window.open(window.clickTag)">. Before, clickTag sat at the end of <body> and the

@@ -2909,6 +2909,28 @@ body.theme-light {
     }
 
 
+    /* Shift-click selection of several canvases (moved together). */
+    .canvas-frame.canvas-selected .canvas {
+
+      box-shadow: 0 0 0 1.5px var(--accent-base), 0 8px 30px rgba(0, 0, 0, 0.5);
+
+    }
+
+    .canvas-frame.canvas-selected .canvas-size-label {
+
+      color: var(--accent-base) !important;
+
+    }
+
+    .canvas-item.canvas-selected:not(.active) {
+
+      background: color-mix(in srgb, var(--accent-dark) 55%, transparent);
+
+      color: var(--text-bright);
+
+    }
+
+
     /* Drop-target highlight when dragging image files over a canvas */
 
     .canvas.drop-target {
