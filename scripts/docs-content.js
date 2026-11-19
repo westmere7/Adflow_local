@@ -66,7 +66,7 @@ const DOCS_SECTIONS = [
         <p>Adflow is a desktop application for Windows and macOS. There is nothing to install alongside it — the browser engine it needs is inside the download — and nothing to sign into.</p>
         <p><b>Your work lives on this machine, in this copy of the app.</b> Autosave, <b>Open Recent</b>, the base project and remembered placements are all held locally. They do not sync, and they do not follow you to another computer.</p>
         <p>Your <b>settings</b> can move, though: <b>File → Settings ▸ Backup &amp; Transfer ▸ Export settings…</b> writes them to a <code>.json</code> file, and <b>Import settings…</b> loads it into any other copy of Adflow — another machine, the desktop app or a browser.</p>
-        <p>So to move a project — to another machine, or to a colleague — save it as a file: <b>File → Save → Save to File (.flow)</b>. A <code>.flow</code> carries the whole project, embedded images and all, and opens in any copy of Adflow.</p>
+        <p>So to move a project — to another machine, or to a colleague — save it as a file: <b>File → Save → Save</b>. A <code>.flow</code> carries the whole project, embedded images and all, and opens in any copy of Adflow.</p>
         <p>The same goes for anything you want to be certain of keeping. Autosave is a safety net against a crash, not a backup.</p>
       `},
       { id: 'first-project', title: 'Your first project', body: `
@@ -419,17 +419,17 @@ const DOCS_SECTIONS = [
         <p>Saving & Projects regulates local autosaves, portable project archives, and startup state restorations. Adflow uses a local-first architecture, saving every action locally in the background to ensure no creative updates are lost due to browser crashes or network dropouts.</p>
         <p>Projects are saved using the custom <code>.flow</code> format. The file is a compressed ZIP archive containing all project layout structures and binary assets. It can be stored locally or pushed to team cloud folders, and travels as a single self-contained package.</p>
         <p><b>Adflow's Advantage:</b> Legacy design software often requires manual saving and generates fragmented local project folders. Adflow manages autosaves in the background (persisting canvas scroll, zoom level, and history stack) and provides a history limit of up to 50 states.</p>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download a local backup file of your project. This <code>.flow</code> archive can be emailed, stored in shared drives, or imported back into Adflow. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to browser database storage.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save</b> from the file menu to download a local backup file of your project. This <code>.flow</code> archive can be emailed, stored in shared drives, or imported back into Adflow. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to browser database storage.</div>
       `},
       { id: 'autosave', title: 'Auto-save', body: `
         <p>Every change is debounced and persisted to your browser's IndexedDB. Restored on reload — including zoom and scroll position. Top bar shows a live status indicator (saved / saving / unsaved / error).</p>
         <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
       `},
       { id: 'flow-files', title: '.flow files', body: `
-        <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Save to Browser</b> in the same menu writes the browser copy straight away (autosave does that anyway).</p>
-        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save to File As…</b> (<span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span>) always asks, and the file you pick becomes the one later saves go to. <b>Opening a saved .flow</b> with File → Open works the same as having just saved it: the top bar shows its file name and Ctrl+S saves straight back to it (the browser asks once for permission to write). Reopening a project from <b>Open Recent</b> does too, when it was saved to or opened from a file. Templates and older <code>.cook</code>/<code>.zip</code> files are not taken over that way, and starting a new project forgets the file — the first save after those asks where. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead: the browser asks where to put each new copy, and the top bar keeps showing the project name rather than a file name, because Adflow cannot save over a downloaded file. The first such save in a session says so, and the project name's tooltip always does. Chrome, Edge and the desktop app save over the same file.</p>
+        <p><b>File → Save → Save</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Save to Browser</b> in the same menu writes the browser copy straight away (autosave does that anyway).</p>
+        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save As…</b> (<span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span>) always asks, and the file you pick becomes the one later saves go to. <b>Opening a saved .flow</b> with File → Open works the same as having just saved it: the top bar shows its file name and Ctrl+S saves straight back to it (the browser asks once for permission to write). Reopening a project from <b>Open Recent</b> does too, when it was saved to or opened from a file. Templates and older <code>.cook</code>/<code>.zip</code> files are not taken over that way, and starting a new project forgets the file — the first save after those asks where. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead: the browser asks where to put each new copy, and the top bar keeps showing the project name rather than a file name, because Adflow cannot save over a downloaded file. The first such save in a session says so, and the project name's tooltip always does. Chrome, Edge and the desktop app save over the same file.</p>
         <p><b>The name in the top bar tells you where you stand.</b> Once the project is saved to a file it shows that file's name, e.g. <code>RMIT_ad.flow</code>, with a <b>*</b> after it while there are changes the file doesn't have yet (undo back to the saved state and the * goes away). Before it has been saved to a file it shows the project name with no extension. Double-click it to rename the project; that doesn't rename the file.</p>
-        <p><b>Every save also saves to the browser</b> — Ctrl+S, Save to File As…, even a cancelled save dialog — so the copy in this browser never falls behind the file. If you close the tab or the app with changes that are in no file, Adflow asks first. Your work is still kept in the browser either way; the question is only whether you meant to leave it out of a file.</p>
+        <p><b>Every save also saves to the browser</b> — Ctrl+S, Save As…, even a cancelled save dialog — so the copy in this browser never falls behind the file. If you close the tab or the app with changes that are in no file, Adflow asks first. Your work is still kept in the browser either way; the question is only whether you meant to leave it out of a file.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
       `},
       { id: 'new-project-wizard', title: 'New Project wizard', body: `
@@ -668,7 +668,7 @@ const DOCS_SECTIONS = [
           <li><b>File Saves</b>: Pressing <span class="kbd">Ctrl</span>+<span class="kbd">S</span> saves the project as a portable <code>.flow</code> file — the copy to keep, share by email or file server, and reopen on any machine.</li>
           <li><b>Force Browser Save</b>: Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> immediately saves the active project state to the browser's IndexedDB.</li>
         </ul>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download a local backup file to your computer before clearing browser caches or switching machines.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save</b> from the file menu to download a local backup file to your computer before clearing browser caches or switching machines.</div>
       `},
       { id: 'faq-animations', title: 'Animations troubleshooting', body: `
         <p><b>Question:</b> Why aren't my entrance transitions playing?</p>
@@ -740,7 +740,7 @@ const DOCS_SECTIONS = [
           <li><b>Force Browser Save</b>: Press <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> to force-save the project silently to IndexedDB browser storage.</li>
           <li><b>Moving Between Machines</b>: Your work lives wherever you opened Adflow — this browser profile, or the desktop app's own storage. The two are separate. To move a project, save a <code>.flow</code> file (<span class="kbd">Ctrl</span>+<span class="kbd">S</span>) and open it on the other side.</li>
         </ul>
-        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save to File (.flow)</b> from the file menu to download local backup files onto your hard drive when working offline.</div>
+        <div style="font-size: 11.5px; color: var(--text-muted); opacity: 0.8; border-top: 1px solid var(--border-light); padding-top: 8px; margin-top: 16px;"><b>General Tips:</b> Use <b>File → Save → Save</b> from the file menu to download local backup files onto your hard drive when working offline.</div>
       `}
     ]
   },
@@ -895,6 +895,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.22',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Save Menu Says Save and Save As…: File ▸ Save now lists Save (Ctrl+S) and Save As… (Ctrl+Shift+S) instead of 'Save to File (.flow)' and 'Save to File As…', with each shortcut aligned to the right so it no longer runs into its label. The Shortcuts dialog matches — and its stale Ctrl+Shift+S 'Save to browser database' row is now Save As…, as the shortcut does since v0.65.21."
+    ]
+  },
   {
     version: 'v0.65.21',
     date: 'November 2026 — Engine v3.0',

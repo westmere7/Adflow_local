@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.21 (Current) - November 2026 — Engine v3.0
+v0.65.22 (Current) - November 2026 — Engine v3.0
+- File ▸ Save menu: Save (Ctrl+S) and Save As… (Ctrl+Shift+S), shortcuts right-
+  aligned; Shortcuts dialog updated to match.
+
+v0.65.21 - November 2026 — Engine v3.0
 - File ▸ Open (and Open Recent) of a saved .flow binds it like a save: name.flow
   in the top bar, * on change, Ctrl+S saves back to it. Templates/.cook/.zip
   stay unbound.
