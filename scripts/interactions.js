@@ -1183,36 +1183,64 @@ window.addEventListener('mouseup', () => {
   }
 });
 
+// Wheel / trackpad on the board.
+//   Windows & Linux: the wheel zooms (as before).
+//   Mac: two-finger scroll PANS in any direction, as in other Mac design apps;
+//        pinch zooms smoothly; Cmd (or Ctrl) + scroll zooms with a mouse wheel.
+// macOS reports a trackpad pinch as a wheel event with ctrlKey set and small
+// fractional deltas, which is what tells the two apart from a plain scroll.
+const isMacPlatform = () => /Mac/i.test(navigator.platform || '') || !!(navigator.userAgentData && navigator.userAgentData.platform === 'macOS');
+
+function zoomBoardAt(newZoom, clientX, clientY) {
+  const oldZoom = state.zoom || 0.6;
+  newZoom = Math.round(Math.max(0.6, Math.min(newZoom, 5)) * 10000) / 10000;
+  if (newZoom === oldZoom) return;
+  state.zoom = newZoom;
+  const rect = canvasArea.getBoundingClientRect();
+  const mouseX = clientX - rect.left;
+  const mouseY = clientY - rect.top;
+  const workspaceX = (canvasArea.scrollLeft + mouseX) / oldZoom;
+  const workspaceY = (canvasArea.scrollTop + mouseY) / oldZoom;
+  render();
+  canvasArea.scrollLeft = workspaceX * newZoom - mouseX;
+  canvasArea.scrollTop = workspaceY * newZoom - mouseY;
+}
+
 canvasArea.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (state.isPreviewMode) return;
 
   const oldZoom = state.zoom || 0.6;
   const zoomStep = state.zoomStep !== undefined ? state.zoomStep : 0.1;
-  const direction = Math.sign(e.deltaY);
+  // deltaMode 1 = lines (some mice / Firefox): roughly 16 px a line.
+  const unit = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? canvasArea.clientHeight : 1);
+  const dx = e.deltaX * unit, dy = e.deltaY * unit;
+
+  if (isMacPlatform()) {
+    // Pinch: ctrlKey with a small delta. Zoom in proportion to the gesture so it
+    // tracks the fingers instead of jumping a whole step per event.
+    if (e.ctrlKey && Math.abs(dy) < 50) {
+      zoomBoardAt(oldZoom * Math.exp(-dy * 0.01), e.clientX, e.clientY);
+      return;
+    }
+    // Two-finger scroll (or a plain mouse wheel): pan. Shift turns a vertical
+    // wheel into a horizontal pan, as the system does elsewhere.
+    if (!e.ctrlKey && !e.metaKey) {
+      if (e.shiftKey && !dx) canvasArea.scrollLeft += dy;
+      else { canvasArea.scrollLeft += dx; canvasArea.scrollTop += dy; }
+      return;
+    }
+    // Cmd / Ctrl + mouse wheel: step zoom, below.
+  }
+
   // Each notch scales the zoom by the same PERCENTAGE (Settings ▸ Mouse Scroll
   // Zoom Step, 10% by default), so a notch looks the same at any zoom level. It
   // used to add a fixed 0.1: a 17% jump at 60% but only 2.5% at 400%, so zooming
   // crawled the closer you got.
+  const direction = Math.sign(dy);
+  if (!direction) return;
   const factor = 1 + zoomStep;
-  let newZoom = direction > 0 ? oldZoom / factor : (direction < 0 ? oldZoom * factor : oldZoom);
-  newZoom = Math.round(Math.max(0.6, Math.min(newZoom, 5)) * 10000) / 10000;
-
-  if (newZoom === oldZoom) return;
-
-  state.zoom = newZoom;
-
-  const rect = canvasArea.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-
-  const workspaceX = (canvasArea.scrollLeft + mouseX) / oldZoom;
-  const workspaceY = (canvasArea.scrollTop + mouseY) / oldZoom;
-
-  render();
-
-  canvasArea.scrollLeft = workspaceX * newZoom - mouseX;
-  canvasArea.scrollTop = workspaceY * newZoom - mouseY;
+  zoomBoardAt(direction > 0 ? oldZoom / factor : oldZoom * factor, e.clientX, e.clientY);
 }, { passive: false });
 
 let outOfBoundsTimeout = null;

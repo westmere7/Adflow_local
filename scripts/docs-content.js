@@ -94,7 +94,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li><b>Add a canvas:</b> the <b>+</b> button in the left Canvases panel — pick a standard IAB size or enter custom dimensions.</li>
           <li><b>Active canvas:</b> click any canvas to focus the side panels on it. Renames via double-click on its title.</li>
-          <li><b>Navigate:</b> <span class="kbd">Space</span>+drag to pan, scroll wheel to zoom. Click the zoom % in the top bar to reset. <span class="kbd">Tab</span> toggles Fullscreen.</li>
+          <li><b>Navigate:</b> <span class="kbd">Space</span>+drag to pan, scroll wheel to zoom (each notch is the same 10% step at any zoom — Settings ▸ Mouse Scroll Zoom Step). <b>On a Mac</b>, two-finger scroll on the trackpad pans in any direction, pinch zooms at the pointer, and <span class="kbd">Cmd</span>+scroll zooms with a mouse wheel (a plain mouse wheel pans; add <span class="kbd">Shift</span> to pan sideways). Click the zoom % in the top bar to reset. <span class="kbd">Tab</span> toggles Fullscreen.</li>
           <li><b>Canvas right-click:</b> Preview, Export HTML5/PNG, background, clear. The sidebar entry's right-click adds clone/delete.</li>
           <li><b>Crop to canvas:</b> <b>File → Settings</b> — clips elements that bleed outside a canvas for a true export preview.</li>
         </ul>
@@ -895,6 +895,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.24',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Two-Finger Panning on a Mac: on a Mac trackpad, two-finger scrolling now pans the board in any direction instead of zooming, as in other Mac design apps. Pinch zooms smoothly at the pointer, following your fingers rather than jumping a step per movement, and Cmd+scroll (or Ctrl+scroll) zooms with a mouse wheel; a plain mouse wheel pans, with Shift for sideways. Windows is unchanged: the wheel zooms, Space+drag pans."
+    ]
+  },
   {
     version: 'v0.65.23',
     date: 'November 2026 — Engine v3.0',
