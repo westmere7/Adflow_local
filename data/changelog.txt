@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.13 (Current) - November 2026 — Engine v3.0
+v0.65.14 (Current) - November 2026 — Engine v3.0
+- Preview portal export: controls on the right, larger header/logo/controls,
+  and a small "Exported <date, time>" beside the project name.
+
+v0.65.13 - November 2026 — Engine v3.0
 - Multi-canvas selection gets its own right-click menu: Export N sizes, Save
   placement, Clone, Select only this canvas, Delete (confirmed, undoable).
 - Canvas footer hides + / − before the frame selector when space is tight.

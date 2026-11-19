@@ -895,6 +895,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.65.14',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Preview Portal File: Controls on the Right, a Size Up, and the Export Time: in the single-file Preview portal export, the Adflow logo and project name lead on the left and the review controls (Play / Stop / Restart / Static, Loop, Frame, Version, Sizes) now sit on the right. Everything is a size up for a shared screen — a taller header, a larger logo and title, and bigger buttons and drop-downs — and the Sizes drop-down opens leftwards so it stays on screen. A small 'Exported 19 Nov 2026, 1:43 pm' beside the Preview badge says when the file was made, so two versions of the same pack can be told apart (hover it for the Adflow version). The Preview Portal page itself is unchanged. Files exported earlier keep the old header until exported again."
+    ]
+  },
+  {
     version: 'v0.65.13',
     date: 'November 2026 — Engine v3.0',
     items: [

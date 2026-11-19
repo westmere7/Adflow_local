@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.13" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.14" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.65.13"></script>
+  <script src="lib/jszip.min.js?v=0.65.14"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.65.13" />
+  <link rel="stylesheet" href="styles.css?v=0.65.14" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -486,6 +486,36 @@
     html.pv-packed .banner-footer-btn[title="Download HTML5"] {
       display: none !important;
     }
+
+    /* The single-file portal is for people reviewing the ads, not building them:
+       the brand and project name lead on the left, the review controls sit on the
+       right (Download / Load are gone, so nothing else claims that side), and
+       everything is a size up so it reads comfortably on a shared screen. */
+    html.pv-packed .main-header { min-height: 62px; padding: 10px 24px; gap: 8px 20px; }
+    html.pv-packed .pv-logo { height: 28px; }
+    html.pv-packed .pv-title { max-width: 560px; padding-left: 18px; gap: 10px; }
+    html.pv-packed .pv-title .project-name-title { font-size: 16px; }
+    html.pv-packed .pv-badge { font-size: 10.5px; padding: 2px 6px; }
+    /* When this file was exported — quiet, beside the badge, so reviewers can
+       tell two versions of the same pack apart. */
+    .pv-exported { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    html.pv-packed .pv-controls { justify-content: flex-end; gap: 8px 22px; }
+    /* Download all / Load local file are hidden here, so drop their (empty) group
+       too — otherwise it still takes a gap and the controls stop short of the edge. */
+    html.pv-packed .pv-actions { display: none; }
+    html.pv-packed .pv-group { gap: 8px; }
+    html.pv-packed .pv-label { font-size: 11px; }
+    html.pv-packed .pv-check { font-size: 13px; gap: 6px; }
+    html.pv-packed .playback-icons { gap: 4px; }
+    html.pv-packed .playback-icons .btn { height: 34px; width: 40px; }
+    html.pv-packed .playback-icons .btn svg { width: 17px; height: 17px; }
+    html.pv-packed .main-header .btn.pv-step { width: 26px; min-width: 26px; height: 34px; }
+    html.pv-packed .main-header .btn.pv-step svg { width: 12px; height: 12px; }
+    html.pv-packed .main-header select.pv-select { width: 150px; height: 34px; font-size: 13px; padding: 2px 8px; }
+    html.pv-packed .main-header select.pv-select-wide { width: 200px; }
+    html.pv-packed .main-header .btn.pv-btn { height: 34px; padding: 0 12px; font-size: 13px; gap: 6px; }
+    /* Drop-downs now open from the right edge, so they must grow leftwards. */
+    html.pv-packed .pv-pop-panel { left: auto; right: 0; }
   </style>
   
   <!-- Empty mock elements to absorb editor script listeners -->
@@ -530,6 +560,7 @@
       <div class="pv-title">
         <div class="project-name-title" id="project-name">No Project Loaded</div>
         <span id="portal-mode-badge" class="pv-badge">Preview</span>
+        <span id="pv-exported" class="pv-exported" hidden></span>
       </div>
 
       <div class="pv-controls">
@@ -788,13 +819,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.65.13"></script>
-  <script src="scripts/render-runtime.js?v=0.65.13"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.65.13"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.65.13"></script>
-  <script src="scripts/data-merge.js?v=0.65.13"></script>
-  <script src="scripts/font-subset.js?v=0.65.13"></script>
-  <script src="scripts/export-pipeline.js?v=0.65.13"></script>
+  <script src="scripts/numeric-wheel.js?v=0.65.14"></script>
+  <script src="scripts/render-runtime.js?v=0.65.14"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.65.14"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.65.14"></script>
+  <script src="scripts/data-merge.js?v=0.65.14"></script>
+  <script src="scripts/font-subset.js?v=0.65.14"></script>
+  <script src="scripts/export-pipeline.js?v=0.65.14"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -2418,6 +2449,16 @@
         if (badge) {
           const when = PACKED.exportedAt ? new Date(PACKED.exportedAt) : null;
           badge.title = `Exported from Adflow ${PACKED.appVersion || ''}${when && !isNaN(when) ? ' on ' + when.toLocaleString() : ''}. Opens offline; nothing is loaded from anywhere else.`;
+        }
+        const exportedEl = document.getElementById('pv-exported');
+        const exportedAt = PACKED.exportedAt ? new Date(PACKED.exportedAt) : null;
+        if (exportedEl && exportedAt && !isNaN(exportedAt)) {
+          let stamp;
+          try { stamp = exportedAt.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+          catch (e) { stamp = exportedAt.toLocaleString(); }
+          exportedEl.textContent = `Exported ${stamp}`;
+          exportedEl.title = `Exported from Adflow ${PACKED.appVersion || ''} on ${exportedAt.toLocaleString()}`;
+          exportedEl.hidden = false;
         }
         loaderSubtitle.textContent = 'Rendering canvases';
         applyPortalMode('adflow');
