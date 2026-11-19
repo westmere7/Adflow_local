@@ -898,15 +898,11 @@ window.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault();
     if (e.shiftKey) {
-      // Ctrl/Cmd + Shift + S → Save silently to browser database (IndexedDB).
-      (async () => {
-        if (_autosaveTimer) {
-          clearTimeout(_autosaveTimer);
-          _autosaveTimer = null;
-        }
-        await writeAutosave();
-        showCanvasNotification('Project saved to browser', { type: 'success' });
-      })();
+      // Ctrl/Cmd + Shift + S → Save to File As…, the usual Save As shortcut: always
+      // asks where, and the file picked becomes the one Ctrl+S writes to. (It used
+      // to save to the browser, which autosave already does — Save to Browser is
+      // still in File ▸ Save.)
+      saveProjectAsFlow({ saveAs: true });
     } else {
       // Ctrl/Cmd + S → Save to File (.flow). Same path as File ▸ Save ▸ Save to
       // File: the native save dialog where the browser offers one, otherwise a

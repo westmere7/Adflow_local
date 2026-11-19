@@ -426,8 +426,8 @@ const DOCS_SECTIONS = [
         <p><b>History limit:</b> set in <b>File → Settings</b> — 1 to 50 states, default 10.</p>
       `},
       { id: 'flow-files', title: '.flow files', body: `
-        <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. Pressing <span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span> force-saves the project silently to the browser's IndexedDB database.</p>
-        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save to File As…</b> always asks, and the file you pick becomes the one later saves go to. Opening or starting a project forgets the file, so the first save after that asks again. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead: the browser asks where to put each new copy, and the top bar keeps showing the project name rather than a file name, because Adflow cannot save over a downloaded file. The first such save in a session says so, and the project name's tooltip always does. Chrome, Edge and the desktop app save over the same file.</p>
+        <p><b>File → Save → Save to File (.flow)</b> from the menu writes a portable <code>.flow</code> file containing the project JSON plus all embedded assets. <b>Save to Browser</b> in the same menu writes the browser copy straight away (autosave does that anyway).</p>
+        <p><b>Ctrl</b>+<b>S</b> does the same as <b>Save to File (.flow)</b>. The first time, it asks where to save. After that it saves straight over the same file, with a short "Saved to …" note instead of a dialog, and it remembers the file across a reload. <b>File → Save → Save to File As…</b> (<span class="kbd">Ctrl</span>+<span class="kbd">Shift</span>+<span class="kbd">S</span>) always asks, and the file you pick becomes the one later saves go to. <b>Opening a saved .flow</b> with File → Open works the same as having just saved it: the top bar shows its file name and Ctrl+S saves straight back to it (the browser asks once for permission to write). Reopening a project from <b>Open Recent</b> does too, when it was saved to or opened from a file. Templates and older <code>.cook</code>/<code>.zip</code> files are not taken over that way, and starting a new project forgets the file — the first save after those asks where. Where the browser has no native save dialog (Firefox, Safari), every save is a download to your downloads folder instead: the browser asks where to put each new copy, and the top bar keeps showing the project name rather than a file name, because Adflow cannot save over a downloaded file. The first such save in a session says so, and the project name's tooltip always does. Chrome, Edge and the desktop app save over the same file.</p>
         <p><b>The name in the top bar tells you where you stand.</b> Once the project is saved to a file it shows that file's name, e.g. <code>RMIT_ad.flow</code>, with a <b>*</b> after it while there are changes the file doesn't have yet (undo back to the saved state and the * goes away). Before it has been saved to a file it shows the project name with no extension. Double-click it to rename the project; that doesn't rename the file.</p>
         <p><b>Every save also saves to the browser</b> — Ctrl+S, Save to File As…, even a cancelled save dialog — so the copy in this browser never falls behind the file. If you close the tab or the app with changes that are in no file, Adflow asks first. Your work is still kept in the browser either way; the question is only whether you meant to leave it out of a file.</p>
         <p><b>Open Recent</b> in the File menu shows your last manually-saved projects.</p>
@@ -585,7 +585,7 @@ const DOCS_SECTIONS = [
           <tbody>
           ${[
             ['Ctrl + S','Save project to its .flow file (asks the first time, then saves over the same file)'],
-            ['Ctrl + Shift + S','Save project silently to browser database (IndexedDB)'],
+            ['Ctrl + Shift + S','Save As — always asks where; the file you pick becomes the one Ctrl + S saves to'],
             ['Ctrl + Z / Ctrl + Shift + Z','Undo / Redo'],
             ['Ctrl + C / X / V','Copy / Cut / Paste'],
             ['Ctrl + Shift + V','Paste in place — exact position on the same canvas (any frame); the same relative spot on another canvas'],
@@ -895,6 +895,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.21',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Opening a .flow Is Like Having Just Saved It: opening a saved .flow with File ▸ Open now binds the project to that file — the top bar shows its name (RMIT_ad.flow), a * appears as soon as you change something, and Ctrl+S saves straight back over it (the browser asks once for permission to write) instead of asking where. Open Recent does the same for projects that were saved to or opened from a file. Templates, older .cook/.zip files, the base project and startup templates still start unbound, so saving over them never happens by accident. Where the browser cannot open files with write access (Firefox, Safari), opening still works as before.",
+      "Save As Is Ctrl+Shift+S: the common Save As shortcut (Cmd+Shift+S on a Mac) now runs File ▸ Save ▸ Save to File As…, and the menu shows it there. It used to save to the browser, which autosave does anyway; Save to Browser stays in the menu, without a shortcut."
+    ]
+  },
   {
     version: 'v0.65.20',
     date: 'November 2026 — Engine v3.0',

@@ -368,7 +368,7 @@ async function saveProjectAsFlow(opts) {
       }
       _lastFileSaveTime = new Date();
       await markProjectClean(handle);   // title becomes "<file>.flow", no "*"
-      await addRecentProject(exportState);
+      await addRecentProject(exportState, handle);
       // No dialog appeared, so say where it went.
       if (handle === target) showCanvasNotification(`Saved to ${handle.name}`, { type: 'success' });
     } catch (e) {
@@ -461,7 +461,10 @@ async function saveTemplateAsFlow() {
 const saveProjectAsCook = saveProjectAsFlow;
 const saveProjectToZip = saveProjectAsFlow;
 
-async function addRecentProject(exportState) {
+// `fileHandle` — the .flow this snapshot is saved in / was opened from, when there
+// is one. Kept with the entry (IndexedDB stores handles), so reopening it from Open
+// Recent binds the file again: name in the header, Ctrl+S back to it.
+async function addRecentProject(exportState, fileHandle = null) {
   try {
     const recents = (await _idbGet('recents')) || [];
     const projName = state.projectName || 'RMIT_ad';
@@ -470,7 +473,8 @@ async function addRecentProject(exportState) {
       name: projName,
       timestamp: new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       updatedAtMs: Date.now(),
-      stateSnapshot: JSON.parse(JSON.stringify(exportState))
+      stateSnapshot: JSON.parse(JSON.stringify(exportState)),
+      fileHandle: fileHandle || null
     });
     const limited = filtered.slice(0, 10);
     await _idbPut('recents', limited);
@@ -560,6 +564,8 @@ async function updateRecentProjectsMenu() {
       appendItem(item.name, item.timestamp, async () => {
         if (await showAdflowConfirm(`Open recent project "${item.name}"? Any unsaved changes will be lost.`)) {
           await loadProjectFromState(item.stateSnapshot);
+          // Saved in (or opened from) a .flow: bind it again, as after a save.
+          if (item.fileHandle && /\.flow$/i.test(item.fileHandle.name || '')) await markProjectClean(item.fileHandle);
         }
       });
     });
@@ -622,7 +628,10 @@ async function loadProjectFromState(loadedState) {
 
 // Shared inflater used by the menu Open dialog AND the drag-drop overlay. Both
 // formats — modern .flow and legacy .cook/.zip — share the same internal structure.
-async function loadProjectFromBlob(file, customProjectName, existingProgress = null, customCompressFormat = null) {
+// fileHandle — the FileSystemFileHandle the file was opened from (File ▸ Open in
+// a browser with showOpenFilePicker). Given for a real .flow project, it becomes
+// the save target, exactly as after Save to File.
+async function loadProjectFromBlob(file, customProjectName, existingProgress = null, customCompressFormat = null, fileHandle = null) {
   const progress = existingProgress || showLoadingProgress('Opening Project...');
   try {
     progress.setProgress(10, 'Reading file structure...');
@@ -752,11 +761,15 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
       historyIndex = -1;
       pushHistory();
     }
-    // Opening a file never adopts it as the save target: it may be a template, a
-    // legacy .cook/.zip, or a copy that shares this projectId with another file.
-    // So no handle (the first Save to File asks), but what was opened is the
-    // unmodified baseline for the "*" and the leave-page prompt.
-    markProjectClean(null);
+    // Opening a saved .flow adopts it, just as saving to it would: the header reads
+    // "<file>.flow", Ctrl+S saves straight back to it (asking once for permission
+    // to write), and the "*" tracks changes against what was opened. Not adopted:
+    // templates (saving over one would turn it into a project), legacy .cook/.zip
+    // (Save writes a .flow), and anything opened without a handle — a browser with
+    // no file-system access, a base project, a startup template. Those still get
+    // the opened state as the unmodified baseline; the first save asks where.
+    const adopt = !!(fileHandle && !isTemplateFile && /\.flow$/i.test(fileHandle.name || ''));
+    markProjectClean(adopt ? fileHandle : null);
 
     render();
     progress.setProgress(100, 'Done!');
@@ -777,12 +790,13 @@ async function loadProjectFromBlob(file, customProjectName, existingProgress = n
 }
 
 async function openProjectFromZip() {
-  let file;
+  let file, openedHandle = null;
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
         types: [{ description: 'Ad Flow Project', accept: { 'application/octet-stream': ['.flow', '.cook', '.zip'] } }]
       });
+      openedHandle = handle;
       file = await handle.getFile();
     } catch (e) { if (e.name !== 'AbortError') console.error('Open failed:', e); return; }
   } else {
@@ -796,7 +810,11 @@ async function openProjectFromZip() {
     if (!file) return;
   }
   try {
-    await loadProjectFromBlob(file);
+    await loadProjectFromBlob(file, undefined, null, null, openedHandle);
+    // Opened from a file it now saves to, so it belongs in Open Recent too.
+    if (openedHandle && currentFlowRecord() && currentFlowRecord().handle === openedHandle) {
+      addRecentProject(JSON.parse(JSON.stringify(state)), openedHandle);
+    }
   } catch (err) {
     console.error(err);
     showAdflowAlert('Failed to load project. Ensure it is a valid .flow or .cook file.');
