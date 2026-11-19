@@ -261,3 +261,197 @@ function describePlacementLibrary() {
     roles: keys.reduce((n, k) => n + Object.keys(lib.sizes[k] || {}).length, 0)
   };
 }
+
+// ---------------------------------------------------------------------------
+// Settings file — everything above (and the Settings dialog's own values) in one
+// JSON file, so a setup can move to another machine, into the desktop app, or
+// into another browser. Browser storage belongs to one origin on one machine;
+// this is the way across.
+//
+// Deliberately NOT included: autosave, Open Recent and the last-opened file.
+// Those are work, not settings, and Open Recent holds file handles that cannot be
+// serialised anyway. Projects travel as .flow files.
+//
+// Shape: { format: 'adflow-settings', version: 1, appVersion, exportedAt,
+//          preferences: { theme, snapEnabled, …, validationSettings },
+//          storage:     { '<localStorage key>': '<string value>' },
+//          placements:  { version, sizes: { "300x250": { role: geom } } } | null,
+//          baseProject: { meta, flowBase64 } | absent }
+// ---------------------------------------------------------------------------
+const SETTINGS_FILE_FORMAT = 'adflow-settings';
+const SETTINGS_FILE_VERSION = 1;
+
+// The Settings dialog's values. They live on `state`, so they ride along with
+// autosave; listed here so an import can never write anything else onto state.
+const SETTINGS_PREF_FIELDS = Object.freeze({
+  theme: 'string', showRulers: 'boolean', cropToCanvas: 'boolean', tempTopDuringDrag: 'boolean',
+  zoomStep: 'number', defaultBg: 'string',
+  snapEnabled: 'boolean', snapToElements: 'boolean', snapToCanvas: 'boolean',
+  snapToGuides: 'boolean', snapCanvases: 'boolean', snapDistance: 'number',
+  savedHistoryLimit: 'number', autosaveInterval: 'number', adSizeLimit: 'number'
+});
+const SETTINGS_VALIDATION_FIELDS = Object.freeze([
+  'textSize', 'contrast', 'transitionTiming', 'infiniteMotion', 'cricos', 'logo', 'brandColors', 'brandFonts'
+]);
+
+// Remembered choices kept in localStorage. An allow-list, not "everything": an
+// imported file must not be able to plant arbitrary keys, and some keys
+// (last-seen-version, the base project hint) describe this browser, not the user.
+const SETTINGS_STORAGE_KEYS = Object.freeze([
+  'adflow-startup-mode', 'favoriteAnimations', 'adflow-ad-server',
+  'adflow-download-only-save-notice-off', 'hover-preview-armed',
+  'sync-layers-all-frames', 'sync-frames-clear', 'dist-all-canvases',
+  'adflow-sequencer-expanded', 'adflow-sequencer-grid', 'adflow-sequencer-showall'
+]);
+const SETTINGS_STORAGE_PREFIXES = Object.freeze(['panel-collapsed-']);
+const _isSettingsStorageKey = (k) => typeof k === 'string'
+  && (SETTINGS_STORAGE_KEYS.includes(k) || SETTINGS_STORAGE_PREFIXES.some(p => k.startsWith(p) && k.length <= 80));
+
+function _blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ''));
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+function _base64ToBlob(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: 'application/octet-stream' });
+}
+
+// `prefs` — the values to write for the Settings dialog fields (the dialog passes
+// what it is showing, so an export matches the screen even before Save Changes).
+// `overrides` — localStorage values the dialog holds unsaved (the startup mode).
+async function buildSettingsBundle({ prefs = state, overrides = {}, includeBaseProject = false } = {}) {
+  const preferences = {};
+  Object.keys(SETTINGS_PREF_FIELDS).forEach(k => {
+    if (prefs[k] !== undefined && prefs[k] !== null) preferences[k] = prefs[k];
+  });
+  // Unset until someone picks one; write what the editor is actually showing.
+  if (typeof normalizeTheme === 'function') preferences.theme = normalizeTheme(prefs.theme);
+  if (prefs.validationSettings) {
+    preferences.validationSettings = {};
+    SETTINGS_VALIDATION_FIELDS.forEach(k => { preferences.validationSettings[k] = prefs.validationSettings[k] !== false; });
+  }
+
+  const storage = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (_isSettingsStorageKey(k)) storage[k] = localStorage.getItem(k);
+  }
+  Object.entries(overrides).forEach(([k, v]) => { if (_isSettingsStorageKey(k) && v != null) storage[k] = String(v); });
+
+  const bundle = {
+    format: SETTINGS_FILE_FORMAT,
+    version: SETTINGS_FILE_VERSION,
+    appVersion: (typeof getAppVersion === 'function') ? getAppVersion() : null,
+    exportedAt: new Date().toISOString(),
+    preferences,
+    storage,
+    placements: readPlacementLibrary()
+  };
+
+  if (includeBaseProject) {
+    const rec = await _readDefaultStartupRecord();
+    if (rec) bundle.baseProject = { meta: rec.meta || readDefaultStartupMeta() || null, flowBase64: await _blobToBase64(rec.blob) };
+  }
+  return bundle;
+}
+
+// What a file holds, for the confirmation before importing. Throws on anything
+// that is not an Adflow settings file.
+function describeSettingsBundle(bundle) {
+  if (!bundle || typeof bundle !== 'object' || bundle.format !== SETTINGS_FILE_FORMAT) {
+    throw new Error('This is not an Adflow settings file.');
+  }
+  if (typeof bundle.version !== 'number' || bundle.version > SETTINGS_FILE_VERSION) {
+    throw new Error('This settings file was made by a newer version of Adflow. Update Adflow, then import it again.');
+  }
+  const sizes = (bundle.placements && bundle.placements.sizes && typeof bundle.placements.sizes === 'object')
+    ? Object.keys(bundle.placements.sizes) : [];
+  return {
+    appVersion: bundle.appVersion || null,
+    exportedAt: bundle.exportedAt || null,
+    preferences: Object.keys(bundle.preferences || {}).length,
+    storage: Object.keys(bundle.storage || {}).filter(_isSettingsStorageKey).length,
+    placementSizes: sizes.length,
+    placementRoles: sizes.reduce((n, k) => n + Object.keys(bundle.placements.sizes[k] || {}).length, 0),
+    baseProject: !!(bundle.baseProject && typeof bundle.baseProject.flowBase64 === 'string'),
+    baseProjectName: (bundle.baseProject && bundle.baseProject.meta && bundle.baseProject.meta.name) || null
+  };
+}
+
+// Apply a settings file. Preferences and remembered choices are replaced;
+// placements are MERGED (a placement for the same size and role is replaced, the
+// rest of this browser's are kept), so importing never silently forgets work; the
+// base project, when the file has one, replaces this browser's.
+// Returns { preferences, storage, placements, baseProject } counts.
+async function applySettingsBundle(bundle) {
+  describeSettingsBundle(bundle);   // validates
+  const out = { preferences: 0, storage: 0, placements: 0, baseProject: false };
+
+  const p = bundle.preferences || {};
+  Object.entries(SETTINGS_PREF_FIELDS).forEach(([k, type]) => {
+    if (typeof p[k] !== type) return;
+    if (type === 'number' && !isFinite(p[k])) return;
+    state[k] = (k === 'theme' && typeof normalizeTheme === 'function') ? normalizeTheme(p[k]) : p[k];
+    out.preferences++;
+  });
+  if (p.validationSettings && typeof p.validationSettings === 'object') {
+    if (!state.validationSettings) state.validationSettings = {};
+    SETTINGS_VALIDATION_FIELDS.forEach(k => {
+      if (typeof p.validationSettings[k] === 'boolean') { state.validationSettings[k] = p.validationSettings[k]; out.preferences++; }
+    });
+  }
+
+  Object.entries(bundle.storage || {}).forEach(([k, v]) => {
+    if (!_isSettingsStorageKey(k) || typeof v !== 'string') return;
+    localStorage.setItem(k, v);
+    out.storage++;
+  });
+  if (typeof bundle.storage?.favoriteAnimations === 'string') {
+    try {
+      const fav = JSON.parse(bundle.storage.favoriteAnimations);
+      if (Array.isArray(fav)) state.favoriteAnimations = fav;
+    } catch (e) { /* leave the current list */ }
+  }
+
+  const sizes = bundle.placements && bundle.placements.sizes;
+  if (sizes && typeof sizes === 'object') {
+    const lib = readPlacementLibrary() || { version: 1, sizes: {} };
+    Object.entries(sizes).forEach(([key, bucket]) => {
+      if (!/^\d+x\d+$/.test(key) || !bucket || typeof bucket !== 'object') return;
+      Object.entries(bucket).forEach(([role, geom]) => {
+        if (!role || !geom || typeof geom.x !== 'number' || typeof geom.y !== 'number') return;
+        if (!lib.sizes[key]) lib.sizes[key] = {};
+        lib.sizes[key][role] = pickPlacementGeom(geom);
+        out.placements++;
+      });
+    });
+    if (out.placements) { lib.savedAt = Date.now(); _writePlacementLibrary(lib); }
+  }
+
+  if (bundle.baseProject && typeof bundle.baseProject.flowBase64 === 'string') {
+    const blob = _base64ToBlob(bundle.baseProject.flowBase64);
+    // A .flow is a zip; refuse anything else rather than store a base project
+    // that would fail every New Project.
+    const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
+    if (head[0] !== 0x50 || head[1] !== 0x4B) throw new Error('The base project in this settings file is damaged.');
+    const meta = Object.assign({}, bundle.baseProject.meta || {}, { sizeBytes: blob.size });
+    if (!meta.savedAt) meta.savedAt = Date.now();
+    await _idbPut(DEFAULT_STARTUP_IDB_KEY, { blob, meta });
+    _writeDefaultStartupMeta(meta);
+    out.baseProject = true;
+  }
+
+  // A startup preference pointing at a base project this browser does not have
+  // would send every new project down a path that can only fail.
+  if (localStorage.getItem('adflow-startup-mode') === STARTUP_MODE_DEFAULT_PROJECT) {
+    const info = await getDefaultStartupInfo();
+    if (!info.exists) localStorage.setItem('adflow-startup-mode', 'fresh');
+  }
+  return out;
+}

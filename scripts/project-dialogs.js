@@ -2827,6 +2827,7 @@ function openSettings() {
               <button class="settings-tab-btn-vertical" data-tab="snapping" title="What layers snap to while you drag, and how close they have to be">Snapping &amp; Layout</button>
               <button class="settings-tab-btn-vertical" data-tab="validation" title="Which problems the validation panel flags, and the ad weight limit it holds you to">Validation &amp; QC</button>
               <button class="settings-tab-btn-vertical" data-tab="performance" title="Undo history depth, autosave interval and export defaults">History &amp; Export</button>
+              <button class="settings-tab-btn-vertical" data-tab="backup" title="Save your settings to a file, or load them from one — to move your setup to another machine, the desktop app or another browser">Backup &amp; Transfer</button>
             </div>
             
             <!-- Right Panels Content -->
@@ -2973,6 +2974,36 @@ function openSettings() {
                   </svg>
                   <span>Warning: Undo stack stores element structures but does not persist deleted local files (like uncommitted custom fonts/images) after browser reloads.</span>
                 </div>
+              </div>
+
+              <!-- Tab 5: Backup & Transfer. Browser storage belongs to one origin on
+                   one machine; a settings file is the way across (local-library.js). -->
+              <div class="settings-tab-panel" id="panel-backup" style="display:none; flex-direction:column; gap:14px;">
+                <section style="display:flex; flex-direction:column; gap:10px;">
+                  <h3 style="margin:0 0 4px; font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; font-weight:600;">Settings file</h3>
+                  <div style="font-size:12px; color:var(--text-main); line-height:1.5;">
+                    Your settings are kept in this copy of Adflow only. Export them to a file to keep a backup, or to load the same setup on another machine, in the desktop app or in another browser.
+                  </div>
+                  <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
+                    <b style="color:var(--text-main);">Included:</b> everything in this dialog (theme, snapping, validation, history and export values), remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices such as panel layout.<br>
+                    <b style="color:var(--text-main);">Not included:</b> projects, autosave and Open Recent — save .flow files for those.
+                  </div>
+                  <label class="settings-row" id="set-backup-base-row" title="Put the base project inside the settings file too. It makes the file larger" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:6px; cursor:pointer;">
+                    <input type="checkbox" id="set-backup-base" style="margin:2px 0 0 0;" />
+                    <span style="display:flex; flex-direction:column; gap:2px;">
+                      <span style="font-size:12px; color:var(--text-main);">Include the base project</span>
+                      <span id="set-backup-base-hint" style="font-size:10px; color:var(--text-muted);">Checking…</span>
+                    </span>
+                  </label>
+                  <div style="display:flex; gap:8px;">
+                    <button class="btn" id="set-backup-export" title="Save these settings to a .json file">Export settings…</button>
+                    <button class="btn" id="set-backup-import" title="Load settings from a file exported by Adflow">Import settings…</button>
+                    <input type="file" id="set-backup-file" accept=".json,application/json" style="display:none;" />
+                  </div>
+                  <div style="font-size:10px; color:var(--text-muted); line-height:1.5;">
+                    Importing replaces the values in this dialog and the remembered choices. Remembered placements are added to the ones already here (one for the same canvas size and role is replaced). A base project in the file replaces this one. Panel layout choices apply the next time Adflow opens.
+                  </div>
+                </section>
               </div>
             </div>
           </div>
@@ -3329,6 +3360,115 @@ function openSettings() {
     }
   }
 
+  // ---- Backup & Transfer (settings file) -------------------------------------
+  {
+    const baseBox = bg.querySelector('#set-backup-base');
+    const baseRow = bg.querySelector('#set-backup-base-row');
+    const baseHint = bg.querySelector('#set-backup-base-hint');
+    const fileInput = bg.querySelector('#set-backup-file');
+
+    getDefaultStartupInfo().then(info => {
+      if (info.exists) {
+        const kb = info.sizeBytes ? ` (${Math.max(1, Math.round(info.sizeBytes / 1024)).toLocaleString()} KB)` : '';
+        baseHint.textContent = `“${info.name || 'Base project'}”${kb} goes into the file, so new projects start from it on the other machine too.`;
+      } else {
+        baseHint.textContent = 'No base project is saved here.';
+        baseBox.disabled = true;
+        baseRow.style.opacity = '0.55';
+        baseRow.style.cursor = 'not-allowed';
+      }
+    }).catch(() => { baseHint.textContent = 'Could not check for a base project.'; baseBox.disabled = true; });
+
+    bg.querySelector('#set-backup-export').addEventListener('click', async () => {
+      let blob, name;
+      try {
+        const bundle = await buildSettingsBundle({
+          prefs: tempSettings,
+          overrides: { 'adflow-startup-mode': tempSettings.startupMode },
+          includeBaseProject: baseBox.checked && !baseBox.disabled
+        });
+        blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        name = `Adflow-settings-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+      } catch (e) {
+        console.error(e);
+        showCanvasNotification('Could not export settings: ' + (e.message || e), { type: 'error' });
+        return;
+      }
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            types: [{ description: 'Adflow settings', accept: { 'application/json': ['.json'] } }],
+            suggestedName: name
+          });
+          const w = await handle.createWritable();
+          await w.write(blob);
+          await w.close();
+          showCanvasNotification(`Settings exported to ${handle.name || name}.`, { type: 'success' });
+        } catch (e) {
+          if (e.name !== 'AbortError') showCanvasNotification('Could not export settings: ' + (e.message || e), { type: 'error' });
+        }
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+        showCanvasNotification('Settings download started — check your downloads.', { type: 'info' });
+      }
+    });
+
+    bg.querySelector('#set-backup-import').addEventListener('click', () => { fileInput.value = ''; fileInput.click(); });
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      let bundle, info;
+      try {
+        bundle = JSON.parse(await file.text());
+        info = describeSettingsBundle(bundle);
+      } catch (e) {
+        showAdflowAlert(e instanceof SyntaxError ? 'This file is not an Adflow settings file.' : (e.message || String(e)), 'Import settings');
+        return;
+      }
+      const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+      const from = [info.appVersion, info.exportedAt ? new Date(info.exportedAt).toLocaleDateString() : null].filter(Boolean).join(', ');
+      const lines = [`Import settings from <b>${esc(file.name)}</b>${from ? ` (${esc(from)})` : ''}?`, ''];
+      lines.push('• Replaces the values in this dialog and the remembered choices.');
+      if (info.placementRoles) lines.push(`• Adds ${info.placementRoles} remembered placement${info.placementRoles === 1 ? '' : 's'} across ${info.placementSizes} canvas size${info.placementSizes === 1 ? '' : 's'}.`);
+      if (info.baseProject) lines.push(`• Replaces your base project with “${esc(info.baseProjectName || 'Base project')}”.`);
+      if (!(await showAdflowConfirm(lines.join('<br>'), 'Import settings'))) return;
+
+      // Drop any unsaved edits in the dialog first, so what is left afterwards is
+      // exactly the file, never a mix of the file and a half-made change.
+      revertToInitial();
+      let res;
+      try {
+        res = await applySettingsBundle(bundle);
+      } catch (e) {
+        console.error(e);
+        showAdflowAlert('Could not import settings: ' + (e.message || e), 'Import settings');
+        return;
+      }
+      document.body.className = themeBodyClass(state.theme);
+      syncAdflowLogos();
+      if (state.activeCanvasId && typeof runAuditChecks === 'function') {
+        const ac = state.canvases.find(c => c.id === state.activeCanvasId);
+        if (ac) runAuditChecks(ac);
+      }
+      if (typeof queueSizeUpdate === 'function') queueSizeUpdate();
+      render();
+      scheduleAutosave();
+      bg.remove();
+      document.removeEventListener('keydown', escHandler);
+      const extra = [
+        res.placements ? `${res.placements} placement${res.placements === 1 ? '' : 's'}` : '',
+        res.baseProject ? 'the base project' : ''
+      ].filter(Boolean).join(' and ');
+      showCanvasNotification(`Settings imported${extra ? `, with ${extra}` : ''}.`, { type: 'success' });
+    });
+  }
+
   bg.querySelectorAll('.settings-theme-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       tempSettings.theme = btn.dataset.theme;
@@ -3354,6 +3494,7 @@ function openSettings() {
     state.snapToElements = tempSettings.snapToElements;
     state.snapToCanvas = tempSettings.snapToCanvas;
     state.snapToGuides = tempSettings.snapToGuides;
+    state.snapCanvases = tempSettings.snapCanvases;
     state.snapDistance = tempSettings.snapDistance;
     state.savedHistoryLimit = tempSettings.savedHistoryLimit;
     state.autosaveInterval = tempSettings.autosaveInterval;

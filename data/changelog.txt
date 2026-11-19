@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.6 (Current) - November 2026 — Engine v3.0
+v0.65.7 (Current) - November 2026 — Engine v3.0
+- Settings ▸ Backup & Transfer: Export settings… / Import settings… move your
+  settings, remembered placements, remembered choices and (optionally) the base
+  project between machines, the desktop app and browsers as one .json file.
+  Imported placements merge with yours. Projects, autosave and recents excluded.
+- Fixed: Save Changes with live preview off dropped "Snap canvases to each other".
+
+v0.65.6 - November 2026 — Engine v3.0
 - Preview Portal (page and single-file export) has no sidebar: Play/Stop/Restart/
   Static, Loop, Frame, Version and a Sizes drop-down sit in one compact header row,
   so banners get the full width. Third-party HTML5 ads get Restart all, Loop every

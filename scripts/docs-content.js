@@ -65,6 +65,7 @@ const DOCS_SECTIONS = [
       { id: 'how-its-run', title: 'Where your work is kept', body: `
         <p>Adflow is a desktop application for Windows and macOS. There is nothing to install alongside it — the browser engine it needs is inside the download — and nothing to sign into.</p>
         <p><b>Your work lives on this machine, in this copy of the app.</b> Autosave, <b>Open Recent</b>, the base project and remembered placements are all held locally. They do not sync, and they do not follow you to another computer.</p>
+        <p>Your <b>settings</b> can move, though: <b>File → Settings ▸ Backup &amp; Transfer ▸ Export settings…</b> writes them to a <code>.json</code> file, and <b>Import settings…</b> loads it into any other copy of Adflow — another machine, the desktop app or a browser.</p>
         <p>So to move a project — to another machine, or to a colleague — save it as a file: <b>File → Save → Save to File (.flow)</b>. A <code>.flow</code> carries the whole project, embedded images and all, and opens in any copy of Adflow.</p>
         <p>The same goes for anything you want to be certain of keeping. Autosave is a safety net against a crash, not a backup.</p>
       `},
@@ -426,6 +427,7 @@ const DOCS_SECTIONS = [
       { id: 'settings', title: 'App settings', body: `
         <p><b>File → Settings</b>: theme (<b>Adflow</b>, the default dark palette, or <b>Light</b>), rulers, snapping, Crop to Canvas, history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
         <p>The theme changes Adflow's own interface only — never your ad. Switching to Light also swaps the Adflow wordmark for its light-background variant everywhere it appears.</p>
+        <p><b>Backup &amp; Transfer</b> saves your settings to a file and loads them back. The file holds everything in the Settings dialog, remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices such as panel layout — and, if you tick it, the base project. Projects, autosave and Open Recent are not in it; save <code>.flow</code> files for those. Importing replaces the dialog values and remembered choices, <i>adds</i> the file's placements to yours (one for the same canvas size and role is replaced), and replaces the base project if the file carries one. Panel layout choices apply the next time Adflow opens.</p>
       `},
       { id: 'startup-templates-docs', title: 'Startup Templates', body: `
         <p>Adflow supports initializing new projects from pre-defined startup templates (such as branding guides, base layouts, or canvas sets) stored inside the <code>Startup/</code> directory.</p>
@@ -882,6 +884,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.7',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Settings Export and Import: Settings has a new Backup & Transfer tab. Export settings… writes a .json file holding everything in the Settings dialog, remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices, plus the base project if you tick it. Import settings… loads that file into any copy of Adflow — another machine, the desktop app or a browser — after showing what it will change. Placements are added to the ones already there rather than replacing them, so an import never quietly forgets your own. Projects, autosave and Open Recent are not included; .flow files still carry projects.",
+      "Fixed: with Preview changes instantly turned off, Save Changes did not keep the Snap canvases to each other setting."
+    ]
+  },
   {
     version: 'v0.65.6',
     date: 'November 2026 — Engine v3.0',
