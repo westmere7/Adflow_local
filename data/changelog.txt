@@ -1,6 +1,10 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.15 (Current) - November 2026 — Engine v3.0
+v0.65.16 (Current) - November 2026 — Engine v3.0
+- Shift+click an empty spot on another canvas to enter canvas selection (same
+  as Shift+clicking its header); Shift+click again adds/removes canvases.
+
+v0.65.15 - November 2026 — Engine v3.0
 - Desktop app icon is now the violet Adflow mark (the favicon), drawn sharp at
   every size: build/icon.ico (Windows 16-256 px), build/icon.icns (macOS
   16-1024 px), build/icon.png. Regenerate with npm run icons.

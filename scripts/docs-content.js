@@ -129,7 +129,7 @@ const DOCS_SECTIONS = [
       { id: 'alignment-snapping', title: 'Alignment & snapping', body: `
         <ul>
           <li><b>Magnetic snap:</b> canvas edges, centres, sibling layers, custom guides. Toggle in the workspace right-click menu.</li>
-          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone. To move several at once, <span class="kbd">Shift</span>-click their headers (or Shift/Ctrl-click them in the Canvases panel), then drag any of them; Escape clears the selection. Right-click any selected canvas (on the board or in the panel) for a menu that acts on all of them: <b>Export N sizes…</b> (opens Export with just those ticked), <b>Save placement of N canvases</b>, <b>Clone N canvases</b>, <b>Select only this canvas</b> and <b>Delete N canvases</b> (asks first, and can be undone; a project always keeps at least one canvas).</li>
+          <li><b>Moving canvases:</b> drag a canvas by its header and it snaps to the edges and centres of the other canvases, to the standard canvas spacing beside or below another canvas (a pink marker shows the gap), and to ruler guides. Hold <span class="kbd">Ctrl</span> for the 20 px grid instead. Turn it off with <b>Settings ▸ Snapping ▸ Snap canvases to each other</b>. Moving a canvas can be undone. To move several at once, <span class="kbd">Shift</span>-click their headers or an empty spot on another canvas (or Shift/Ctrl-click them in the Canvases panel), then drag any of them; Escape clears the selection. Right-click any selected canvas (on the board or in the panel) for a menu that acts on all of them: <b>Export N sizes…</b> (opens Export with just those ticked), <b>Save placement of N canvases</b>, <b>Clone N canvases</b>, <b>Select only this canvas</b> and <b>Delete N canvases</b> (asks first, and can be undone; a project always keeps at least one canvas).</li>
           <li><b>Rulers & guides:</b> enable rulers, drag from a ruler into a canvas to drop a guide. Drag the guide back to the ruler to remove.</li>
           <li><b>Nudging:</b> arrow keys = 1px; <span class="kbd">Shift</span>+arrows = 10px.</li>
         </ul>
@@ -894,6 +894,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.16',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Shift-Click Another Canvas to Select Canvases: Shift-clicking an empty spot on a different canvas now selects canvases, the same as Shift-clicking its header — the canvas you were on and the one you clicked are both selected, with the accent outline, ready to drag together or right-click for the multi-canvas menu. While several are selected, Shift-click any canvas's empty area to add or remove it. Shift-clicking on the canvas you are working on still adds to the layer marquee, as before."
+    ]
+  },
   {
     version: 'v0.65.15',
     date: 'November 2026 — Engine v3.0',

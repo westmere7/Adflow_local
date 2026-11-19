@@ -1665,6 +1665,20 @@ function canvasFrameNode(c) {
             return;
           }
         }
+        // Shift+click on the empty part of ANOTHER canvas picks canvases, exactly as
+        // Shift+clicking its header does: the canvas you were on and this one become a
+        // multi-canvas selection, ready to drag together or right-click. Once several
+        // are selected, Shift+click on any canvas's empty area adds or removes it. On
+        // the canvas you are working on, Shift keeps its usual job — adding to the
+        // layer marquee.
+        if (e.shiftKey && e.button === 0 && !state.isolatedGroupId
+            && typeof toggleCanvasInSelection === 'function'
+            && (c.id !== state.activeCanvasId || canvasGroupIds().length > 1)) {
+          e.stopPropagation();
+          toggleCanvasInSelection(c);
+          render();
+          return;
+        }
         state.activeCanvasId = c.id;
         if (!e.shiftKey) {
           state.selectedElementId = null;
