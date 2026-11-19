@@ -681,71 +681,71 @@ function renderLinkControl() {
           
           if (cat === 'text') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
-              ${renderPropChk('customName', 'Layer name', 'Sync custom layer name across linked elements')}
-              ${renderPropChk('visibility', 'Layer visibility', 'Sync layer visibility across linked elements')}
-              ${renderPropChk('text', 'Text content', 'Sync text content across linked elements')}
-              ${renderPropChk('font', 'Font settings', 'Sync font family and weight settings across linked elements')}
-              ${renderPropChk('fontSize', 'Font size', 'Sync font size across linked elements')}
-              ${renderPropChk('color', 'Colors', 'Sync text color across linked elements')}
-              ${renderPropChk('background', 'Background', 'Sync text background properties across linked elements')}
-              ${renderPropChk('opacity', 'Opacity', 'Sync opacity across linked elements')}
-              ${renderPropChk('inAnim', 'IN Animation', 'Sync entry transition animation across linked elements')}
-              ${renderPropChk('outAnim', 'OUT Animation', 'Sync exit animation across linked elements')}
-              ${renderPropChk('effect', 'Animation FX', 'Sync Animation FX across linked elements')}
+              ${renderPropChk('customName', 'Layer name', 'Layer name: the layer\'s own name. If another layer on that canvas already has it, a number is added.')}
+              ${renderPropChk('visibility', 'Layer visibility', 'Visibility: whether the layer is shown or hidden (the eye), including per-frame overrides on Always Top / Always Bottom layers.')}
+              ${renderPropChk('text', 'Text content', 'Text content: the words in the layer, not their styling.')}
+              ${renderPropChk('font', 'Font settings', 'Font settings: typeface, weight, leading, tracking, horizontal and vertical alignment, Hyphenate and Join hyphens. Not the size, which has its own option. Alignment is left alone on logo, RFWN and CRICOS layers.')}
+              ${renderPropChk('fontSize', 'Font size', 'Font size: the size, Auto size and Max size.')}
+              ${renderPropChk('color', 'Colors', 'Colors: the text colour. The text background has its own option.')}
+              ${renderPropChk('background', 'Background', 'Background: the text background (on/off, colour, opacity, L/R and T/B padding, coverage) and whether it sweeps in with a typing entrance.')}
+              ${renderPropChk('opacity', 'Opacity', 'Opacity: the layer\'s overall opacity.')}
+              ${renderPropChk('inAnim', 'IN Animation', 'IN animation: the entrance (on/off, type, duration, delay, direction, distance, fade, bounce, zoom start, letter/word stagger and the other entrance options).')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'OUT animation: the exit (on/off, type, start time, duration, direction, distance and fade).')}
+              ${renderPropChk('effect', 'Animation FX', 'Animation FX: the effect and all its settings (on/off, type, duration, delay, ease, perform once, speed, Move offsets, rotation, target zoom, fade and Towards target, zoom/spin/pulse/float amounts).')}
             </div>`;
           } else if (cat === 'button') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
-              ${renderPropChk('customName', 'Layer name', 'Sync custom layer name across linked elements')}
-              ${renderPropChk('visibility', 'Layer visibility', 'Sync layer visibility across linked elements')}
-              ${renderPropChk('text', 'Button text', 'Sync button label text across linked elements')}
-              ${renderPropChk('textColor', 'Text color', 'Sync button text color across linked elements')}
-              ${renderPropChk('font', 'Font settings', 'Sync button font family, weight, alignment, and auto-scaling settings across linked elements')}
-              ${renderPropChk('fill', 'Fill', 'Sync button background fill across linked elements')}
-              ${renderPropChk('stroke', 'Stroke', 'Sync button stroke properties across linked elements')}
-              ${renderPropChk('radius', 'Corner radius', 'Sync button corner radius across linked elements')}
-              ${renderPropChk('transform', 'Size (W+H)', 'Sync button width and height across linked elements')}
-              ${renderPropChk('opacity', 'Opacity', 'Sync button opacity across linked elements')}
-              ${renderPropChk('inAnim', 'IN Animation', 'Sync button entry transition animation across linked elements')}
-              ${renderPropChk('outAnim', 'OUT Animation', 'Sync button exit animation across linked elements')}
-              ${renderPropChk('effect', 'Animation FX', 'Sync button Animation FX across linked elements')}
+              ${renderPropChk('customName', 'Layer name', 'Layer name: the layer\'s own name. If another layer on that canvas already has it, a number is added.')}
+              ${renderPropChk('visibility', 'Layer visibility', 'Visibility: whether the layer is shown or hidden (the eye), including per-frame overrides on Always Top / Always Bottom layers.')}
+              ${renderPropChk('text', 'Button text', 'Button text: the label words.')}
+              ${renderPropChk('textColor', 'Text color', 'Text color: the label colour.')}
+              ${renderPropChk('font', 'Font settings', 'Font settings: typeface, weight, size, Auto size and Max size, tracking, L/R and T/B padding, horizontal and vertical alignment, Wrap text and its minimum size, and Join hyphens.')}
+              ${renderPropChk('fill', 'Fill', 'Fill: the button background colour.')}
+              ${renderPropChk('stroke', 'Stroke', 'Stroke: colour, thickness, opacity and dash pattern.')}
+              ${renderPropChk('radius', 'Corner radius', 'Corner radius.')}
+              ${renderPropChk('transform', 'Size (W+H)', 'Size (W+H): width, height, the aspect-ratio lock and Auto-hug (the button fits its label).')}
+              ${renderPropChk('opacity', 'Opacity', 'Opacity: the layer\'s overall opacity.')}
+              ${renderPropChk('inAnim', 'IN Animation', 'IN animation: the entrance (on/off, type, duration, delay, direction, distance, fade, bounce, zoom start, letter/word stagger and the other entrance options).')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'OUT animation: the exit (on/off, type, start time, duration, direction, distance and fade).')}
+              ${renderPropChk('effect', 'Animation FX', 'Animation FX: the effect and all its settings (on/off, type, duration, delay, ease, perform once, speed, Move offsets, rotation, target zoom, fade and Towards target, zoom/spin/pulse/float amounts).')}
             </div>`;
           } else if (cat === 'image') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
-              ${renderPropChk('customName', 'Layer name', 'Sync custom layer name across linked elements')}
-              ${renderPropChk('visibility', 'Layer visibility', 'Sync layer visibility across linked elements')}
-              ${renderPropChk('image', 'Image asset', 'Sync image asset across linked elements')}
-              ${isRmitLogo ? renderPropChk('variant', 'Variant', 'Sync logo variant across linked elements') : ''}
-              ${renderPropChk('radius', 'Corner radius', 'Sync image corner radius across linked elements')}
-              ${renderPropChk('transform', 'Size (W+H)', 'Sync image width and height across linked elements')}
-              ${renderPropChk('opacity', 'Opacity', 'Sync image opacity across linked elements')}
-              ${renderPropChk('rotation', 'Rotation', 'Sync image rotation angle across linked elements')}
-              ${renderPropChk('inAnim', 'IN Animation', 'Sync image entry transition animation across linked elements')}
-              ${renderPropChk('outAnim', 'OUT Animation', 'Sync image exit animation across linked elements')}
-              ${renderPropChk('effect', 'Animation FX', 'Sync image Animation FX across linked elements')}
+              ${renderPropChk('customName', 'Layer name', 'Layer name: the layer\'s own name. If another layer on that canvas already has it, a number is added.')}
+              ${renderPropChk('visibility', 'Layer visibility', 'Visibility: whether the layer is shown or hidden (the eye), including per-frame overrides on Always Top / Always Bottom layers.')}
+              ${renderPropChk('image', 'Image asset', 'Image asset: which picture is shown, and how it fits its frame (contain or cover).')}
+              ${isRmitLogo ? renderPropChk('variant', 'Variant', 'Variant: which version of the logo is used (white, full colour, red pixel), with its layer name.') : ''}
+              ${renderPropChk('radius', 'Corner radius', 'Corner radius.')}
+              ${renderPropChk('transform', 'Size (W+H)', 'Size (W+H): width, height and the aspect-ratio lock.')}
+              ${renderPropChk('opacity', 'Opacity', 'Opacity: the layer\'s overall opacity.')}
+              ${renderPropChk('rotation', 'Rotation', 'Rotation: the rotation angle.')}
+              ${renderPropChk('inAnim', 'IN Animation', 'IN animation: the entrance (on/off, type, duration, delay, direction, distance, fade, bounce, zoom start, letter/word stagger and the other entrance options).')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'OUT animation: the exit (on/off, type, start time, duration, direction, distance and fade).')}
+              ${renderPropChk('effect', 'Animation FX', 'Animation FX: the effect and all its settings (on/off, type, duration, delay, ease, perform once, speed, Move offsets, rotation, target zoom, fade and Towards target, zoom/spin/pulse/float amounts).')}
             </div>`;
           } else if (cat === 'shape') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
-              ${renderPropChk('customName', 'Layer name', 'Sync custom layer name across linked elements')}
-              ${renderPropChk('visibility', 'Layer visibility', 'Sync layer visibility across linked elements')}
-              ${renderPropChk('fill', 'Color', 'Sync shape fill color across linked elements')}
-              ${renderPropChk('stroke', 'Stroke', 'Sync shape stroke properties across linked elements')}
-              ${renderPropChk('radius', 'Corner radius', 'Sync shape corner radius across linked elements')}
-              ${renderPropChk('transform', 'Size (W+H)', 'Sync shape width and height across linked elements')}
-              ${renderPropChk('opacity', 'Opacity', 'Sync shape opacity across linked elements')}
-              ${renderPropChk('inAnim', 'IN Animation', 'Sync shape entry transition animation across linked elements')}
-              ${renderPropChk('outAnim', 'OUT Animation', 'Sync shape exit animation across linked elements')}
-              ${renderPropChk('effect', 'Animation FX', 'Sync shape Animation FX across linked elements')}
+              ${renderPropChk('customName', 'Layer name', 'Layer name: the layer\'s own name. If another layer on that canvas already has it, a number is added.')}
+              ${renderPropChk('visibility', 'Layer visibility', 'Visibility: whether the layer is shown or hidden (the eye), including per-frame overrides on Always Top / Always Bottom layers.')}
+              ${renderPropChk('fill', 'Color', 'Color: the fill colour or gradient.')}
+              ${renderPropChk('stroke', 'Stroke', 'Stroke: colour, thickness, opacity and dash pattern.')}
+              ${renderPropChk('radius', 'Corner radius', 'Corner radius.')}
+              ${renderPropChk('transform', 'Size (W+H)', 'Size (W+H): width, height and the aspect-ratio lock.')}
+              ${renderPropChk('opacity', 'Opacity', 'Opacity: the layer\'s overall opacity.')}
+              ${renderPropChk('inAnim', 'IN Animation', 'IN animation: the entrance (on/off, type, duration, delay, direction, distance, fade, bounce, zoom start, letter/word stagger and the other entrance options).')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'OUT animation: the exit (on/off, type, start time, duration, direction, distance and fade).')}
+              ${renderPropChk('effect', 'Animation FX', 'Animation FX: the effect and all its settings (on/off, type, duration, delay, ease, perform once, speed, Move offsets, rotation, target zoom, fade and Towards target, zoom/spin/pulse/float amounts).')}
             </div>`;
           } else if (cat === 'line') {
             html += `<div style="display:grid; grid-template-columns:1fr 1fr; gap:5px 6px; width:100%;">
-              ${renderPropChk('customName', 'Layer name', 'Sync custom layer name across linked elements')}
-              ${renderPropChk('visibility', 'Layer visibility', 'Sync layer visibility across linked elements')}
-              ${renderPropChk('color', 'Color', 'Sync line color across linked elements')}
-              ${renderPropChk('thickness', 'Thickness', 'Sync line thickness across linked elements')}
-              ${renderPropChk('opacity', 'Opacity', 'Sync line opacity across linked elements')}
-              ${renderPropChk('inAnim', 'IN Animation', 'Sync line entry transition animation across linked elements')}
-              ${renderPropChk('outAnim', 'OUT Animation', 'Sync line exit animation across linked elements')}
-              ${renderPropChk('effect', 'Animation FX', 'Sync line Animation FX across linked elements')}
+              ${renderPropChk('customName', 'Layer name', 'Layer name: the layer\'s own name. If another layer on that canvas already has it, a number is added.')}
+              ${renderPropChk('visibility', 'Layer visibility', 'Visibility: whether the layer is shown or hidden (the eye), including per-frame overrides on Always Top / Always Bottom layers.')}
+              ${renderPropChk('color', 'Color', 'Color: the line colour.')}
+              ${renderPropChk('thickness', 'Thickness', 'Thickness: how thick the line is.')}
+              ${renderPropChk('opacity', 'Opacity', 'Opacity: the layer\'s overall opacity.')}
+              ${renderPropChk('inAnim', 'IN Animation', 'IN animation: the entrance (on/off, type, duration, delay, direction, distance, fade, bounce, zoom start, letter/word stagger and the other entrance options).')}
+              ${renderPropChk('outAnim', 'OUT Animation', 'OUT animation: the exit (on/off, type, start time, duration, direction, distance and fade).')}
+              ${renderPropChk('effect', 'Animation FX', 'Animation FX: the effect and all its settings (on/off, type, duration, delay, ease, perform once, speed, Move offsets, rotation, target zoom, fade and Towards target, zoom/spin/pulse/float amounts).')}
             </div>`;
           }
           html += `</div>`;

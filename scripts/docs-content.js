@@ -150,6 +150,7 @@ const DOCS_SECTIONS = [
         <ul>
           <li>Brand fonts pre-installed (Museo Sans, RMIT Lato, Helvetica Neue).</li>
           <li>Per-layer controls: size, weight, alignment, line-height, letter-spacing.</li>
+          <li><b>Line breaks</b>, two switches under Alignment. <b>Join hyphens</b> (text and buttons) keeps words like <i>real-world</i>, <i>e-learning</i> or <i>2026-2027</i> on one line — the line never breaks at their hyphen. It works in every browser and both desktop apps, and only changes how the text is drawn, never the text you typed. <b>Hyphenate</b> (text) does the opposite job for long words: they break across lines at the syllables, with a hyphen, instead of the whole word dropping down. The browser does that hyphenating, so it shows in Chrome, Edge, Safari (iOS included) and Firefox and in the Mac desktop app; the <i>Windows desktop app</i> has no hyphenation dictionary, so there the editor shows whole words while the exported ad still hyphenates. Auto-size measures with both. Layers with a word-by-word entrance animation keep whole words.</li>
           <li>Background fill behind text supports adjustable padding and coverage; with a typing IN animation, sweeps in line-by-line.</li>
         </ul>
       `},
@@ -539,7 +540,7 @@ const DOCS_SECTIONS = [
         <p><b>File → Preview Portal…</b> opens the review page on its own, with nothing loaded. From the empty prompt you can <b>Open Adflow Project…</b> (a <code>.flow</code> file) or <b>Open HTML5 Ad (.zip)…</b>, or drop either kind anywhere on the page. Cloud projects are deliberately not offered here — this is a local-file tool.</p>
         <p>With an Adflow project open, one compact header across the top gives you (it wraps onto a second row in a narrow window):</p>
         <ul>
-          <li><b>Playback</b> — four icons: <b>Play</b> runs every banner from the start; <b>Stop</b> freezes them exactly where they are (Play then starts again from the top); <b>Restart</b> runs the timeline again; <b>Static</b> shows one frame as a still with every animation finished. Beside them, a <b>Loop</b> override that affects the preview only, never the exported ad's own loop setting.</li>
+          <li><b>Playback</b> — four icons: <b>Play</b> runs every banner from the start; <b>Stop</b> freezes them exactly where they are (Play then starts again from the top); <b>Restart</b> runs the timeline again; <b>Static</b> shows one frame as a still with every animation finished — and when the project has a <b>skipped frame</b>, that frame is treated as the ad's static fallback and Static shows it on every size (the frame list then reads <i>Static · Frame N</i>; with several skipped frames, the last). Play, Restart, a version change or picking another frame bring the animated banners back. The single-file Preview portal export carries the fallback too. Beside them, a <b>Loop</b> override that affects the preview only, never the exported ad's own loop setting.</li>
           <li><b>Frame</b> — <i>All frames</i>, or jump to and play any single frame across every size at once.</li>
           <li><b>Version</b> — step through the merge rows and see every size update live (shown only when the project has a data sheet).</li>
           <li><b>Sizes</b> — a drop-down checklist of which sizes to show, with Select all / Clear all. The button reads <i>6 sizes</i>, or <i>4 of 6 sizes</i> while some are hidden. Each card shows its KB estimate.</li>
@@ -894,6 +895,28 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.20',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Static Shows the Static Fallback Frame: teams keep an ad's static fallback as a skipped frame in the same project, rather than a second project file. In the Preview Portal — the page and the single-file Preview portal export — the Static button now shows that skipped frame on every size, as a still with every animation finished, drawn the way the PNG static export draws it. The frame list reads 'Static · Frame N' while it is on screen, and the button's tooltip names the frame. With several skipped frames the last one is used; with none, Static behaves as before (the first frame, frozen). Play, Restart, a data version change or picking another frame bring the animated banners back, still without the skipped frame. The exported portal file carries a pre-built still for every size and data version, so it works offline.",
+      "Link Group Tooltips Say What Each Option Syncs: every option in a Link Group's sync settings now describes exactly what it copies — for example, text Font settings covers typeface, weight, leading, tracking, alignment, Hyphenate and Join hyphens (not the size, which has its own option), and button Font settings covers size, padding, wrapping and Join hyphens as well. Hyphenate and Join hyphens were confirmed to sync through live linking and Manual push whenever Font settings is ticked."
+    ]
+  },
+  {
+    version: 'v0.65.19',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Line Breaks: Join Hyphens and Hyphenate: text and button layers have a new Line breaks row under Alignment. Join hyphens keeps words like real-world, e-learning or 2026-2027 on one line — browsers normally treat that hyphen as a place to break, leaving 'real-' at the end of one line and 'world' on the next. It works in every browser and in both desktop apps, and only changes how the text is drawn: an invisible word joiner is added after the hyphen in the editor, the auto-size measurement and the exported ad, never to the text you typed, copy or save. Hyphenate (text layers) does the opposite job for long words, letting the browser break them at the syllables with a hyphen; it shows in Chrome, Edge, Safari and Firefox and in the Mac desktop app, while the Windows desktop app's built-in browser has no hyphenation dictionary, so its editor shows whole words even though the exported ad hyphenates. Both sync through Link Groups with the other font settings."
+    ]
+  },
+  {
+    version: 'v0.65.18',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Exports Open Their Folder (Desktop App): in the Windows and Mac apps, finishing an export now opens the folder it was saved to, with the file selected — Explorer on Windows, Finder on a Mac — so there is no hunting for it. This covers every export: the Export dialog's HTML5 ZIPs, Export all versions, the Preview portal file, PNG, video and GIF, single-canvas downloads and settings files. Each still asks where to save first, with the system Save dialog; cancelling opens nothing. Saving a project (.flow, Ctrl+S) is unchanged. In a browser nothing changes — a web page is not allowed to open folders."
+    ]
+  },
   {
     version: 'v0.65.17',
     date: 'November 2026 — Engine v3.0',

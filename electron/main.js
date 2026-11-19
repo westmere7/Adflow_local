@@ -14,7 +14,7 @@
 // a Mac build quietly missing two headline features.
 // ============================================================================
 
-const { app, BrowserWindow, Menu, shell, dialog } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, session } = require('electron');
 const path = require('path');
 const { startStaticServer, PREFERRED_PORT } = require('./static-server');
 
@@ -39,6 +39,24 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   main();
+}
+
+// Exports reach the disk as downloads: Electron shows the system Save dialog for
+// each one (nothing calls setSavePath), and once the file is written its folder
+// opens with the file selected — Explorer on Windows, Finder on a Mac — so the
+// result is in front of you without hunting for it. The page routes its exports
+// this way on purpose in the desktop build (exportUsesPicker() in
+// export-pipeline.js): a file saved through showSaveFilePicker never tells the
+// main process where it went, so there would be nothing to reveal. Cancelled or
+// failed downloads open nothing.
+function revealDownloadsWhenDone() {
+  session.defaultSession.on('will-download', (_event, item) => {
+    item.once('done', (_e, state) => {
+      if (state !== 'completed') return;
+      const saved = item.getSavePath();
+      if (saved) shell.showItemInFolder(saved);
+    });
+  });
 }
 
 function createWindow(url, opts = {}) {
@@ -177,6 +195,7 @@ function buildMenu() {
 async function main() {
   app.setName('RMIT Adflow');
   await app.whenReady();
+  revealDownloadsWhenDone();
 
   try {
     const started = await startStaticServer(APP_ROOT);

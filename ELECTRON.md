@@ -186,6 +186,13 @@ of them is code.
 - **Work does not migrate automatically.** The desktop app has its own storage,
   separate from the browser's. Anyone moving across should save their projects
   as `.flow` files first and open them in the app.
+- **Exports open their folder.** In the desktop app every export (HTML5 ZIPs, all
+  versions, the Preview portal, PNG, video/GIF, settings files) is saved as a
+  download: the system Save dialog asks where, and when the file is written its
+  folder opens with the file selected (`revealDownloadsWhenDone` in
+  `electron/main.js`; the page side is `exportUsesPicker()` in
+  `scripts/export-pipeline.js`). Project saves (`.flow`, Ctrl+S) keep the
+  browser's save picker, which is what lets them save over the same file.
 - **It still needs no network.** Everything is local: no accounts, no uploads,
   no third-party requests.
 - **The icon is the violet Adflow mark** — the same as the browser favicon: the

@@ -321,7 +321,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
     if (sync.font) {
       // Font family/weight/spacing/alignment — NOT fontSize (handled separately so a
       // group can sync typeface but keep per-canvas sizes, as auto-resize needs).
-      const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineHeightAuto', 'letterSpacing', 'textAlign', 'verticalAlign'];
+      const fontProps = ['fontFamily', 'weight', 'lineHeight', 'lineHeightAuto', 'letterSpacing', 'hyphenate', 'keepHyphenWords', 'textAlign', 'verticalAlign'];
       const isBrand = (targetEl.role === 'rmit-logo' || targetEl.role === 'rfwn' || targetEl.role === 'cricos');
       fontProps.forEach(p => {
         if (isBrand && (p === 'textAlign' || p === 'verticalAlign')) {
@@ -360,7 +360,7 @@ function applyLinkSync(sourceEl, targetEl, group) {
       else delete targetEl.color;
     }
     if (sync.font) {
-      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'letterSpacing', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText', 'wrapMinSize'];
+      const fontProps = ['fontFamily', 'weight', 'fontSize', 'autoSize', 'maxFontSize', 'letterSpacing', 'keepHyphenWords', 'paddingLR', 'paddingTB', 'textAlign', 'verticalAlign', 'wrapText', 'wrapMinSize'];
       fontProps.forEach(p => {
         if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
         else delete targetEl[p];

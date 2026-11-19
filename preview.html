@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.17" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.20" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.65.17"></script>
+  <script src="lib/jszip.min.js?v=0.65.20"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.65.17" />
+  <link rel="stylesheet" href="styles.css?v=0.65.20" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -819,13 +819,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.65.17"></script>
-  <script src="scripts/render-runtime.js?v=0.65.17"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.65.17"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.65.17"></script>
-  <script src="scripts/data-merge.js?v=0.65.17"></script>
-  <script src="scripts/font-subset.js?v=0.65.17"></script>
-  <script src="scripts/export-pipeline.js?v=0.65.17"></script>
+  <script src="scripts/numeric-wheel.js?v=0.65.20"></script>
+  <script src="scripts/render-runtime.js?v=0.65.20"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.65.20"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.65.20"></script>
+  <script src="scripts/data-merge.js?v=0.65.20"></script>
+  <script src="scripts/font-subset.js?v=0.65.20"></script>
+  <script src="scripts/export-pipeline.js?v=0.65.20"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -875,9 +875,11 @@
       const dm = state.dataMerge;
       return (dm && dm.enabled && dm.activeVersion != null) ? dm.activeVersion : 'd';
     }
-    function packedAdHtml(c) {
+    // `variant`: omitted = the animated ad for the current Loop setting; 's' = the
+    // static fallback still (buildPortalPackAds stores both).
+    function packedAdHtml(c, variant) {
       if (!packedAds || !c) return null;
-      const key = `${c.id}|${packedVersionKey()}|${state.loopAd ? 1 : 0}`;
+      const key = `${c.id}|${packedVersionKey()}|${variant !== undefined ? variant : (state.loopAd ? 1 : 0)}`;
       if (packedResolved.has(key)) return packedResolved.get(key);
       const tokenized = packedAds[key];
       if (tokenized == null) return null;
@@ -996,6 +998,11 @@
         const i = state.frames.indexOf(f);
         selectFrame.innerHTML += `<option value="${f.id}">Frame ${i + 1} (${f.duration}s)</option>`;
       });
+      // The static fallback, offered while stopped on a still, and selected
+      // while it is the thing on screen.
+      const staticLabel = (!isPlaying && typeof staticFallbackLabel === 'function') ? staticFallbackLabel() : null;
+      if (staticLabel) selectFrame.innerHTML += `<option value="static">${staticLabel}</option>`;
+      if (staticLabel && showingStaticFallback) { selectFrame.value = 'static'; return; }
       
       // Restore previous selection if valid
       if (currentVal && selectFrame.querySelector(`option[value="${currentVal}"]`)) {
@@ -1024,6 +1031,11 @@
     function setPlayState(playing, triggerReload = true) {
       isPlaying = playing;
       isStopped = false;
+      // Playing again always means the animated banners.
+      if (playing && showingStaticFallback) {
+        showingStaticFallback = false;
+        if (!triggerReload) state.canvases.forEach(reloadBanner);
+      }
 
       // Repopulate options based on play state (shows or hides "All frames")
       repopulateFrameSelect();
@@ -1132,11 +1144,70 @@
       });
     }
 
+    // ---- Static fallback ------------------------------------------------------
+    // A project's skipped frame is its static fallback (staticFallbackFrameOf in
+    // export-pipeline.js). The animated banners leave skipped frames out, so the
+    // fallback is shown by swapping each banner for a still of that frame, drawn
+    // the way the PNG static export draws it. The exported portal file carries
+    // that still pre-built (packedAdHtml(c, 's')). Play, Replay, a version change
+    // or picking another frame bring the animated banners back.
+    var showingStaticFallback = false;   // var: read by repopulateFrameSelect, defined above
+    function staticFallbackFrame() {
+      return (typeof staticFallbackFrameOf === 'function') ? staticFallbackFrameOf(state.frames) : null;
+    }
+    function staticFallbackLabel() {
+      const f = staticFallbackFrame();
+      return f ? `Static · Frame ${state.frames.indexOf(f) + 1}` : null;
+    }
+    function staticFallbackHtmlFor(c) {
+      if (PACKED) return packedAdHtml(c, 's');
+      return (typeof generateStaticFallbackHTML === 'function') ? generateStaticFallbackHTML(c) : null;
+    }
+    function loadStaticFallback(c) {
+      const iframe = document.getElementById('iframe-' + c.id);
+      if (!iframe) return false;
+      let html = null;
+      try { html = staticFallbackHtmlFor(c); } catch (e) { console.error('Static fallback failed for', c.id, e); }
+      if (!html) return false;
+      // Same fresh-iframe swap as reloadBanner, so no timer of the animated ad
+      // survives behind the still.
+      try {
+        const cw = iframe.contentWindow;
+        if (cw) { const maxId = cw.setTimeout(() => {}, 0); for (let id = 0; id <= maxId; id++) cw.clearTimeout(id); }
+      } catch (e) {}
+      const fresh = document.createElement('iframe');
+      fresh.className = 'preview-iframe';
+      fresh.id = 'iframe-' + c.id;
+      fresh.style.width = c.width + 'px';
+      fresh.style.height = c.height + 'px';
+      fresh.setAttribute('scrolling', 'no');
+      iframe.parentElement.replaceChild(fresh, iframe);
+      fresh.srcdoc = html;
+      return true;
+    }
+    function showStaticFallback() {
+      let shown = 0;
+      state.canvases.forEach(c => { if (loadStaticFallback(c)) shown++; });
+      showingStaticFallback = shown > 0;
+      return showingStaticFallback;
+    }
+    function updateStaticButtonTitle() {
+      const label = staticFallbackLabel();
+      staticBtn.title = label
+        ? `Static — show the static fallback: ${label.replace('Static · ', '')}, the project's skipped frame`
+        : 'Static — show one frame as a still, with every animation finished';
+    }
+
     staticBtn.onclick = () => {
-      // Freeze every banner on the first playable frame for static inspection.
+      setPlayState(false, false);
+      // A skipped frame is the static fallback: show that.
+      if (staticFallbackFrame() && showStaticFallback()) {
+        repopulateFrameSelect();
+        return;
+      }
+      // No fallback frame: freeze every banner on the first playable frame.
       const playable = (state.frames || []).filter(f => !f.skip);
       const firstFrameId = playable.length ? playable[0].id : null;
-      setPlayState(false, false);
       if (firstFrameId !== null) {
         freezeFrame(firstFrameId);
         selectFrame.value = firstFrameId;
@@ -1154,6 +1225,17 @@
       // Picking a frame while stopped plays it, so Stop is over.
       leaveStop();
       const val = selectFrame.value;
+      if (val === 'static') {
+        setPlayState(false, false);
+        if (showStaticFallback()) repopulateFrameSelect();
+        return;
+      }
+      // Leaving the static fallback: the banners on screen are stills of one
+      // frame, so put the animated banners back before acting on the choice.
+      if (showingStaticFallback) {
+        showingStaticFallback = false;
+        state.canvases.forEach(reloadBanner);
+      }
       if (val === 'play') {
         if (!isPlaying) {
           setPlayState(true);
@@ -1192,7 +1274,7 @@
       // 1. Playback state
       if (!isPlaying) {
         const val = selectFrame.value;
-        if (val !== 'play') {
+        if (val !== 'play' && val !== 'static') {
           const frameId = parseInt(val);
           extraStyle += `
             <style id="preview-state-override-style">
@@ -1452,6 +1534,8 @@
     function reloadBanner(c) {
       const iframe = document.getElementById('iframe-' + c.id);
       if (!iframe) return;
+      // Restarting one size while the static fallback is up restarts its still.
+      if (showingStaticFallback && !isPlaying && loadStaticFallback(c)) return;
       const speed = 1;
       const originalState = window.state;
       window.state = getScaledState(speed);
@@ -1718,7 +1802,9 @@
       
       
       // 2. Timeline Selector
+      showingStaticFallback = false;   // a newly loaded project starts animated
       repopulateFrameSelect();
+      updateStaticButtonTitle();
       if (chkLoopAd) {
         chkLoopAd.checked = !!state.loopAd;
       }

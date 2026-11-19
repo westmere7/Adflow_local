@@ -1,6 +1,21 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.17 (Current) - November 2026 — Engine v3.0
+v0.65.20 (Current) - November 2026 — Engine v3.0
+- Preview Portal (page + export): Static shows the project's skipped frame as
+  the static fallback on every size (last skipped frame if several).
+- Link Group sync option tooltips now list exactly what each option copies.
+
+v0.65.19 - November 2026 — Engine v3.0
+- Line breaks row (text/buttons): Join hyphens keeps words like real-world on one
+  line (word joiner added when drawing/exporting, never to the stored text);
+  Hyphenate (text) lets the browser split long words at syllables. Not previewed
+  in the Windows desktop app editor, which lacks hyphenation dictionaries.
+
+v0.65.18 - November 2026 — Engine v3.0
+- Desktop app: after any export is saved, its folder opens with the file
+  selected (Explorer / Finder). Project saves and the browser are unchanged.
+
+v0.65.17 - November 2026 — Engine v3.0
 - Settings export/import also carries saved colours and gradients, Auto-Resize
   settings, view toggles (Safezones, Outline, Preview current only) and the
   Distribute / Frame Sync options.

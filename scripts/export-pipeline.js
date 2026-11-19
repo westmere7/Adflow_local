@@ -40,6 +40,27 @@
 //                JPG / PNG / SVG / GIF images, so WebP is converted at export.
 // Only packaged exports (a zip passed to generateExportHTML) change; previews,
 // PNG/video capture and the preview portal always use the standard build.
+// Saving exports. In a browser, showSaveFilePicker where there is one (it can
+// stream big zips straight to disk). In the desktop app, a plain download
+// instead: the app shows the system Save dialog for it and then opens the
+// folder with the file selected (electron/main.js, revealDownloadsWhenDone) —
+// which it can only do for a download, never for a picker save. Project saves
+// (.flow, Ctrl+S) are not exports and keep the picker, which is what lets them
+// save over the same file.
+const IS_DESKTOP_APP = !!(typeof window !== 'undefined' && window.adflowDesktop && window.adflowDesktop.isDesktop);
+function exportUsesPicker() {
+  return !!window.showSaveFilePicker && !IS_DESKTOP_APP;
+}
+// Revoked later rather than straight after the click: in the desktop app the Save
+// dialog is still open when the click returns.
+function downloadExportBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 120000);
+}
+
 const AD_SERVER_PREF_KEY = 'adflow-ad-server';
 const ADOBE_AMO_LIBRARY_URL = 'https://ads.everesttech.net/ads/static/local/AMOLibrary.js';
 const ADOBE_MAX_LANDING_DOMAIN = 35;
@@ -2482,6 +2503,11 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
     const openDivs = `<div style="width:100%;height:100%;${effConfig}${effVars}"><div style="width:100%;height:100%;${entryConfig}${entryVars}">`;
     const closeDivs = `</div></div>`;
 
+    // Keep hyphenated words together: draw from a copy whose text has a word joiner
+    // after each in-word hyphen (displayTextFor, render-runtime.js). The layer itself
+    // is untouched.
+    if (keepsHyphenatedWords(el)) el = { ...el, text: joinHyphenatedWords(el.text) };
+
     if (el.type === 'text') {
       const ff = el.fontFamily ? el.fontFamily + ',sans-serif' : 'Arial,Helvetica,sans-serif';
       // Mirrors the editor span (script.js text builder) — without this, tracked
@@ -2551,8 +2577,8 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
 
 
       const innerSpan = (el.hasBg && !bgOwnedByEntrance)
-        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${baseFont}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;${bgStyle}">${content}</span>`
-        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${baseFont}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;">${content}</span>`;
+        ? `<span${bgDataAttrs}${spanClass} style="color:${el.color};font-size:${baseFont}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;${textHyphenCss(el)}${bgStyle}">${content}</span>`
+        : `<span${spanClass} style="display:inline;color:${el.color};font-size:${baseFont}px;font-weight:${el.weight};line-height:${resolvedLH};font-family:${ff};${lsStyle}word-break:normal;overflow-wrap:normal;${textHyphenCss(el)}">${content}</span>`;
       // font-size + line-height on the wrapper div eliminates the inherited body strut
       // (browser default ~16px * normal) which would push small-font text downward.
       const inner = `<div${blockClass} style="text-align:${ta};width:100%;font-size:${baseFont}px;line-height:${resolvedLH};">${innerSpan}</div>`;
@@ -4264,7 +4290,7 @@ function openExportModal() {
     const content = await zip.generateAsync({ type: 'blob' });
     const outerName = `${safePrefix || 'exported_ads'}.zip`;
 
-    if (window.showSaveFilePicker) {
+    if (exportUsesPicker()) {
       try {
         const handle = await window.showSaveFilePicker({
           types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }],
@@ -4275,11 +4301,7 @@ function openExportModal() {
         await writable.close();
       } catch (e) { if (e.name !== 'AbortError') console.error('Export failed:', e); }
     } else {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(content);
-      a.download = outerName;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      downloadExportBlob(content, outerName);
     }
   });
 }
@@ -4582,7 +4604,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   // 1. Get Writable Stream or fall back to Memory Accumulator
   let underlyingWriter = null;
   let fileHandle = null;
-  const isStreamingSupported = !!window.showSaveFilePicker;
+  const isStreamingSupported = exportUsesPicker();
   
   if (isStreamingSupported) {
     try {
@@ -4718,11 +4740,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
       // Trigger download for browser memory fallback (Safari/Firefox)
       if (!isStreamingSupported || !fileHandle) {
         const finalBlob = new Blob(underlyingWriter.chunks, { type: 'application/zip' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(finalBlob);
-        a.download = outerName;
-        a.click();
-        URL.revokeObjectURL(a.href);
+        downloadExportBlob(finalBlob, outerName);
       }
       
       showCanvasNotification('All versions exported successfully');
@@ -5200,6 +5218,29 @@ function portalPackPlan(versions) {
   return { entries, singleRow: null, rows };
 }
 
+// The frame that holds the static fallback, or null. Teams keep the static
+// version of an ad as a SKIPPED frame of the same project — skipped, so it never
+// plays in the animated ad — rather than a second project file. With several
+// skipped frames the last one is taken (the static usually sits at the end);
+// if every frame is skipped there is no animated ad to fall back from.
+function staticFallbackFrameOf(frames) {
+  const list = frames || [];
+  const skipped = list.filter(f => f && f.skip);
+  return (skipped.length && skipped.length < list.length) ? skipped[skipped.length - 1] : null;
+}
+
+// The static fallback as a still: that frame alone, every animation finished,
+// exactly as the PNG static export draws it (image-export mode renders the active
+// frame even when it is skipped). Null when the project has no skipped frame.
+function generateStaticFallbackHTML(c) {
+  const f = staticFallbackFrameOf(state.frames);
+  if (!f) return null;
+  const prevActive = state.activeFrameId;
+  state.activeFrameId = f.id;
+  try { return generateExportHTML(c, null, true, {}); }
+  finally { state.activeFrameId = prevActive; }
+}
+
 // Generate every ad the portal can show, tokenized. Every state flag it
 // touches is restored, even on error.
 async function buildPortalPackAds(canvases, onProgress, plan = portalPackPlan(), includeSkippedFrames = false) {
@@ -5239,6 +5280,18 @@ async function buildPortalPackAds(canvases, onProgress, plan = portalPackPlan(),
             throw new Error(`${c.width}×${c.height} still points at files beside it (${leftovers.slice(0, 3).join(', ')}), so it would show broken. Nothing was saved.`);
           }
           html[`${c.id}|${key}|${loop ? 1 : 0}`] = table.dedupeBlocks(tokenized);
+        }
+        // The static fallback still, for the portal's Static button ('s').
+        if (staticFallbackFrameOf(state.frames)) {
+          const rawStatic = await withPortalPackVersion(v, () => generateStaticFallbackHTML(c));
+          if (rawStatic) {
+            const tokStatic = await table.tokenize(rawStatic);
+            const leftStatic = findPortalPackRelativeRefs(tokStatic);
+            if (leftStatic.length) {
+              throw new Error(`${c.width}×${c.height} static fallback still points at files beside it (${leftStatic.slice(0, 3).join(', ')}), so it would show broken. Nothing was saved.`);
+            }
+            html[`${c.id}|${key}|s`] = table.dedupeBlocks(tokStatic);
+          }
         }
         done++;
         if (onProgress) onProgress(done / total, `${c.width}×${c.height}${v == null ? '' : ` · version ${v + 1}`}`);
@@ -5399,7 +5452,7 @@ async function exportPreviewPortalFile(canvases, filenamePrefix, opts = {}) {
   // Ask where first: building takes a few seconds, and the save dialog has to
   // open while the click that asked for it still counts.
   let handle = null;
-  if (window.showSaveFilePicker) {
+  if (exportUsesPicker()) {
     try {
       handle = await window.showSaveFilePicker({
         types: [{ description: 'Preview portal (HTML)', accept: { 'text/html': ['.html'] } }],
@@ -5420,11 +5473,7 @@ async function exportPreviewPortalFile(canvases, filenamePrefix, opts = {}) {
       await w.write(blob);
       await w.close();
     } else {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = suggestedName;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      downloadExportBlob(blob, suggestedName);
     }
     const mb = (blob.size / 1048576).toFixed(1);
     showCanvasNotification(`Preview portal saved (${mb} MB). It opens offline in any browser.`, { type: 'success' });

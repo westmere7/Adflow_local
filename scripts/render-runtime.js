@@ -1394,6 +1394,43 @@ const getResolvedLineHeight = (el) => {
   return num + 'px';
 };
 
+// Hyphenate (el.hyphenate, text layers): the browser breaks long words at their
+// syllables and adds the hyphen itself. It needs the document's language — the
+// editor (index.html) and every exported ad declare lang="en" — and the -webkit-
+// prefix for Safari, iOS included. Used by the editor, the export and the
+// auto-size measurer alike. Browsers without hyphenation dictionaries (the
+// Windows desktop app's built-in Chromium) simply show whole words.
+function textHyphenates(el) { return !!(el && el.type === 'text' && el.hyphenate); }
+function textHyphenCss(el) { return textHyphenates(el) ? 'hyphens:auto;-webkit-hyphens:auto;' : ''; }
+function applyTextHyphens(node, el) {
+  const v = textHyphenates(el) ? 'auto' : '';
+  node.style.hyphens = v;
+  node.style.webkitHyphens = v;
+}
+
+// Join hyphens (el.keepHyphenWords, text and button layers).
+// Every browser treats the hyphen in "real-world" as a line-break opportunity,
+// so a narrow layer can end a line on "real-" and start the next on "world", and
+// CSS has no property that turns that off. A WORD JOINER (U+2060) straight after
+// the hyphen does: it has no width, draws nothing, needs no glyph in the font,
+// and forbids a break on either side of it (Unicode line breaking, class WJ).
+//
+// Added only where text is DRAWN — the editor's text/button spans, the auto-size
+// measurer, and the exported ad — never to el.text itself, so it can't leak into
+// what you type, copy or save. Only a hyphen with a non-space on both sides is
+// joined: "real-world", "2026-2027", "e-learning"; not "-5" or "a - b".
+const WORD_JOINER = '⁠';
+function keepsHyphenatedWords(el) {
+  return !!(el && (el.type === 'text' || el.type === 'button') && el.keepHyphenWords);
+}
+function joinHyphenatedWords(text) {
+  return String(text == null ? '' : text).replace(/([^\s⁠])([-‐])(?=[^\s⁠\-‐])/g, '$1$2' + WORD_JOINER);
+}
+// The text to draw for this layer: joined when the setting is on, untouched otherwise.
+function displayTextFor(el, text) {
+  return keepsHyphenatedWords(el) ? joinHyphenatedWords(text) : text;
+}
+
 let measureDiv = null;
 function getMeasureDiv() {
   if (!measureDiv) {
@@ -1443,7 +1480,8 @@ function measureTextFits(el, text, fontSize, buttonMode) {
   textBlock.style.lineHeight = lh;
 
   const span = document.createElement(isButton ? 'span' : (el.htmlTag || 'span'));
-  span.innerText = text;
+  span.innerText = displayTextFor(el, text);   // measure the lines the layer will really get
+  applyTextHyphens(span, el);
   span.style.fontSize = fontSize + 'px';
   span.style.fontWeight = fw;
   span.style.fontFamily = el.fontFamily || 'Arial';

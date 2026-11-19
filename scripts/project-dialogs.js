@@ -3396,7 +3396,8 @@ function openSettings() {
         showCanvasNotification('Could not export settings: ' + (e.message || e), { type: 'error' });
         return;
       }
-      if (window.showSaveFilePicker) {
+      // exportUsesPicker(): a download in the desktop app, so its folder opens after.
+      if (typeof exportUsesPicker === 'function' ? exportUsesPicker() : !!window.showSaveFilePicker) {
         try {
           const handle = await window.showSaveFilePicker({
             types: [{ description: 'Adflow settings', accept: { 'application/json': ['.json'] } }],
@@ -3410,12 +3411,18 @@ function openSettings() {
           if (e.name !== 'AbortError') showCanvasNotification('Could not export settings: ' + (e.message || e), { type: 'error' });
         }
       } else {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        showCanvasNotification('Settings download started — check your downloads.', { type: 'info' });
+        if (typeof downloadExportBlob === 'function') downloadExportBlob(blob, name);
+        else {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = name;
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 120000);
+        }
+        // The desktop app asks where to save and then opens the folder itself.
+        if (!(typeof IS_DESKTOP_APP !== 'undefined' && IS_DESKTOP_APP)) {
+          showCanvasNotification('Settings download started — check your downloads.', { type: 'info' });
+        }
       }
     });
 

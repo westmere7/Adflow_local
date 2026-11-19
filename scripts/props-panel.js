@@ -2574,6 +2574,18 @@ function renderProps() {
         <div class="align-group">${vAlignHtml}</div>
       </div>
     </div>`);
+
+    // Line breaks. Hyphenate lets the browser split long words at the syllables
+    // (text only); Join hyphens stops a line ever ending on the hyphen inside a
+    // word like "real-world" (text and buttons). See render-runtime.js.
+    const hyphTitle = 'Hyphenate: break long words across lines at the syllables, with a hyphen, instead of moving the whole word down a line';
+    const joinTitle = 'Join hyphens: keep words like real-world or e-learning on one line — never break the line at their hyphen';
+    f.push(`<div class="prop-row"><label>Line breaks</label>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; flex:1;">
+        ${el.type === 'text' ? `<div class="checkbox-row"><input type="checkbox" data-k="hyphenate" id="prop-hyphenate" title="${hyphTitle}" ${el.hyphenate ? 'checked' : ''}/><label for="prop-hyphenate" title="${hyphTitle}" style="cursor:pointer;">Hyphenate</label></div>` : ''}
+        <div class="checkbox-row"><input type="checkbox" data-k="keepHyphenWords" id="prop-join-hyphens" title="${joinTitle}" ${el.keepHyphenWords ? 'checked' : ''}/><label for="prop-join-hyphens" title="${joinTitle}" style="cursor:pointer;">Join hyphens</label></div>
+      </div>
+    </div>`);
   }
   // Stroke section — applies to shapes (rect/circle) and the button frame, NOT to
   // text elements or the text inside a button. Always rendered (no toggle); thickness
@@ -3512,7 +3524,7 @@ function checkButtonFontSizeWarning(el) {
           if (selEl.autoArranged) delete selEl.autoArranged;
         }
         if (k === 'text' && selEl.id !== el.id) return; // Don't copy specific text content across elements
-        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
+        if (['fontFamily', 'fontSize', 'weight', 'color', 'lineHeight', 'letterSpacing', 'hyphenate', 'keepHyphenWords', 'textAlign', 'verticalAlign', 'autoSize', 'maxFontSize', 'paddingLR', 'paddingTB'].includes(k) && selEl.type !== 'text' && selEl.type !== 'button') return;
         
         if ((k === 'width' || k === 'height') && selEl.type === 'button') {
           selEl.autoHug = false;

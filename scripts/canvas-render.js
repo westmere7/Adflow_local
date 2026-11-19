@@ -2439,6 +2439,7 @@ function elementNode(el, canvasCtx) {
       ed.style.whiteSpace = 'pre-wrap';
       ed.style.wordBreak = 'normal';
       ed.style.overflowWrap = 'normal';
+      applyTextHyphens(ed, el);
       ed.innerText = dText;
       wireInlineEdit(ed, el, 'text');
       d.appendChild(ed);
@@ -2458,7 +2459,7 @@ function elementNode(el, canvasCtx) {
       textBlock.style.lineHeight = getResolvedLineHeight(el);
 
       const span = document.createElement(el.htmlTag || 'span');
-      span.innerText = dText;
+      span.innerText = displayTextFor(el, dText);
       applyColorToText(span, dColor);
       span.style.fontSize = computedFontSize + 'px';
       span.style.fontWeight = el.weight;
@@ -2467,6 +2468,7 @@ function elementNode(el, canvasCtx) {
       span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
       span.style.wordBreak = 'normal';
       span.style.overflowWrap = 'normal';
+      applyTextHyphens(span, el);
 
       if (el.hasBg) {
         const lr = el.bgPadL !== undefined ? el.bgPadL : 8;
@@ -2570,7 +2572,7 @@ function elementNode(el, canvasCtx) {
       d.appendChild(ed);
     } else {
       const span = document.createElement('span');
-      span.innerText = dText;
+      span.innerText = displayTextFor(el, dText);
       applyColorToText(span, dColor);
       span.style.fontWeight = el.weight || '600';
       span.style.letterSpacing = (el.letterSpacing || 0) + 'px';
