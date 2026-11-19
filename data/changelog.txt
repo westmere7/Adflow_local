@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.5 (Current) - November 2026 — Engine v3.0
+v0.65.6 (Current) - November 2026 — Engine v3.0
+- Preview Portal (page and single-file export) has no sidebar: Play/Stop/Restart/
+  Static, Loop, Frame, Version and a Sizes drop-down sit in one compact header row,
+  so banners get the full width. Third-party HTML5 ads get Restart all, Loop every
+  N s and an Ads drop-down. The row wraps in a narrow window.
+
+v0.65.5 - November 2026 — Engine v3.0
 - Move several canvases at once: Shift-click canvas headers (or Shift/Ctrl-click rows
   in the Canvases panel) to select them, then drag any selected header to move them
   together. The group snaps as one block to the other canvases and guides. Shift-click

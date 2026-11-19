@@ -525,12 +525,12 @@ const DOCS_SECTIONS = [
       `},
       { id: 'preview-portal', title: 'Preview Portal', body: `
         <p><b>File → Preview Portal…</b> opens the review page on its own, with nothing loaded. From the empty prompt you can <b>Open Adflow Project…</b> (a <code>.flow</code> file) or <b>Open HTML5 Ad (.zip)…</b>, or drop either kind anywhere on the page. Cloud projects are deliberately not offered here — this is a local-file tool.</p>
-        <p>With an Adflow project open, the sidebar gives you:</p>
+        <p>With an Adflow project open, one compact header across the top gives you (it wraps onto a second row in a narrow window):</p>
         <ul>
-          <li><b>Playback</b> — four icons: <b>Play</b> runs every banner from the start; <b>Stop</b> freezes them exactly where they are (Play then starts again from the top); <b>Restart</b> runs the timeline again; <b>Static</b> shows one frame as a still with every animation finished. Below them, a <b>Loop timeline</b> override that affects the preview only, never the exported ad's own loop setting.</li>
-          <li><b>Frame Select</b> — <i>All frames</i>, or jump to and play any single frame across every size at once.</li>
-          <li><b>Data Version</b> — step through the merge rows and see every size update live (shown only when the project has a data sheet).</li>
-          <li><b>Banners Sizes</b> — tick which sizes to show, with Select All / Clear All, plus a per-banner KB estimate.</li>
+          <li><b>Playback</b> — four icons: <b>Play</b> runs every banner from the start; <b>Stop</b> freezes them exactly where they are (Play then starts again from the top); <b>Restart</b> runs the timeline again; <b>Static</b> shows one frame as a still with every animation finished. Beside them, a <b>Loop</b> override that affects the preview only, never the exported ad's own loop setting.</li>
+          <li><b>Frame</b> — <i>All frames</i>, or jump to and play any single frame across every size at once.</li>
+          <li><b>Version</b> — step through the merge rows and see every size update live (shown only when the project has a data sheet).</li>
+          <li><b>Sizes</b> — a drop-down checklist of which sizes to show, with Select all / Clear all. The button reads <i>6 sizes</i>, or <i>4 of 6 sizes</i> while some are hidden. Each card shows its KB estimate.</li>
         </ul>
         <p>Each banner card carries its own <b>Restart</b> and <b>Download HTML5</b> buttons; <b>Download All (.zip)</b> in the header packages every visible size at once.</p>
       `},
@@ -538,12 +538,12 @@ const DOCS_SECTIONS = [
         <p>The Preview Portal can also review a <b>standalone HTML5 ad built outside Adflow</b> — anything supplied as a zip containing an <code>index.html</code> plus its assets. Use <b>Open HTML5 Ad (.zip)…</b>, or drop the zips on the page.</p>
         <p><b>Up to 10 ads at once</b>, laid out side by side exactly the way banner sizes are, so you can compare a whole set in one view. <b>+ Add Ad (.zip)</b> adds more to what's already open (the counter shows how many slots are left).</p>
         <p>Each zip is unpacked and folded into a single self-contained page: stylesheets and scripts are inlined, and every image, font and media reference is rewritten — including ones the ad's own JavaScript loads by name — so it plays with no server and nothing uploaded.</p>
-        <p><b>Ad size</b> is read from the standard <code>ad.size</code> meta tag, falling back to a <code>300x250</code>-style hint in the file name. If neither is present the ad is shown at 300×250 and flagged, and you can correct the dimensions per ad in the sidebar (the label tells you where the current size came from).</p>
+        <p><b>Ad size</b> is read from the standard <code>ad.size</code> meta tag, falling back to a <code>300x250</code>-style hint in the file name. If neither is present the ad is shown at 300×250 and flagged, and you can correct the dimensions per ad in the header's <b>Ads</b> drop-down (the label tells you where the current size came from).</p>
         <p><b>Controls</b> are limited to what genuinely applies to someone else's ad:</p>
         <ul>
           <li><b>Restart All</b> — remounts every ad from the start.</li>
-          <li><b>Loop</b> + <b>Replay every N sec</b> — Adflow can't read a third-party ad's timeline, so Loop simply reloads them all on the interval you set.</li>
-          <li><b>Per-ad Restart and Remove</b>, from the sidebar row or the ad's own card footer.</li>
+          <li><b>Loop every N s</b> — Adflow can't read a third-party ad's timeline, so Loop simply reloads them all on the interval you set.</li>
+          <li><b>Per-ad Restart and Remove</b>, from the <b>Ads</b> drop-down or the ad's own card footer.</li>
         </ul>
         <p>Adflow's timeline, frame and data-version controls are hidden in this mode, since they can't reach inside a third-party ad. Opening an Adflow project swaps back to the full control set — the two modes never mix.</p>
       `},
@@ -882,6 +882,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.6',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Preview Portal Controls Move Into the Header: the portal (the page, and the single-file Preview portal export) no longer has a sidebar, so the banners get the full width. Playback, Loop, the Frame and Version steppers and a Sizes drop-down sit in one compact row beside the project name, with Download all and Load local file on the right; in a narrow window the row wraps onto a second line. The Sizes button reads '4 of 6 sizes' while some are hidden. For third-party HTML5 ads the header shows Restart all, Loop every N s and an Ads drop-down holding the per-ad size, Restart, Remove and Add."
+    ]
+  },
   {
     version: 'v0.65.5',
     date: 'November 2026 — Engine v3.0',

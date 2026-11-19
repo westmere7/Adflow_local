@@ -7,16 +7,16 @@
   <link rel="icon" type="image/png" sizes="32x32" href="data/Elements/favicon-32x32.png" />
   
   <!-- UI fonts (Inter, Outfit) — self-hosted in data/fonts/ui/, no Google Fonts request -->
-  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.5" />
+  <link rel="stylesheet" href="data/fonts/ui/ui-fonts.css?v=0.65.6" />
   
   <!-- JSZip for unzipping .flow files — vendored in lib/, no CDN -->
-  <script src="lib/jszip.min.js?v=0.65.5"></script>
+  <script src="lib/jszip.min.js?v=0.65.6"></script>
 
   <!-- The app's real stylesheet, so this portal shares the editor's palette,
        themes, buttons and dialogs instead of maintaining a parallel look.
        Loaded BEFORE the page-specific block below so the portal's own layout
        rules can still override where they must. -->
-  <link rel="stylesheet" href="styles.css?v=0.65.5" />
+  <link rel="stylesheet" href="styles.css?v=0.65.6" />
 
   <style>
     /* This page's layout was written against its own palette names. Rather than
@@ -36,7 +36,6 @@
       --success-base: #10b981;
       --warning-base: #f59e0b;
       --danger-base: #ef4444;
-      --sidebar-width: 320px;
     }
 
     * {
@@ -53,55 +52,6 @@
       height: 100vh;
       overflow: hidden;
       transition: background 0.3s ease;
-    }
-    
-    /* Sidebar Styles */
-    .sidebar {
-      width: var(--sidebar-width);
-      background: var(--bg-sidebar);
-      border-right: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      flex-shrink: 0;
-      z-index: 10;
-      transition: background 0.3s ease, border-color 0.3s ease;
-    }
-    
-    .sidebar-header {
-      padding: 24px 20px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    
-    .sidebar-title {
-      font-family: 'Outfit', sans-serif;
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text-bright);
-      letter-spacing: -0.02em;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .sidebar-subtitle {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-weight: 600;
-    }
-    
-    .sidebar-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
     }
     
     .control-group {
@@ -200,17 +150,18 @@
        from styles.css. */
     .playback-icons {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(4, auto);
+      gap: 3px;
     }
-    .sidebar .playback-icons .btn {
-      height: 34px;
+    .playback-icons .btn {
+      height: 26px;
+      width: 30px;
       padding: 0;
     }
     
     /* Colour, hover, :disabled and .primary all come from styles.css so this
        portal's buttons ARE the editor's buttons. These rules add only the
-       flex/gap layout the sidebar rows need.
+       flex/gap layout the header rows need.
 
        Scoped, and LAYOUT ONLY, on purpose: an unscoped `.btn` that also set
        colour would either lose to `.btn.primary` or (once scoped, becoming
@@ -218,7 +169,6 @@
        the accent fill off every primary button. `flex: none` because these sit
        in column containers — a growable basis lets flex dictate their height;
        the side-by-side rows set `flex:1` inline, which still wins. */
-    .sidebar .btn,
     .main-header .btn {
       flex: none;
       display: flex;
@@ -303,14 +253,75 @@
     }
     
     .main-header {
-      height: 64px;
+      min-height: 48px;
       border-bottom: 1px solid var(--border-color);
-      padding: 0 24px;
+      background: var(--bg-panel);
+      padding: 6px 16px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px 14px;
       flex-shrink: 0;
+      position: relative;
+      z-index: 20;
     }
+    .pv-logo { height: 20px; display: block; flex-shrink: 0; }
+    .pv-title {
+      display: flex; align-items: center; gap: 8px;
+      min-width: 0; max-width: 260px;
+      padding-left: 14px; border-left: 1px solid var(--border-color);
+    }
+    .pv-title .project-name-title {
+      font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pv-badge {
+      font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+      border: 1px solid var(--border-color); color: var(--text-muted);
+      padding: 1px 5px; border-radius: 4px; white-space: nowrap;
+    }
+    .pv-controls {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px;
+      flex: 1; min-width: 0;
+    }
+    .pv-group { display: flex; align-items: center; gap: 6px; }
+    .pv-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted);
+    }
+    .pv-check { font-size: 11.5px; gap: 5px; padding: 0; white-space: nowrap; }
+    .pv-check input { margin: 0; }
+    .pv-stepper { display: flex; align-items: center; gap: 3px; }
+    .main-header .btn.pv-step {
+      width: 20px; height: 26px; padding: 0; min-width: 20px;
+      color: var(--text-muted);
+    }
+    .main-header .btn.pv-step:hover { color: var(--text-bright); }
+    .main-header select.pv-select {
+      width: 128px; height: 26px; margin: 0; padding: 2px 6px; font-size: 11.5px;
+    }
+    .main-header select.pv-select-wide { width: 170px; }
+    .main-header .btn.pv-btn { height: 26px; padding: 0 9px; font-size: 11px; gap: 5px; white-space: nowrap; }
+    .pv-num { width: 48px; height: 26px; margin: 0; padding: 2px 5px; font-size: 11px; }
+    .pv-unit { font-size: 11px; color: var(--text-muted); margin-left: -2px; }
+    .pv-count { color: var(--text-muted); font-weight: 400; }
+    .pv-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-shrink: 0; }
+
+    /* Drop-down panels (banner sizes, third-party ad roster). */
+    .pv-pop { position: relative; }
+    .pv-pop-panel {
+      display: none;
+      position: absolute; top: calc(100% + 6px); left: 0;
+      min-width: 240px; max-width: 320px;
+      padding: 10px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      z-index: 50;
+    }
+    .pv-pop.open .pv-pop-panel { display: block; }
+    .pv-pop.open .pv-pop-btn { border-color: var(--accent-base); }
+    .pv-pop .size-check-list { max-height: 320px; border: none; padding: 0; background: none; }
     
     .project-name-title {
       font-size: 15px;
@@ -508,143 +519,115 @@
     <p style="color:var(--text-muted);">This will load the project locally inside your browser</p>
   </div>
 
-  <!-- SIDEBAR CONTROLS -->
-  <div class="sidebar">
-    <div class="sidebar-header" style="display:flex; flex-direction:column; align-items:flex-start; padding:24px 20px; border-bottom:1px solid var(--border-color);">
-      <img src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" style="height:26px; display:block;" />
-    </div>
-    
-    <div class="sidebar-content">
-      
-      <!-- EXTERNAL HTML5 AD CONTROLS — only shown for a non-Adflow ad zip,
-           where all we can do is re-mount the ad and optionally replay it.
-           Adflow's own timeline/frame/version controls can't reach inside a
-           third-party ad, so they're hidden in that mode. -->
-      <div class="control-group" id="external-controls" style="display:none;">
-        <div class="control-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-          <span>HTML5 Ads</span>
-          <span id="ext-count" style="font-size:10px; font-weight:normal; text-transform:none; color:var(--text-muted);">0 / 10</span>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:8px; width:100%;">
-          <button class="btn" id="btn-ext-restart" style="width:100%;" title="Reload every ad from the start">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-top:-1px;"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            <span>Restart All</span>
-          </button>
-          <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-            <input type="checkbox" id="chk-ext-loop" title="Restart this ad automatically so you can watch it more than once" style="margin:0; cursor:pointer;">
-            <span>Loop</span>
-          </label>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:10.5px; color:var(--text-muted);">Replay every</span>
-            <input type="number" id="ext-loop-secs" title="How long to let the ad run before restarting it" min="1" max="600" step="1" value="30"
-                   style="width:58px; margin:0; height:24px; font-size:11px; padding:2px 6px;" />
-            <span style="font-size:10.5px; color:var(--text-muted);">sec</span>
-          </div>
-          <div style="font-size:10px; color:var(--text-muted); line-height:1.35; font-style:italic;">
-            Adflow can't read a third-party ad's own timeline, so Loop simply
-            reloads them on this interval.
-          </div>
-          <!-- One row per loaded ad: name, size override, remove. -->
-          <div id="ext-list" style="display:flex; flex-direction:column; gap:6px; margin-top:2px;"></div>
-          <button class="btn" id="btn-ext-add" style="width:100%;" title="Add another zipped HTML5 ad">+ Add Ad (.zip)</button>
-        </div>
+  <!-- MAIN VIEWPORT -->
+  <div class="main-viewport">
+    <!-- One compact header holds every control (there is no sidebar). Groups
+         keep their ids: applyPortalMode() shows the Adflow set or the
+         third-party HTML5 set, and the version group shows only when the
+         project has a data sheet. Wraps onto a second row when narrow. -->
+    <div class="main-header pv-toolbar">
+      <img class="pv-logo" src="data/Elements/Adflow_logo.svg" alt="RMIT Adflow" />
+      <div class="pv-title">
+        <div class="project-name-title" id="project-name">No Project Loaded</div>
+        <span id="portal-mode-badge" class="pv-badge">Preview</span>
       </div>
 
-      <!-- TIMELINE CONTROLS -->
-      <div class="control-group" id="adflow-playback-group">
-        <div class="control-label">Playback Controls</div>
-        <div class="playback-row" style="display:flex; flex-direction:column; gap:8px;">
-          <!-- Play / Stop / Restart / Static. Icons only; the title is the label. -->
+      <div class="pv-controls">
+        <!-- EXTERNAL HTML5 AD CONTROLS — only for a non-Adflow ad zip, where all
+             we can do is re-mount the ad and optionally replay it. -->
+        <div class="pv-group" id="external-controls" style="display:none;">
+          <button class="btn pv-btn" id="btn-ext-restart" title="Reload every ad from the start">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            <span>Restart all</span>
+          </button>
+          <label class="checkbox-item pv-check" title="Adflow can't read a third-party ad's own timeline, so Loop reloads the ads on this interval">
+            <input type="checkbox" id="chk-ext-loop">
+            <span>Loop every</span>
+          </label>
+          <input type="number" id="ext-loop-secs" class="pv-num" title="How long to let the ad run before restarting it" min="1" max="600" step="1" value="30" />
+          <span class="pv-unit">s</span>
+          <div class="pv-pop" id="ext-pop">
+            <button type="button" class="btn pv-btn pv-pop-btn" title="The loaded ads: size, restart, remove, add another">
+              <span>Ads</span><span id="ext-count" class="pv-count">0 / 10</span><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pv-pop-panel">
+              <!-- One row per loaded ad: name, size override, remove. -->
+              <div id="ext-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+              <button class="btn" id="btn-ext-add" style="width:100%; margin-top:8px;" title="Add another zipped HTML5 ad">+ Add ad (.zip)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PLAYBACK: Play / Stop / Restart / Static, then Loop. -->
+        <div class="pv-group" id="adflow-playback-group">
           <div class="playback-icons" role="group" aria-label="Playback">
             <button class="btn primary" id="btn-play" title="Play — run every banner from the start" aria-label="Play">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.52.85l12-7.5a1 1 0 0 0 0-1.7l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
             </button>
             <button class="btn" id="btn-stop" title="Stop — freeze every banner where it is. Play starts again from the beginning" aria-label="Stop">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="none" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="none" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg>
             </button>
             <button class="btn" id="btn-replay" title="Restart — run the timeline again from the start" aria-label="Restart">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36L3 8"/><path d="M3 3v5h5"/></svg>
             </button>
             <button class="btn" id="btn-static" title="Static — show one frame as a still, with every animation finished" aria-label="Static">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
             </button>
           </div>
-          <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
-            <label class="checkbox-item" style="font-size:11.5px; color:var(--text-main); display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
-              <input type="checkbox" id="chk-loop-ad" title="Loop the timeline in this preview only. The exported ad keeps its own loop setting" style="margin:0; cursor:pointer;">
-              <span>Loop timeline</span>
-            </label>
-            <div style="font-size:10px; color:var(--text-muted); line-height:1.3; font-style:italic;">
-              Preview override only; does not affect exported ad loop settings.
+          <label class="checkbox-item pv-check" title="Loop the timeline in this preview only. The exported ad keeps its own loop setting">
+            <input type="checkbox" id="chk-loop-ad">
+            <span>Loop</span>
+          </label>
+        </div>
+
+        <!-- FRAME BY FRAME SWITCHER -->
+        <div class="pv-group" id="adflow-frame-group">
+          <span class="pv-label">Frame</span>
+          <div class="pv-stepper">
+            <button type="button" class="btn pv-step" id="btn-prev-frame" title="Previous Frame"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <select id="select-frame" class="pv-select" title="Show all frames in sequence, or jump to one frame and play it across every size">
+              <option value="play" selected>All frames</option>
+            </select>
+            <button type="button" class="btn pv-step" id="btn-next-frame" title="Next Frame"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+        </div>
+
+        <!-- DATA VERSION -->
+        <div class="pv-group" id="version-control-group" style="display:none;">
+          <span class="pv-label">Version</span>
+          <div class="pv-stepper">
+            <button type="button" class="btn pv-step" id="btn-prev-version" title="Previous Version"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+            <select id="select-version" class="pv-select pv-select-wide" title="Switch which row of the data sheet every size is showing"></select>
+            <button type="button" class="btn pv-step" id="btn-next-version" title="Next Version"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+        </div>
+
+        <!-- BANNER SIZES: a drop-down checklist. -->
+        <div class="pv-group" id="adflow-sizes-group">
+          <div class="pv-pop" id="sizes-pop">
+            <button type="button" class="btn pv-btn pv-pop-btn" title="Choose which banner sizes to show">
+              <span id="ad-count">0 sizes</span><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="pv-pop-panel">
+              <div class="size-check-list" id="size-check-list"></div>
+              <div class="list-actions">
+                <button class="btn-link" id="btn-select-all" title="Show every banner size">Select all</button>
+                <button class="btn-link" id="btn-select-none" title="Hide every banner size">Clear all</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- FRAME BY FRAME SWITCHER -->
-      <div class="control-group" id="adflow-frame-group">
-        <div class="control-label">Frame Select</div>
-        <div style="display:flex; align-items:center; gap:4px; width:100%;">
-          <button type="button" class="btn" id="btn-prev-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Frame">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <select id="select-frame" title="Show all frames in sequence, or jump to one frame and play it across every size" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;">
-            <option value="play" selected>All frames</option>
-          </select>
-          <button type="button" class="btn" id="btn-next-frame" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Frame">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-      
-      <!-- DATA VERSION -->
-      <div class="control-group" id="version-control-group" style="display:none;">
-        <div class="control-label">Data Version</div>
-        <div style="display:flex; align-items:center; gap:4px; width:100%;">
-          <button type="button" class="btn" id="btn-prev-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Previous Version">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <select id="select-version" title="Switch which row of the data sheet every size is showing" style="flex:1; margin:0; height:26px; font-size:11.5px; padding:2px 8px;"></select>
-          <button type="button" class="btn" id="btn-next-version" style="flex:none !important; padding:0; height:26px; width:22px; min-width:22px; background:var(--bg-btn); border:1px solid var(--border-color); border-radius:4px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center;" onmouseover="this.style.color='var(--text-bright)'" onmouseout="this.style.color='var(--text-muted)'" title="Next Version">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      </div>
-      
-      <!-- CANVAS CHECKLIST -->
-      <div class="control-group" id="adflow-sizes-group">
-        <div class="control-label" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-          <span>Banners Sizes</span>
-          <span id="ad-count" style="font-size:10px; font-weight:normal; text-transform:none; color:var(--text-muted);">0 sizes</span>
-        </div>
-        <div class="size-check-list" id="size-check-list"></div>
-        <div class="list-actions">
-          <button class="btn-link" id="btn-select-all" title="Show every banner size">Select All</button>
-          <button class="btn-link" id="btn-select-none" title="Hide every banner size">Clear All</button>
-        </div>
-      </div>
-      
 
-      
-    </div>
-  </div>
-
-  <!-- MAIN VIEWPORT -->
-  <div class="main-viewport">
-    <div class="main-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:nowrap; gap:12px; overflow:hidden;">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:nowrap; overflow:hidden; flex-shrink:1;">
-        <div class="project-name-title" id="project-name" style="margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">No Project Loaded</div>
-        <span id="portal-mode-badge" style="font-size:10px; font-weight:700; text-transform:uppercase; border:1px solid var(--border-color); color:var(--text-muted); padding:2px 6px; border-radius:4px; white-space:nowrap; letter-spacing:0.04em;">Preview</span>
-      </div>
-      <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 12px; flex-shrink:0;">
-        <button class="btn primary" id="btn-download-all" title="Download every visible size as HTML5 zips in one archive" style="display: none; padding: 4px 10px; font-size: 11px; height: 26px; gap: 4px; flex-shrink: 0; align-items: center; justify-content: center; cursor: pointer; white-space: nowrap;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Download All (.zip)</span>
+      <div class="pv-actions">
+        <button class="btn primary pv-btn" id="btn-download-all" title="Download every visible size as HTML5 zips in one archive" style="display:none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Download all (.zip)</span>
         </button>
-        <button class="btn-link" id="btn-drag-trigger" title="Choose a file from your computer" style="font-size: 12px; white-space: nowrap; flex-shrink:0;">Load Local File...</button>
+        <button class="btn-link" id="btn-drag-trigger" title="Choose a file from your computer" style="font-size:12px; white-space:nowrap;">Load local file…</button>
       </div>
     </div>
-    
+
     <!-- EMPTY STATE — the portal now opens standalone from the File menu, so
          when nothing is loaded the banner area itself offers the two ways in.
          Sibling of the grid so renderCanvases/layoutCards never see it. -->
@@ -805,13 +788,13 @@
   <!-- LOAD WORKSPACE ENGINE SCRIPTS
        ?v= is bumped with each release (same as index.html) so reviewers'
        browsers never pair stale engine scripts with new inline portal code. -->
-  <script src="scripts/numeric-wheel.js?v=0.65.5"></script>
-  <script src="scripts/render-runtime.js?v=0.65.5"></script>
-  <script src="scripts/auto-arrange-config.js?v=0.65.5"></script>
-  <script src="scripts/auto-resize-engine.js?v=0.65.5"></script>
-  <script src="scripts/data-merge.js?v=0.65.5"></script>
-  <script src="scripts/font-subset.js?v=0.65.5"></script>
-  <script src="scripts/export-pipeline.js?v=0.65.5"></script>
+  <script src="scripts/numeric-wheel.js?v=0.65.6"></script>
+  <script src="scripts/render-runtime.js?v=0.65.6"></script>
+  <script src="scripts/auto-arrange-config.js?v=0.65.6"></script>
+  <script src="scripts/auto-resize-engine.js?v=0.65.6"></script>
+  <script src="scripts/data-merge.js?v=0.65.6"></script>
+  <script src="scripts/font-subset.js?v=0.65.6"></script>
+  <script src="scripts/export-pipeline.js?v=0.65.6"></script>
 
   <!-- MAIN PREVIEW ENGINE PORTAL -->
   <script>
@@ -1222,6 +1205,34 @@
       reloadAllBanners();
     };
     
+    // Header drop-downs (.pv-pop): the button toggles its panel; a click
+    // anywhere else, or Escape, closes it. Clicks inside the panel keep it open
+    // so several sizes can be ticked in a row.
+    document.querySelectorAll('.pv-pop').forEach(pop => {
+      pop.querySelector('.pv-pop-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const willOpen = !pop.classList.contains('open');
+        document.querySelectorAll('.pv-pop.open').forEach(p => p.classList.remove('open'));
+        if (willOpen) pop.classList.add('open');
+      });
+      pop.querySelector('.pv-pop-panel').addEventListener('click', (e) => e.stopPropagation());
+    });
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.pv-pop.open').forEach(p => p.classList.remove('open'));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') document.querySelectorAll('.pv-pop.open').forEach(p => p.classList.remove('open'));
+    });
+
+    // The Sizes button reads "6 sizes", or "4 of 6 sizes" while some are hidden.
+    function updateSizesLabel() {
+      if (portalMode === 'external') return;
+      const total = state.canvases ? state.canvases.length : 0;
+      const shown = state.canvases ? state.canvases.filter(c => selectedCanvasIds.has(c.id)).length : 0;
+      const noun = total === 1 ? 'size' : 'sizes';
+      adCountEl.textContent = shown === total ? `${total} ${noun}` : `${shown} of ${total} ${noun}`;
+    }
+
     // Size check list actions
     document.getElementById('btn-select-all').onclick = () => {
       selectedCanvasIds = new Set(state.canvases.map(c => c.id));
@@ -1536,6 +1547,7 @@
     
     // Update visibility based on checklists selection
     function updateCanvasGridVisibility() {
+      updateSizesLabel();
       state.canvases.forEach(c => {
         const card = document.querySelector(`.card[data-canvas-id="${c.id}"]`);
         if (card) {
@@ -2290,7 +2302,7 @@
       setTimeout(layoutCards, 50);
     }
 
-    // Sidebar roster: name, per-ad size override, remove.
+    // Ads drop-down roster: name, per-ad size override, remove.
     function renderExtList() {
       const box = document.getElementById('ext-list');
       const count = document.getElementById('ext-count');
