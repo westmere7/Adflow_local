@@ -895,6 +895,13 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.65.15',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "The Desktop App Uses the Violet Adflow Icon: the Windows and macOS apps now carry the same violet mark as the browser tab — the RMIT pixel shape in Adflow's accent violet on a transparent background — in place of the white-on-navy placeholder. It is drawn from the vector outline at every size the systems ask for, so it stays sharp from the 16 px taskbar and title-bar sizes up to the 1024 px Finder and Dock icon: Windows gets a 16–256 px .ico, macOS a 16–1024 px .icns with the retina sizes. Takes effect in the next build of each app (build-app.bat on Windows, the Build macOS app action for Mac)."
+    ]
+  },
+  {
     version: 'v0.65.14',
     date: 'November 2026 — Engine v3.0',
     items: [

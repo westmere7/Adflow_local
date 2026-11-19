@@ -188,8 +188,13 @@ of them is code.
   as `.flow` files first and open them in the app.
 - **It still needs no network.** Everything is local: no accounts, no uploads,
   no third-party requests.
-- **The icon is a placeholder** — `build/icon.png`, generated from the square
-  RMIT pixel. Replace it with a properly designed 512×512 icon before release.
+- **The icon is the violet Adflow mark** — the same as the browser favicon: the
+  RMIT pixel shape in Adflow's accent violet (`#7c5cff`) on a transparent
+  background. `scripts/build-app-icons.js` (`npm run icons`) draws it from the
+  vector outline and writes `build/icon.ico` (Windows, 16–256 px),
+  `build/icon.icns` (macOS, 16–1024 px with the retina sizes) and
+  `build/icon.png` (1024 px, Linux). The three files are committed, so a build
+  needs no extra step; re-run the script only if the mark or colour changes.
 - **This introduces the repository's first npm dependency.** The application
   itself still has none and still needs no build step; `node_modules/` and
   `dist/` are git-ignored.

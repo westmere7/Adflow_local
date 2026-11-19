@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.14 (Current) - November 2026 — Engine v3.0
+v0.65.15 (Current) - November 2026 — Engine v3.0
+- Desktop app icon is now the violet Adflow mark (the favicon), drawn sharp at
+  every size: build/icon.ico (Windows 16-256 px), build/icon.icns (macOS
+  16-1024 px), build/icon.png. Regenerate with npm run icons.
+
+v0.65.14 - November 2026 — Engine v3.0
 - Preview portal export: controls on the right, larger header/logo/controls,
   and a small "Exported <date, time>" beside the project name.
 
