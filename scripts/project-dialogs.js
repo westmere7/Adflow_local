@@ -2474,7 +2474,7 @@ function runAutoArrange(canvasId, selectedIds) {
     // rule itself lives in auto-resize-engine.js beside the setting it reads, and the
     // settings modal applies the same rule to the whole project when you change it.
     const lockArranged = (typeof getAutoResizeSettings === 'function')
-      && getAutoResizeSettings().behaviour?.lockAutoArranged !== false;
+      && getAutoResizeSettings().behaviour?.lockAutoArranged === true;
     if (typeof autoArrangeLockWanted === 'function') {
       const wantLock = autoArrangeLockWanted();
       canvas.elements.forEach(el => {
@@ -2985,7 +2985,7 @@ function openSettings() {
                     Your settings are kept in this copy of Adflow only. Export them to a file to keep a backup, or to load the same setup on another machine, in the desktop app or in another browser.
                   </div>
                   <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">
-                    <b style="color:var(--text-main);">Included:</b> everything in this dialog (theme, snapping, validation, history and export values), remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices such as panel layout.<br>
+                    <b style="color:var(--text-main);">Included:</b> everything in this dialog (theme, snapping, validation, history and export values), your saved colours and gradients, the Auto-Resize settings (the gear beside Auto-resize), view toggles such as Safezones and Outline Mode, remembered placements, the startup preference, favourite animations, the ad server choice, the Distribute and Frame Sync options, and other remembered choices such as panel layout.<br>
                     <b style="color:var(--text-main);">Not included:</b> projects, autosave and Open Recent — save .flow files for those.
                   </div>
                   <label class="settings-row" id="set-backup-base-row" title="Put the base project inside the settings file too. It makes the file larger" style="display:flex; align-items:flex-start; gap:10px; padding:8px 10px; border-radius:6px; cursor:pointer;">
@@ -3001,7 +3001,7 @@ function openSettings() {
                     <input type="file" id="set-backup-file" accept=".json,application/json" style="display:none;" />
                   </div>
                   <div style="font-size:10px; color:var(--text-muted); line-height:1.5;">
-                    Importing replaces the values in this dialog and the remembered choices. Remembered placements are added to the ones already here (one for the same canvas size and role is replaced). A base project in the file replaces this one. Panel layout choices apply the next time Adflow opens.
+                    Importing replaces your settings — the values in this dialog, saved colours, Auto-Resize settings, view toggles and remembered choices. Remembered placements are added to the ones already here (one for the same canvas size and role is replaced). A base project in the file replaces this one. Panel layout choices apply the next time Adflow opens.
                   </div>
                 </section>
               </div>
@@ -3434,7 +3434,7 @@ function openSettings() {
       const esc = (s) => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
       const from = [info.appVersion, info.exportedAt ? new Date(info.exportedAt).toLocaleDateString() : null].filter(Boolean).join(', ');
       const lines = [`Import settings from <b>${esc(file.name)}</b>${from ? ` (${esc(from)})` : ''}?`, ''];
-      lines.push('• Replaces the values in this dialog and the remembered choices.');
+      lines.push('• Replaces your settings: the values in this dialog, saved colours, Auto-Resize settings, view toggles and other remembered choices.');
       if (info.placementRoles) lines.push(`• Adds ${info.placementRoles} remembered placement${info.placementRoles === 1 ? '' : 's'} across ${info.placementSizes} canvas size${info.placementSizes === 1 ? '' : 's'}.`);
       if (info.baseProject) lines.push(`• Replaces your base project with “${esc(info.baseProjectName || 'Base project')}”.`);
       if (!(await showAdflowConfirm(lines.join('<br>'), 'Import settings'))) return;

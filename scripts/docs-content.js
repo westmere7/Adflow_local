@@ -437,7 +437,7 @@ const DOCS_SECTIONS = [
       { id: 'settings', title: 'App settings', body: `
         <p><b>File → Settings</b>: theme (<b>Adflow</b>, the default dark palette, or <b>Light</b>), rulers, snapping, Crop to Canvas (also a toggle on the right-click menu of an empty spot on the board, and under a canvas's <b>Guides &amp; Views</b>), history limit, autosave behaviour. <b>File → Project Settings</b> covers per-project options (name, ClickTag, weight limit).</p>
         <p>The theme changes Adflow's own interface only — never your ad. Switching to Light also swaps the Adflow wordmark for its light-background variant everywhere it appears.</p>
-        <p><b>Backup &amp; Transfer</b> saves your settings to a file and loads them back. The file holds everything in the Settings dialog, remembered placements, the startup preference, favourite animations, the ad server choice and other remembered choices such as panel layout — and, if you tick it, the base project. Projects, autosave and Open Recent are not in it; save <code>.flow</code> files for those. Importing replaces the dialog values and remembered choices, <i>adds</i> the file's placements to yours (one for the same canvas size and role is replaced), and replaces the base project if the file carries one. Panel layout choices apply the next time Adflow opens.</p>
+        <p><b>Backup &amp; Transfer</b> saves your settings to a file and loads them back. The file holds everything in the Settings dialog, your saved colours and gradients, the Auto-Resize settings (the gear beside Auto-resize), view toggles such as Safezones, Outline Mode and Preview current only, remembered placements, the startup preference, favourite animations, the ad server choice, the Distribute and Frame Sync options, and other remembered choices such as panel layout — and, if you tick it, the base project. Projects, autosave and Open Recent are not in it; save <code>.flow</code> files for those. Importing replaces your settings (the dialog values, saved colours, Auto-Resize settings, view toggles and remembered choices), <i>adds</i> the file's placements to yours (one for the same canvas size and role is replaced), and replaces the base project if the file carries one. Panel layout choices apply the next time Adflow opens.</p>
       `},
       { id: 'startup-templates-docs', title: 'Startup Templates', body: `
         <p>Adflow supports initializing new projects from pre-defined startup templates (such as branding guides, base layouts, or canvas sets) stored inside the <code>Startup/</code> directory.</p>
@@ -894,6 +894,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.17',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Settings Files Carry All Your Settings: Export settings… now also saves your saved colours and gradients from the colour picker, the Auto-Resize settings (the gear beside Auto-resize: rules, relations, locking, live linking), the Show Safezones / Outline Mode / Preview current only toggles, and the option checkboxes of the Distribute and Frame Sync panels — alongside the Settings dialog values, remembered placements and other remembered choices it already held. Import settings… restores all of it, ignores anything malformed, and fills in Auto-Resize options added since the file was made. Project content (ClickTag, loop, compression, data versions) still travels in the .flow, not the settings file.",
+      "Auto-Arrange and Auto-Resize No Longer Lock Layers by Default: both auto-lock options (Lock layers Auto-arrange positions, and Lock brand elements on the canvases Auto-Resize generates) now start switched off, so arranged and generated layers stay editable straight away. Switch either on in Auto-Resize settings (the gear beside Auto-resize). Projects that already store the setting — including ones saved while it defaulted to on — keep what they have."
+    ]
+  },
   {
     version: 'v0.65.16',
     date: 'November 2026 — Engine v3.0',

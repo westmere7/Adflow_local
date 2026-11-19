@@ -492,7 +492,7 @@ function openAutoResizeModal() {
           </label>
 
           <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; cursor:pointer;">
-            <input type="checkbox" id="ar-lock-brand" title="Keep the RMIT logo, CRICOS line and other brand furniture at their correct size and position on each canvas rather than scaling them with the layout" ${persistedSettings.behaviour.lockBrandElements !== false ? 'checked' : ''} />
+            <input type="checkbox" id="ar-lock-brand" title="Keep the RMIT logo, CRICOS line and other brand furniture at their correct size and position on each canvas rather than scaling them with the layout" ${persistedSettings.behaviour.lockBrandElements === true ? 'checked' : ''} />
             <span>
               <span style="color:var(--text-main); font-weight:500;">Lock brand elements (Logo, RFWN, CRICOS) on generated canvases</span>
               <br>
@@ -1858,7 +1858,7 @@ function runRuleBasedAutoResize(settings) {
       wireLinkGroup(srcEl, clone, role, cat);
 
       if (role === 'rmit-logo' || role === 'rfwn' || role === 'cricos') {
-        if (engineSettings.behaviour?.lockBrandElements !== false) {
+        if (engineSettings.behaviour?.lockBrandElements === true) {
           clone.locked = true;
         }
       }
@@ -2091,8 +2091,8 @@ const AUTO_RESIZE_DEFAULT_SETTINGS = {
     r1: true   // rmit-logo ↔ rfwn edge alignment
   },
   behaviour: {
-    lockAutoArranged:     true,   // AUTO-ARRANGE: lock every layer it positions, brand included
-    lockBrandElements:    true,   // AUTO-RESIZE: lock the brand clones it generates. Separate paths.
+    lockAutoArranged:     false,  // AUTO-ARRANGE: lock every layer it positions, brand included (opt-in since v0.65.17)
+    lockBrandElements:    false,  // AUTO-RESIZE: lock the brand clones it generates. Separate paths. (opt-in since v0.65.17)
     includeUnassigned:    false,  // remembered value for the misc-elements toggle
     showModalInCtxMenu:   true,   // show confirmation modal when resizing from context menu
     syncCanvasBg:         false,  // sync canvas background per-frame to all canvases
@@ -2116,8 +2116,8 @@ function getAutoResizeSettings() {
   if (!s.relations)    s.relations    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.relations };
   if (!s.behaviour)    s.behaviour    = { ...AUTO_RESIZE_DEFAULT_SETTINGS.behaviour };
   // Backfill any behaviour keys missing on projects saved before this version.
-  if (typeof s.behaviour.lockAutoArranged     !== 'boolean') s.behaviour.lockAutoArranged     = true;
-  if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = true;
+  if (typeof s.behaviour.lockAutoArranged     !== 'boolean') s.behaviour.lockAutoArranged     = false;
+  if (typeof s.behaviour.lockBrandElements    !== 'boolean') s.behaviour.lockBrandElements    = false;
   if (typeof s.behaviour.includeUnassigned   !== 'boolean') s.behaviour.includeUnassigned   = false;
   if (typeof s.behaviour.showModalInCtxMenu  !== 'boolean') s.behaviour.showModalInCtxMenu  = true;
   if (typeof s.behaviour.syncCanvasBg        !== 'boolean') s.behaviour.syncCanvasBg        = false;
@@ -2152,7 +2152,7 @@ function getAutoResizeSettings() {
 // this one governs auto-ARRANGE entirely, lockBrandElements governs the brand clones
 // auto-RESIZE generates (its original job — see the clone path above).
 function autoArrangeLockWanted() {
-  return getAutoResizeSettings().behaviour?.lockAutoArranged !== false;
+  return getAutoResizeSettings().behaviour?.lockAutoArranged === true;
 }
 
 // Bring every layer still sitting where auto-arrange put it into line with the current
@@ -2252,14 +2252,14 @@ function openAutoResizeSettingsModal() {
             </div>
           </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-lock-arranged" title="Lock every layer Auto-arrange positions — including the logo, RFWN and CRICOS — so a layout you just generated cannot be nudged out of place by accident" ${s.behaviour.lockAutoArranged !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <input type="checkbox" id="ars-lock-arranged" title="Lock every layer Auto-arrange positions — including the logo, RFWN and CRICOS — so a layout you just generated cannot be nudged out of place by accident" ${s.behaviour.lockAutoArranged === true ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Lock layers after auto-arrange</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">On by default. <b>Every</b> layer Auto-arrange positions is locked, brand furniture included, so the layout it produced cannot be dragged out of place by accident — unlock a layer in the Layers panel when you do want to move it. Off: nothing is locked by auto-arrange, and unticking this releases whatever it locked earlier straight away.</div>
             </div>
           </label>
           <label class="ars-row" style="display:flex; align-items:flex-start; gap:9px; padding:6px 8px; cursor:pointer; border-radius:4px;">
-            <input type="checkbox" id="ars-lock-brand" title="Lock the logo, RFWN and CRICOS layers on the canvases Auto-Resize generates, so brand furniture is not nudged out of place afterwards" ${s.behaviour.lockBrandElements !== false ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
+            <input type="checkbox" id="ars-lock-brand" title="Lock the logo, RFWN and CRICOS layers on the canvases Auto-Resize generates, so brand furniture is not nudged out of place afterwards" ${s.behaviour.lockBrandElements === true ? 'checked' : ''} style="margin-top:3px; flex-shrink:0;" />
             <div style="flex:1; min-width:0;">
               <div style="font-size:12px; font-weight:600; color:var(--text-main); line-height:1.35;">Lock brand elements (Logo, RFWN, CRICOS) on generated canvases</div>
               <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">Applies to <b>Auto-Resize</b> only — the brand layers it copies onto each new canvas arrive locked. Auto-arrange is governed entirely by the toggle above, so the two never disagree about the same layer.</div>

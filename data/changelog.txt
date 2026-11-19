@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.16 (Current) - November 2026 — Engine v3.0
+v0.65.17 (Current) - November 2026 — Engine v3.0
+- Settings export/import also carries saved colours and gradients, Auto-Resize
+  settings, view toggles (Safezones, Outline, Preview current only) and the
+  Distribute / Frame Sync options.
+- Auto-arrange and Auto-Resize auto-lock options are off by default.
+
+v0.65.16 - November 2026 — Engine v3.0
 - Shift+click an empty spot on another canvas to enter canvas selection (same
   as Shift+clicking its header); Shift+click again adds/removes canvases.
 

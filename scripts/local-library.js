@@ -288,7 +288,17 @@ const SETTINGS_PREF_FIELDS = Object.freeze({
   zoomStep: 'number', defaultBg: 'string',
   snapEnabled: 'boolean', snapToElements: 'boolean', snapToCanvas: 'boolean',
   snapToGuides: 'boolean', snapCanvases: 'boolean', snapDistance: 'number',
-  savedHistoryLimit: 'number', autosaveInterval: 'number', adSizeLimit: 'number'
+  savedHistoryLimit: 'number', autosaveInterval: 'number', adSizeLimit: 'number',
+  // View toggles from the board / canvas right-click menus and the preview bar.
+  showSafezones: 'boolean', outlineMode: 'boolean', previewCurrentOnly: 'boolean'
+});
+// User preferences on `state` that are lists or objects rather than single values:
+// the colour picker's saved colours and gradients, and the Auto-Resize engine
+// settings (the gear beside Auto-resize). Copied whole, type-checked on import.
+// Project content (ClickTag, loop, compression, data versions) is deliberately not
+// here — that belongs to the .flow it was set in.
+const SETTINGS_JSON_FIELDS = Object.freeze({
+  savedPalette: 'array', savedGradients: 'array', autoResizeSettings: 'object'
 });
 const SETTINGS_VALIDATION_FIELDS = Object.freeze([
   'textSize', 'contrast', 'transitionTiming', 'infiniteMotion', 'cricos', 'logo', 'brandColors', 'brandFonts'
@@ -303,7 +313,9 @@ const SETTINGS_STORAGE_KEYS = Object.freeze([
   'sync-layers-all-frames', 'sync-frames-clear', 'dist-all-canvases',
   'adflow-sequencer-expanded', 'adflow-sequencer-grid', 'adflow-sequencer-showall'
 ]);
-const SETTINGS_STORAGE_PREFIXES = Object.freeze(['panel-collapsed-']);
+// Prefix families: panel collapse state, and the option checkboxes of the
+// Distribute and Frame Sync panels (sync-frames-visibility, dist-lock, …).
+const SETTINGS_STORAGE_PREFIXES = Object.freeze(['panel-collapsed-', 'sync-frames-', 'sync-layers-', 'dist-']);
 const _isSettingsStorageKey = (k) => typeof k === 'string'
   && (SETTINGS_STORAGE_KEYS.includes(k) || SETTINGS_STORAGE_PREFIXES.some(p => k.startsWith(p) && k.length <= 80));
 
@@ -327,8 +339,17 @@ function _base64ToBlob(b64) {
 // `overrides` — localStorage values the dialog holds unsaved (the startup mode).
 async function buildSettingsBundle({ prefs = state, overrides = {}, includeBaseProject = false } = {}) {
   const preferences = {};
+  // The dialog's working copy covers only its own fields; everything else (view
+  // toggles, saved colours, Auto-Resize settings) comes from the live state.
+  const pick = (k) => (prefs[k] !== undefined && prefs[k] !== null) ? prefs[k] : state[k];
   Object.keys(SETTINGS_PREF_FIELDS).forEach(k => {
-    if (prefs[k] !== undefined && prefs[k] !== null) preferences[k] = prefs[k];
+    const v = pick(k);
+    if (v !== undefined && v !== null) preferences[k] = v;
+  });
+  if (typeof getAutoResizeSettings === 'function') getAutoResizeSettings();   // fill defaults before copying
+  Object.keys(SETTINGS_JSON_FIELDS).forEach(k => {
+    const v = pick(k);
+    if (v !== undefined && v !== null) preferences[k] = JSON.parse(JSON.stringify(v));
   });
   // Unset until someone picks one; write what the editor is actually showing.
   if (typeof normalizeTheme === 'function') preferences.theme = normalizeTheme(prefs.theme);
@@ -400,6 +421,16 @@ async function applySettingsBundle(bundle) {
     state[k] = (k === 'theme' && typeof normalizeTheme === 'function') ? normalizeTheme(p[k]) : p[k];
     out.preferences++;
   });
+  Object.entries(SETTINGS_JSON_FIELDS).forEach(([k, type]) => {
+    const v = p[k];
+    const ok = type === 'array' ? Array.isArray(v) : (v && typeof v === 'object' && !Array.isArray(v));
+    if (!ok) return;
+    state[k] = JSON.parse(JSON.stringify(v));
+    out.preferences++;
+  });
+  // Re-run the engine's own backfill so a file from an older build gains any
+  // Auto-Resize keys added since.
+  if (p.autoResizeSettings && typeof getAutoResizeSettings === 'function') getAutoResizeSettings();
   if (p.validationSettings && typeof p.validationSettings === 'object') {
     if (!state.validationSettings) state.validationSettings = {};
     SETTINGS_VALIDATION_FIELDS.forEach(k => {
