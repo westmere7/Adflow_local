@@ -896,6 +896,14 @@ document.getElementById('menu-help-documentation').addEventListener('click', ope
 
 const CHANGELOG_DATA = [
   {
+    version: 'v0.65.23',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Right-Click a Layer Row for the Layer Menu: right-clicking a layer in the Layers panel now opens the same menu as right-clicking that layer on the canvas — Copy, Paste in Place, masks, grouping, Link Group, Auto-arrange, Delete and the rest — instead of the board's menu. Right-click a row that is part of a multi-selection and the menu acts on all of the selected layers ('2 elements selected'); right-click any other row and it selects that layer (or its whole group) first, as on the canvas.",
+      "Wheel Zoom Is Even at Every Level: each notch of the mouse wheel now scales the view by the same percentage — the Mouse Scroll Zoom Step in Settings, 10% by default — instead of adding a fixed amount. Before, a notch was a 17% jump at 60% but only 2.5% at 400%, so zooming in slowed to a crawl the closer you got; going from 60% to 500% now takes 23 notches instead of 45, and zooming in and back out returns to exactly where you started."
+    ]
+  },
+  {
     version: 'v0.65.22',
     date: 'November 2026 — Engine v3.0',
     items: [

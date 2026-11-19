@@ -533,6 +533,14 @@ document.addEventListener('contextmenu', (e) => {
 
   const menu = document.getElementById('ctx-menu');
   let elNode = e.target.closest('.el');
+  // A row in the Layers panel is the same layer, so it gets the same menu as the
+  // layer on the canvas — including the multi-layer version when the row is part
+  // of the selection. Only the id is read from it below. (Scoped to #layers: the
+  // Assets panel reuses the .layer class for its own rows.)
+  if (!elNode) {
+    const layerRow = e.target.closest('#layers .layer[data-id]');
+    if (layerRow && getActiveCanvas()?.elements.some(x => x.id === layerRow.dataset.id)) elNode = layerRow;
+  }
   if (!elNode) {
     const selectionOutline = e.target.closest('.selection-outline');
     if (selectionOutline) {
@@ -2252,7 +2260,7 @@ let _appUpdatePollTimer = null;
 // Do not put a version string anywhere else. Three of them had already drifted
 // apart when this was written.
 // ---------------------------------------------------------------------------
-const APP_VERSION_FALLBACK = 'v0.65.22';
+const APP_VERSION_FALLBACK = 'v0.65.23';
 
 function getAppVersion() {
   return (typeof _appBootVersion === 'string' && _appBootVersion) ? _appBootVersion : APP_VERSION_FALLBACK;

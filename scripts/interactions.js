@@ -1190,8 +1190,13 @@ canvasArea.addEventListener('wheel', (e) => {
   const oldZoom = state.zoom || 0.6;
   const zoomStep = state.zoomStep !== undefined ? state.zoomStep : 0.1;
   const direction = Math.sign(e.deltaY);
-  let newZoom = oldZoom - direction * zoomStep;
-  newZoom = Math.max(0.6, Math.min(newZoom, 5));
+  // Each notch scales the zoom by the same PERCENTAGE (Settings ▸ Mouse Scroll
+  // Zoom Step, 10% by default), so a notch looks the same at any zoom level. It
+  // used to add a fixed 0.1: a 17% jump at 60% but only 2.5% at 400%, so zooming
+  // crawled the closer you got.
+  const factor = 1 + zoomStep;
+  let newZoom = direction > 0 ? oldZoom / factor : (direction < 0 ? oldZoom * factor : oldZoom);
+  newZoom = Math.round(Math.max(0.6, Math.min(newZoom, 5)) * 10000) / 10000;
 
   if (newZoom === oldZoom) return;
 
