@@ -2993,6 +2993,45 @@ function isolatedGroupOverlay(elements) {
   return w;
 }
 
+// Move FX position preview (el.panGhost, the "Preview position" switch in Animation FX): a faint copy of
+// the layer drawn at the point the Move handle sets, as the layer will look when
+// it is there, so it can be lined up with other layers. Editor chrome only — it
+// lives in this overlay, which previews and exports never build, and the layer's
+// export ignores panGhost.
+//
+// Which end of the move that point is depends on Towards target, and so does how
+// the layer looks there (the keyframes in getPanCurveKeyframes: rotation offset
+// fades out over the move, target zoom grows in):
+//   Towards target ON   the layer travels TO the point → the ghost is the END:
+//                       full target zoom, rotation offset already gone.
+//   Towards target OFF  the layer starts AT the point → the ghost is the START:
+//                       rotation offset applied, zoom still 100%.
+function buildMoveGhost(el, c, towards) {
+  let node;
+  try { node = elementNode(el, c).cloneNode(true); } catch (e) { return null; }
+  // A copy, not the layer: drop every id so nothing finds it as the layer, and
+  // make it unclickable throughout so hit-testing passes straight through it.
+  [node, ...node.querySelectorAll('*')].forEach(n => {
+    n.removeAttribute('data-id');
+    n.removeAttribute('id');
+    n.removeAttribute('contenteditable');
+    n.style.pointerEvents = 'none';
+    n.style.animation = 'none';
+  });
+  node.querySelectorAll('[class*="handle"], .selection-outline').forEach(h => h.remove());
+  node.classList.remove('selected', 'animated-el', 'dynamic-el', 'link-highlight', 'link-highlight-live');
+  node.classList.add('move-fx-ghost');
+  node.style.display = '';
+  node.style.opacity = '0.4';
+  node.style.outline = '1px dashed var(--accent-base)';
+  node.style.outlineOffset = '0';
+  const rot = el.panRotate || 0;
+  const zoom = (typeof panZoomFactor === 'function') ? panZoomFactor(el) : 1;
+  if (towards) { if (zoom !== 1) node.style.scale = String(zoom); }
+  else if (rot) node.style.rotate = rot + 'deg';
+  return node;
+}
+
 function moveGuideOverlay(el, c) {
   const container = document.createElement('div');
   container.className = 'move-guide-overlay';
@@ -3047,6 +3086,19 @@ function moveGuideOverlay(el, c) {
 
   svg.appendChild(path);
   container.appendChild(svg);
+
+  // Ghost of the layer at the handle point (under the guide line and handle).
+  const ghost = el.panGhost ? buildMoveGhost(el, c, towards) : null;
+  const placeGhost = (gdx, gdy) => {
+    if (!ghost) return;
+    ghost.style.left = (el.x + gdx) + 'px';
+    ghost.style.top = (el.y + gdy) + 'px';
+  };
+  if (ghost) {
+    ghost.title = towards ? 'Where the move ends — position preview, editor only' : 'Where the move starts — position preview, editor only';
+    placeGhost(dx, dy);
+    container.insertBefore(ghost, svg);
+  }
 
   // 2. Create start circle handle
   const handle = document.createElement('div');
@@ -3106,9 +3158,10 @@ function moveGuideOverlay(el, c) {
 
       path.setAttribute('d', `M ${xStart} ${yStart} L ${xEnd} ${yEnd}`);
 
-      // Update handle position
+      // Update handle position, and the ghost with it
       handle.style.left = px + 'px';
       handle.style.top = py + 'px';
+      placeGhost(newDx, newDy);
 
       // Update input elements in Sidebar if they are visible
       const fromXInput = document.getElementById('prop-pan-from-x');

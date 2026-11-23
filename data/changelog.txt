@@ -1,6 +1,11 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.26 (Current) - November 2026 — Engine v3.0
+v0.65.27 (Current) - November 2026 — Engine v3.0
+- Move FX: Preview position switch shows a faint copy of the layer at the handle point
+  (end with Towards target on, at Target zoom; start with it off, with Rotation
+  offset). Editor only — never in previews or exports.
+
+v0.65.26 - November 2026 — Engine v3.0
 - PNG Frames: numbered toggles that wrap/scroll for many frames, All/None, a
   Skipped frame (static fallback) option, one-line note.
 - Desktop Export dialog: Several files → Into a folder / As one zip (remembered).

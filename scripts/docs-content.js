@@ -291,6 +291,7 @@ const DOCS_SECTIONS = [
       { id: 'continuous-effects', title: 'Animation FX', body: `
         <p>Animation FX are looping, non-destructive effects that overlay on top of the frame state: <b>Pulse</b>, <b>Float</b>, <b>Flash</b>, <b>Wiggle</b>, <b>Spin</b>, <b>Heartbeat</b>, <b>Move</b>, <b>Zoom</b>, <b>Underline</b>. Toggle <b>Perform once</b> to play a single cycle instead of looping. <b>Move</b> also takes a <b>Target zoom (%)</b>: the layer scales from 100% to that size over the move, for a pan-and-zoom on a photo.</p>
         <p><b>Underline</b> is the odd one out: instead of moving the layer it paints on it, wiping a rule in beneath the words, holding it, then wiping it out the far side. The rule is drawn on the type itself, so it is only as wide as the words and sits directly under them rather than stretching across the layer box — and wrapped copy gets one underline per line, each the width of its own line. Settings are Thickness, Colour and an Offset that lifts the rule off the baseline. Text and buttons only; elsewhere there is no type for it to hug. Note that a text layer with <b>BG</b> switched on will cover the rule.</p>
+        <p><b>Move</b> draws a dashed path on the selected layer with a handle you drag to set the point (or type From X / From Y). <b>Towards target</b> decides which end that point is: on, the layer travels from its place <i>to</i> the point; off, it starts <i>at</i> the point and travels into place. Tick <b>Preview position</b> to see a faint copy of the layer at that point, as it will look there — at the target zoom when the point is the end, with the rotation offset when it is the start — so you can line it up with other layers while you drag. It is editor-only: it never appears in previews or exports.</p>
         <p>On a masked image the effect is applied to the mask wrapper while the image beneath receives the inverse motion, which keeps the photo itself stationary inside a moving mask.</p>
         <p>Set the FX delay and duration numerically in the Animation panel, or drag the striped FX bar on the <a href="#" data-doc-sec="animation" data-doc-sub="timeline" style="color:var(--text-accent); font-weight: 500;">Timeline</a>.</p>
       `},
@@ -896,6 +897,13 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.27',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "Move FX Preview Position for Lining Up: the Move effect has a new Preview position switch beside Towards target. On, a faint, dashed-outlined copy of the layer sits at the point the Move handle sets and follows the handle as you drag it (or as you type From X / From Y), so the move can be lined up against other layers. It shows the layer as it will look at that point: with Towards target on, the point is where the move ends, so the copy is drawn at the Target zoom; with it off, the point is where the move starts, so the copy carries the Rotation offset. It is editor-only — never part of previews, hover preview, the Preview portal or any export — and it can't be clicked, so it never gets in the way of selecting layers. Off by default; remembered per layer."
+    ]
+  },
   {
     version: 'v0.65.26',
     date: 'November 2026 — Engine v3.0',
