@@ -308,7 +308,7 @@ const SETTINGS_VALIDATION_FIELDS = Object.freeze([
 // imported file must not be able to plant arbitrary keys, and some keys
 // (last-seen-version, the base project hint) describe this browser, not the user.
 const SETTINGS_STORAGE_KEYS = Object.freeze([
-  'adflow-startup-mode', 'favoriteAnimations', 'adflow-ad-server',
+  'adflow-startup-mode', 'favoriteAnimations', 'adflow-ad-server', 'adflow-export-multi-dest',
   'adflow-download-only-save-notice-off', 'hover-preview-armed',
   'sync-layers-all-frames', 'sync-frames-clear', 'dist-all-canvases',
   'adflow-sequencer-expanded', 'adflow-sequencer-grid', 'adflow-sequencer-showall'

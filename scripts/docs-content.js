@@ -482,8 +482,8 @@ const DOCS_SECTIONS = [
           <li><b>Preview portal (single HTML file)</b> — every ticked size, with the data version or versions you choose, in one offline review page for stakeholders.</li>
         </ul>
         <p>Both motion formats show an <b>estimated output size</b> before you start, updating as you change settings or tick sizes. Video estimates are an upper bound (bitrate is a ceiling and simple ads land well under it); GIF estimates are fitted, since GIF size depends on how much of the artwork actually moves.</p>
-        <p>"All selected versions" works with HTML5 ZIP and the Preview portal; pick a single version to export PNG, video or GIF.</p>
-        <p><b>Several files at once.</b> When an export makes more than one file — several sizes, several frames, several videos — the <b>desktop app</b> asks for a folder and saves each file straight into it, then opens the folder; HTML5 ZIPs arrive as one ad-server zip per size, with no zip around them, and Export all versions puts each version in its own subfolder. In a <b>browser</b> the same set comes as one zip, because a web page can't write a folder. A single file is always saved on its own (one HTML5 size is now just its zip, not a zip inside a zip).</p>
+        <p>"All selected versions" works with HTML5 ZIP, PNG and the Preview portal — HTML5 and PNG put each version in its own subfolder; pick a single version to export video or GIF. <b>Skip frames marked as skipped</b> applies to HTML5, video, GIF and the portal, and is hidden for PNG, which renders exactly the frames picked under Frames.</p>
+        <p><b>Several files at once.</b> When an export makes more than one file — several sizes, several frames, several videos — the <b>desktop app</b> asks for a folder and saves each file straight into it, then opens the folder (or, with the dialog's <b>Several files</b> set to <i>As one zip</i>, saves one zip instead); HTML5 ZIPs arrive as one ad-server zip per size, with no zip around them, and Export all versions puts each version in its own subfolder. In a <b>browser</b> the same set comes as one zip, because a web page can't write a folder. A single file is always saved on its own (one HTML5 size is now just its zip, not a zip inside a zip).</p>
       `},
       { id: 'export-ad-server', title: 'Ad server: Standard or Adobe Advertising', body: `
         <p>With <b>HTML5 ZIP</b> selected, the Export dialog's <b>Ad server</b> setting decides how the click is wired. Adflow remembers your choice, and every HTML5 ZIP export uses it, including the canvas menu and the Canvas Settings button.</p>
@@ -896,6 +896,16 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.26',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "PNG Frames Picker Scales and Offers the Static Fallback: Choose frames now shows one small numbered toggle per frame instead of a row of checkboxes, so 3 frames or 30 fit — they wrap, and scroll after two rows — with All and None links; skipped frames have a dashed outline. When the project has skipped frames, the Frames dropdown also offers them directly ('Skipped frame — static fallback (Frame 4)'). The note under it is one short line, e.g. '18 PNGs · one zip', with the file naming in its tooltip.",
+      "Desktop App: Several Files Into a Folder or One Zip: the Export dialog in the Windows and Mac apps has a 'Several files' choice — Into a folder (the default since v0.65.25) or As one zip. It applies to every export that makes more than one file, Export all versions included, is remembered, and travels in settings files. A single file is always saved on its own.",
+      "Export Selected Waits for Settings That Work: the Export dialog's Export Selected button is greyed out until the choices can actually be exported, and its tooltip says what is missing — no size ticked, no frame picked for PNG, or All Selected Versions with video or GIF.",
+      "PNG for Every Data Version: PNG now works with All Selected Versions — every chosen frame of every selected size for each version ticked in the data sheet, each version in its own subfolder named after it, like the HTML5 all-versions export (straight into a folder in the desktop app, one zip in a browser). It used to export HTML5 ZIPs instead without saying so. The Skip frames box is hidden for PNG, where it never did anything: PNG renders exactly the frames picked under Frames."
+    ]
+  },
   {
     version: 'v0.65.25',
     date: 'November 2026 — Engine v3.0',

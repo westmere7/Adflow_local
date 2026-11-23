@@ -89,6 +89,19 @@ async function saveSingleExport(name, blob) {
 function canExportToFolder() {
   return !!(IS_DESKTOP_APP && window.adflowDesktop && typeof window.adflowDesktop.pickExportFolder === 'function');
 }
+// Desktop app: where several files go — 'folder' (default) or 'zip'. Chosen in
+// the Export dialog's "Several files" row, remembered, carried by settings files.
+const EXPORT_MULTI_DEST_KEY = 'adflow-export-multi-dest';
+function exportMultiDestination() {
+  try { return localStorage.getItem(EXPORT_MULTI_DEST_KEY) === 'zip' ? 'zip' : 'folder'; } catch (e) { return 'folder'; }
+}
+function setExportMultiDestination(v) {
+  try { localStorage.setItem(EXPORT_MULTI_DEST_KEY, v === 'zip' ? 'zip' : 'folder'); } catch (e) {}
+}
+// True when a multi-file export should go into a folder right now.
+function exportsGoToFolder() {
+  return canExportToFolder() && exportMultiDestination() === 'folder';
+}
 // A writer with the same two calls as ZipStreamWriter (addFile, close), so the
 // all-versions export can stream into a folder file by file. null if cancelled.
 async function openExportFolderWriter(title) {
@@ -122,7 +135,7 @@ async function saveExportFileSet(files, zipName, opts = {}) {
   const list = (files || []).filter(f => f && f.blob);
   if (!list.length) return false;
   if (list.length === 1 && !list[0].name.includes('/')) return saveSingleExport(list[0].name, list[0].blob);
-  if (canExportToFolder()) {
+  if (exportsGoToFolder()) {
     const writer = await openExportFolderWriter(opts.title || `Choose a folder for the ${list.length} exported files`);
     if (!writer) return false;
     try {
@@ -3698,6 +3711,10 @@ function openExportModal() {
       .exp-head .exp-modes label { display:flex; align-items:center; gap:5px; cursor:pointer; font-size:12px; color:var(--text-main); white-space:nowrap; }
       .exp-head .exp-modes input { margin:0; }
       .exp-head .is-off { opacity:.45; }
+      .exp-frame-chip { min-width:26px; height:22px; padding:0 5px; border-radius:4px; border:1px solid var(--border-light); background:var(--bg-input); color:var(--text-muted); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; }
+      .exp-frame-chip:hover { color:var(--text-main); border-color:var(--text-muted); }
+      .exp-frame-chip.skipped { border-style:dashed; }
+      .exp-frame-chip.on { background:var(--accent-base); border-color:var(--accent-base); color:#fff; }
     </style>
     <div class="exp-head">
       <div>
@@ -3730,12 +3747,24 @@ function openExportModal() {
         <select class="exp-ctl" id="exp-png-frames" title="Which frames to export as PNG, for every selected size">
           <option value="current">Current frame (Frame ${Math.max(1, state.frames.findIndex(f => f.id === state.activeFrameId) + 1)})</option>
           <option value="all">All frames (${state.frames.length})</option>
+          ${(() => {
+            const sk = state.frames.map((f, i) => f.skip ? i + 1 : 0).filter(Boolean);
+            return sk.length ? `<option value="skipped">${sk.length === 1 ? `Skipped frame — static fallback (Frame ${sk[0]})` : `Skipped frames — static fallback (${sk.length})`}</option>` : '';
+          })()}
           <option value="pick">Choose frames…</option>
         </select>
-        <div id="exp-png-frame-list" style="display:none; flex-wrap:wrap; gap:4px 10px; margin-top:6px;">
-          ${state.frames.map((f, i) => `<label style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-main); cursor:pointer;" title="${f.skip ? 'Skipped frame — often the static fallback' : 'Frame ' + (i + 1)}"><input type="checkbox" class="exp-png-frame-chk" data-fid="${f.id}" ${f.id === state.activeFrameId ? 'checked' : ''} style="margin:0;" />Frame ${i + 1}${f.skip ? ' <span style="color:var(--text-muted);">(skipped)</span>' : ''}</label>`).join('')}
+        <!-- Choose frames: one small numbered toggle per frame, so 3 frames or 30
+             fit — they wrap, and scroll after two rows. Skipped frames are dashed. -->
+        <div id="exp-png-frame-pick" style="display:none; margin-top:6px;">
+          <div id="exp-png-frame-list" style="display:flex; flex-wrap:wrap; gap:4px; max-height:56px; overflow-y:auto; padding:1px;">
+            ${state.frames.map((f, i) => `<button type="button" class="exp-frame-chip${f.id === state.activeFrameId ? ' on' : ''}${f.skip ? ' skipped' : ''}" data-fid="${f.id}" aria-pressed="${f.id === state.activeFrameId}" title="Frame ${i + 1}${f.skip ? ' — skipped (often the static fallback)' : ''} · ${f.duration || 2}s">${i + 1}</button>`).join('')}
+          </div>
+          <div style="display:flex; gap:10px; margin-top:4px; font-size:10px;">
+            <a href="#" id="exp-frames-all" style="color:var(--text-accent, var(--accent-base));">All</a>
+            <a href="#" id="exp-frames-none" style="color:var(--text-accent, var(--accent-base));">None</a>
+          </div>
         </div>
-        <div class="exp-note" id="exp-png-frames-note">One PNG per size.</div>
+        <div class="exp-note" id="exp-png-frames-note" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">One PNG per size.</div>
       </div>
       ${hasVersions ? `
       <div>
@@ -3745,19 +3774,28 @@ function openExportModal() {
         </select>
         <div class="exp-modes">
           <label title="Export only the version picked above"><input type="radio" name="exp-version-mode" value="single" checked /><span>Single Version</span></label>
-          <label title="Export every selected row of the data sheet, each as its own set of banners. HTML5 ZIP: one folder per version. Preview portal: one file, every version switchable."><input type="radio" name="exp-version-mode" value="all" /><span>All Selected Versions (${selectedCount})</span></label>
+          <label title="Export every selected row of the data sheet, each as its own set of banners. HTML5 ZIP and PNG: one folder per version. Preview portal: one file, every version switchable."><input type="radio" name="exp-version-mode" value="all" /><span>All Selected Versions (${selectedCount})</span></label>
         </div>
       </div>
       ` : ''}
     </div>
+    ${canExportToFolder() ? `
+    <div id="exp-dest-row" style="display:flex; align-items:center; gap:10px; margin:-4px 0 14px; font-size:12px; color:var(--text-main);">
+      <label for="exp-multi-dest" style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; white-space:nowrap;">Several files</label>
+      <select id="exp-multi-dest" title="When an export makes more than one file: save them straight into a folder, or pack them into one zip. Remembered." style="height:26px; padding:0 6px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px; color:var(--text-main); font-size:12px; font-family:inherit;">
+        <option value="folder" ${exportMultiDestination() === 'folder' ? 'selected' : ''}>Into a folder</option>
+        <option value="zip" ${exportMultiDestination() === 'zip' ? 'selected' : ''}>As one zip</option>
+      </select>
+      <span style="font-size:10.5px; color:var(--text-muted);">Applies when an export makes more than one file. A single file is always saved on its own.</span>
+    </div>` : ''}
     <div id="exp-video-opts" style="display:none; max-width:560px; margin:-4px 0 14px;">${typeof buildVideoSettingsHTML === 'function' ? buildVideoSettingsHTML('exp') : ''}</div>
 
-    <div style="margin-bottom:14px; padding:8px 10px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px;">
+    <div id="exp-skip-wrap" style="margin-bottom:14px; padding:8px 10px; background:var(--bg-input); border:1px solid var(--border-light); border-radius:4px;">
       <label style="display:flex; align-items:flex-start; gap:8px; cursor:pointer;">
         <input type="checkbox" id="exp-skip-frames" title="Leave frames marked as skipped out of the exported ad" checked style="margin-top:3px; flex-shrink:0;" ${flaggedFrameCount === 0 ? 'disabled' : ''} />
         <div style="flex:1; min-width:0;">
           <div style="font-size:12px; font-weight:600; color:var(--text-main);">Skip frames marked as skipped${flaggedFrameCount > 0 ? ` (${flaggedFrameCount} flagged)` : ''}</div>
-          <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">${flaggedFrameCount === 0 ? 'No frames are currently flagged. Toggle "Skip Frame" on the timeline to flag one.' : 'On (default): flagged frames are excluded from HTML5 exports. Off: they\'re included. PNG uses the Frames picker instead, which can include skipped frames.'}</div>
+          <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">${flaggedFrameCount === 0 ? 'No frames are currently flagged. Toggle "Skip Frame" on the timeline to flag one.' : 'On (default): flagged frames are excluded from HTML5 exports. Off: they\'re included. Applies to HTML5, video, GIF and the Preview portal.'}</div>
         </div>
       </label>
     </div>
@@ -4280,33 +4318,47 @@ function openExportModal() {
   // PNG puts its Frames picker in this column instead.
   const pngFramesWrap = modalBg.querySelector('#exp-pngframes-wrap');
   const pngFramesSel = modalBg.querySelector('#exp-png-frames');
-  const pngFrameList = modalBg.querySelector('#exp-png-frame-list');
+  const pngFramePick = modalBg.querySelector('#exp-png-frame-pick');
   const pngFramesNote = modalBg.querySelector('#exp-png-frames-note');
+  const frameChips = () => Array.from(modalBg.querySelectorAll('.exp-frame-chip'));
   function selectedPngFrameIds() {
     const mode = pngFramesSel ? pngFramesSel.value : 'current';
     if (mode === 'all') return state.frames.map(f => f.id);
+    if (mode === 'skipped') return state.frames.filter(f => f.skip).map(f => f.id);
     if (mode === 'pick') {
-      return Array.from(modalBg.querySelectorAll('.exp-png-frame-chk')).filter(x => x.checked)
+      return frameChips().filter(x => x.classList.contains('on'))
         .map(x => parseInt(x.dataset.fid, 10)).filter(id => state.frames.some(f => f.id === id));
     }
     return [state.activeFrameId];
   }
   function syncPngFrames() {
     if (!pngFramesSel) return;
-    if (pngFrameList) pngFrameList.style.display = pngFramesSel.value === 'pick' ? 'flex' : 'none';
+    if (pngFramePick) pngFramePick.style.display = pngFramesSel.value === 'pick' ? 'block' : 'none';
     const n = selectedPngFrameIds().length;
     const sizes = Array.from(chks).filter(x => x.checked).length;
-    const total = n * sizes;
-    const where = canExportToFolder() ? 'saved into a folder you pick' : 'in one zip';
-    if (pngFramesNote) pngFramesNote.textContent = !n
-      ? 'Tick at least one frame.'
-      : (n === 1 ? `One PNG per size${total > 1 ? ` (${total} files, ${where})` : ''}.`
-                 : `${n} PNGs per size, named …_frame1.png, …_frame2.png — ${total} files, ${where}.`);
+    const allV = modalBg.querySelector('input[name="exp-version-mode"]:checked')?.value === 'all';
+    const versions = allV && state.dataMerge && Array.isArray(state.dataMerge.rows) ? state.dataMerge.rows.filter(r => r && r._selected !== false).length : 1;
+    const total = n * sizes * Math.max(1, versions);
+    // One short line; the file naming lives in the tooltip.
+    const where = exportsGoToFolder() ? 'into a folder' : 'one zip';
+    if (pngFramesNote) {
+      pngFramesNote.textContent = !n ? 'Pick at least one frame.'
+        : `${total} PNG${total === 1 ? '' : 's'}${total > 1 ? ` · ${where}` : ''}`;
+      pngFramesNote.title = n > 1
+        ? `${n} frames × ${sizes} size${sizes === 1 ? '' : 's'}${versions > 1 ? ` × ${versions} versions (a subfolder each)` : ''}, named …_300x250_frame1.png, …_frame2.png`
+        : `One PNG per size${versions > 1 ? ` for each of ${versions} versions (a subfolder each)` : ''}, named …_300x250.png`;
+    }
   }
+  const setChip = (chip, on) => { chip.classList.toggle('on', on); chip.setAttribute('aria-pressed', String(on)); };
+  frameChips().forEach(chip => chip.addEventListener('click', () => { setChip(chip, !chip.classList.contains('on')); syncPngFrames(); }));
+  modalBg.querySelector('#exp-frames-all')?.addEventListener('click', (e) => { e.preventDefault(); frameChips().forEach(c => setChip(c, true)); syncPngFrames(); });
+  modalBg.querySelector('#exp-frames-none')?.addEventListener('click', (e) => { e.preventDefault(); frameChips().forEach(c => setChip(c, false)); syncPngFrames(); });
   pngFramesSel?.addEventListener('change', syncPngFrames);
-  modalBg.querySelectorAll('.exp-png-frame-chk').forEach(x => x.addEventListener('change', syncPngFrames));
   chks.forEach(x => x.addEventListener('change', syncPngFrames));
   modalBg.querySelector('#chk-all')?.addEventListener('change', () => setTimeout(syncPngFrames, 0));
+  // Desktop app: Several files → Into a folder / As one zip (remembered).
+  modalBg.querySelector('#exp-multi-dest')?.addEventListener('change', (e) => { setExportMultiDestination(e.target.value); syncPngFrames(); });
+  modalBg.querySelectorAll('input[name="exp-version-mode"]').forEach(r => r.addEventListener('change', syncPngFrames));
 
   function syncAdServerColumn() {
     const on = formatSel.value === 'zip';
@@ -4314,6 +4366,10 @@ function openExportModal() {
     if (adServerWrap) adServerWrap.style.display = isPng ? 'none' : '';
     if (pngFramesWrap) pngFramesWrap.style.display = isPng ? '' : 'none';
     if (isPng) syncPngFrames();
+    // Skip frames decides what an animated export contains. PNG renders exactly the
+    // frames picked in Frames, so the box would do nothing there — hide it.
+    const skipWrap = modalBg.querySelector('#exp-skip-wrap');
+    if (skipWrap) skipWrap.style.display = isPng ? 'none' : '';
     if (adServerSel) adServerSel.disabled = !on;
     if (adServerWrap) adServerWrap.classList.toggle('is-off', !on);
     if (adServerNote) adServerNote.textContent = on ? AD_SERVER_NOTES[getExportAdServer()] : AD_SERVER_NOTES.off;
@@ -4330,7 +4386,38 @@ function openExportModal() {
     modalBg.querySelector('#chk-all')?.addEventListener('change', () => setTimeout(vidSettings.refresh, 0));
   }
 
+  // Export Selected is only live when the settings can actually be exported; the
+  // reason it isn't sits in its tooltip. Re-checked on every change that matters.
+  const exportBtn = modalBg.querySelector('#btn-export-selected');
+  const exportBtnTitle = exportBtn ? exportBtn.title : '';
+  function exportBlocker() {
+    const fmt = formatSel.value;
+    if (!Array.from(chks).some(x => x.checked)) return 'Tick at least one size to export.';
+    if (fmt === 'png' && !selectedPngFrameIds().length) return 'Pick at least one frame to export as PNG.';
+    const allVersions = modalBg.querySelector('input[name="exp-version-mode"]:checked')?.value === 'all';
+    if (allVersions && (fmt === 'video' || fmt === 'gif')) {
+      return `"All Selected Versions" works with HTML5 ZIP, PNG and the Preview portal. Pick Single Version to export ${fmt === 'gif' ? 'GIF' : 'video'}.`;
+    }
+    return null;
+  }
+  function updateExportButton() {
+    if (!exportBtn) return;
+    const why = exportBlocker();
+    exportBtn.disabled = !!why;
+    exportBtn.style.opacity = why ? '0.5' : '';
+    exportBtn.style.cursor = why ? 'not-allowed' : '';
+    exportBtn.title = why || exportBtnTitle;
+  }
+  formatSel.addEventListener('change', updateExportButton);
+  pngFramesSel?.addEventListener('change', updateExportButton);
+  modalBg.querySelectorAll('.exp-frame-chip, #exp-frames-all, #exp-frames-none').forEach(el => el.addEventListener('click', () => setTimeout(updateExportButton, 0)));
+  chks.forEach(x => x.addEventListener('change', updateExportButton));
+  modalBg.querySelector('#chk-all')?.addEventListener('change', () => setTimeout(updateExportButton, 0));
+  modalBg.querySelectorAll('input[name="exp-version-mode"]').forEach(r => r.addEventListener('change', updateExportButton));
+  updateExportButton();
+
   modalBg.querySelector('#btn-export-selected').addEventListener('click', async () => {
+    if (exportBlocker()) { updateExportButton(); return; }
     const selectedIds = Array.from(chks).filter(c => c.checked).map(c => c.dataset.cid);
     if (selectedIds.length === 0) { showAdflowAlert('No ads selected.'); return; }
 
@@ -4346,6 +4433,44 @@ function openExportModal() {
     const versionChoice = mode === 'all' ? 'all' : (versionSelect ? versionSelect.value : null);
     
     const selectedCanvases = selectedIds.map(id => state.canvases.find(x => x.id === id)).filter(Boolean);
+
+    // PNG: one file per size per chosen frame (the Frames picker), for each data
+    // version asked for. Each version is baked in with dmRunExport before its
+    // renders, so the PNGs show that version, not whatever the editor shows. With
+    // All Selected Versions every version gets its own subfolder, named as the
+    // HTML5 all-versions export names them. The whole set is saved together: one
+    // file on its own, several into a folder (desktop) or one zip (browser).
+    const exportPngSet = async (runs) => {
+      const frameIds = selectedPngFrameIds();
+      if (!frameIds.length) { showAdflowAlert('Pick at least one frame to export.'); return; }
+      const safe = filenamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const multiFrame = frameIds.length > 1;
+      const total = runs.length * selectedCanvases.length * frameIds.length;
+      const files = [];
+      const progress = (total > 1 && typeof showLoadingProgress === 'function') ? showLoadingProgress('Rendering PNGs…') : null;
+      let done = 0;
+      try {
+        for (const run of runs) {
+          await dmRunExport(run.versionIdx, async () => {
+            for (const c of selectedCanvases) {
+              for (const fid of frameIds) {
+                const fNo = state.frames.findIndex(f => f.id === fid) + 1;
+                if (progress) progress.setProgress(Math.round(done / total * 100), `${run.folder ? run.folder + ' · ' : ''}${c.width}×${c.height}${multiFrame ? ` · frame ${fNo}` : ''}`);
+                const base = multiFrame ? `${safe}_${c.width}x${c.height}_frame${fNo}.png` : `${safe}_${c.width}x${c.height}.png`;
+                const r = await exportCanvasAsPng(c, { filenamePrefix, frameId: fid, returnBlob: true, fileName: base });
+                if (r) files.push({ name: run.folder ? `${run.folder}/${r.name}` : r.name, blob: r.blob });
+                done++;
+              }
+            }
+          });
+        }
+      } finally {
+        if (progress) progress.close();
+      }
+      const allV = runs.length > 1;
+      await saveExportFileSet(files, `${safe || 'exported_ads'}_png${allV ? '_all_versions' : ''}.zip`,
+        { title: allV ? `Choose a folder for PNGs of ${runs.length} versions — each gets its own subfolder` : `Choose a folder for ${files.length} PNG files` });
+    };
 
     // One file for the whole set. Data version decides what is inside it:
     // Single Version → just that row, opening on it with no version picker;
@@ -4366,8 +4491,21 @@ function openExportModal() {
     }
 
     if (hasVersions && versionChoice === 'all') {
+      if (format === 'png') {
+        const keyCol = (dm.keyColumn && dm.columns.includes(dm.keyColumn)) ? dm.keyColumn : dm.columns[0];
+        const used = {};
+        const runs = dm.rows.map((row, i) => ({ row, i })).filter(x => x.row && x.row._selected !== false).map(({ row, i }) => {
+          let folder = String(row[keyCol] || ('version_' + (i + 1))).replace(/[^a-zA-Z0-9_-]/g, '_') || ('version_' + (i + 1));
+          used[folder] = (used[folder] || 0) + 1;
+          if (used[folder] > 1) folder += '_' + used[folder];
+          return { versionIdx: i, folder };
+        });
+        if (!runs.length) { showAdflowAlert('No versions are selected in the data sheet.'); return; }
+        await exportPngSet(runs);
+        return;
+      }
       if (format === 'video' || format === 'gif') {
-        showAdflowAlert(`"All selected versions" is HTML5 ZIP only. Pick a single data version to export ${format === 'gif' ? 'GIF' : 'video'}.`);
+        showAdflowAlert(`"All selected versions" is not available for ${format === 'gif' ? 'GIF' : 'video'}. Pick a single data version.`);
         return;
       }
       await dmExportAllVersions(selectedCanvases, filenamePrefix);
@@ -4392,38 +4530,7 @@ function openExportModal() {
     }
 
     if (format === 'png') {
-      // PNG path: one file per size per chosen frame (the Frames picker). Wrapped
-      // in dmRunExport so the selected data version bakes into each render;
-      // otherwise PNGs would silently reflect whatever version the editor shows.
-      // The set is saved together: one file on its own, several into a folder in
-      // the desktop app, or one zip in a browser.
-      const frameIds = selectedPngFrameIds();
-      if (!frameIds.length) { showAdflowAlert('Tick at least one frame to export.'); return; }
-      const safe = filenamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
-      const multiFrame = frameIds.length > 1;
-      const total = selectedCanvases.length * frameIds.length;
-      const files = [];
-      const progress = (total > 1 && typeof showLoadingProgress === 'function') ? showLoadingProgress('Rendering PNGs…') : null;
-      try {
-        await dmRunExport(exportVersionIdx, async () => {
-          let done = 0;
-          for (const c of selectedCanvases) {
-            for (const fid of frameIds) {
-              const fNo = state.frames.findIndex(f => f.id === fid) + 1;
-              if (progress) progress.setProgress(Math.round(done / total * 100), `${c.width}×${c.height}${multiFrame ? ` · frame ${fNo}` : ''}`);
-              const r = await exportCanvasAsPng(c, {
-                filenamePrefix, frameId: fid, returnBlob: true,
-                fileName: multiFrame ? `${safe}_${c.width}x${c.height}_frame${fNo}.png` : undefined
-              });
-              if (r) files.push(r);
-              done++;
-            }
-          }
-        });
-      } finally {
-        if (progress) progress.close();
-      }
-      await saveExportFileSet(files, `${safe || 'exported_ads'}_png.zip`, { title: `Choose a folder for ${files.length} PNG files` });
+      await exportPngSet([{ versionIdx: exportVersionIdx, folder: '' }]);
       return;
     }
 
@@ -4754,7 +4861,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   // 0. Desktop app: straight into a folder, one subfolder per version, streamed
   //    file by file (openExportFolderWriter has ZipStreamWriter's addFile/close).
   let folderWriter = null;
-  if (canExportToFolder()) {
+  if (exportsGoToFolder()) {
     folderWriter = await openExportFolderWriter('Choose a folder for every version — each gets its own subfolder');
     if (!folderWriter) return;
   }
