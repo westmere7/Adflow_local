@@ -14,7 +14,7 @@
 // a Mac build quietly missing two headline features.
 // ============================================================================
 
-const { app, BrowserWindow, Menu, shell, dialog, session } = require('electron');
+const { app, BrowserWindow, Menu, shell, dialog, session, ipcMain } = require('electron');
 const path = require('path');
 const { startStaticServer, PREFERRED_PORT } = require('./static-server');
 
@@ -58,6 +58,10 @@ function revealDownloadsWhenDone() {
     });
   });
 }
+
+// Export to a folder: the handlers behind preload.js's pickExportFolder /
+// writeExportFile / finishExportFolder live in export-folder.js.
+const { registerExportFolderIpc } = require('./export-folder');
 
 function createWindow(url, opts = {}) {
   const win = new BrowserWindow({
@@ -196,6 +200,7 @@ async function main() {
   app.setName('RMIT Adflow');
   await app.whenReady();
   revealDownloadsWhenDone();
+  registerExportFolderIpc({ ipcMain, dialog, shell, BrowserWindow, getOrigin: () => origin });
 
   try {
     const started = await startStaticServer(APP_ROOT);

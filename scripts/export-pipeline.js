@@ -61,6 +61,85 @@ function downloadExportBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 120000);
 }
 
+// One finished export file: the save picker where the browser has one, a
+// download otherwise (and always in the desktop app, which then opens its folder).
+async function saveSingleExport(name, blob) {
+  if (exportUsesPicker()) {
+    const ext = (String(name).match(/\.([a-z0-9]+)$/i) || [])[1] || 'bin';
+    try {
+      const handle = await window.showSaveFilePicker({
+        types: [{ description: ext.toUpperCase() + ' file', accept: { [blob.type || 'application/octet-stream']: ['.' + ext.toLowerCase()] } }],
+        suggestedName: name
+      });
+      const w = await handle.createWritable();
+      await w.write(blob);
+      await w.close();
+      return true;
+    } catch (e) {
+      if (e.name === 'AbortError') return false;
+      console.warn('Save dialog failed, downloading instead:', e);
+    }
+  }
+  downloadExportBlob(blob, name);
+  return true;
+}
+
+// Export to a folder (desktop app only): several files go straight into a folder
+// the user picks, instead of into a zip. electron/preload.js + main.js provide it.
+function canExportToFolder() {
+  return !!(IS_DESKTOP_APP && window.adflowDesktop && typeof window.adflowDesktop.pickExportFolder === 'function');
+}
+// A writer with the same two calls as ZipStreamWriter (addFile, close), so the
+// all-versions export can stream into a folder file by file. null if cancelled.
+async function openExportFolderWriter(title) {
+  const pick = await window.adflowDesktop.pickExportFolder(title);
+  if (!pick) return null;
+  return {
+    folder: pick.folder,
+    offset: 0,
+    files: 0,
+    async addFile(relPath, bytes) {
+      const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      await window.adflowDesktop.writeExportFile(pick.token, relPath, data);
+      this.offset += data.byteLength;
+      this.files++;
+    },
+    closed: false,
+    async close(reveal = true) {
+      if (this.closed) return;
+      this.closed = true;
+      await window.adflowDesktop.finishExportFolder(pick.token, reveal);
+    }
+  };
+}
+
+// Save a SET of export files ([{ name, blob }]; names may contain "folder/" parts).
+//   one file          → saved on its own, as before
+//   desktop app       → written straight into a folder you pick, which then opens
+//   browser           → one zip named zipName (a browser can't write a folder)
+// Returns false when the user cancelled.
+async function saveExportFileSet(files, zipName, opts = {}) {
+  const list = (files || []).filter(f => f && f.blob);
+  if (!list.length) return false;
+  if (list.length === 1 && !list[0].name.includes('/')) return saveSingleExport(list[0].name, list[0].blob);
+  if (canExportToFolder()) {
+    const writer = await openExportFolderWriter(opts.title || `Choose a folder for the ${list.length} exported files`);
+    if (!writer) return false;
+    try {
+      for (const f of list) await writer.addFile(f.name, new Uint8Array(await f.blob.arrayBuffer()));
+    } finally {
+      await writer.close(true);
+    }
+    showCanvasNotification(`Exported ${writer.files} files to ${writer.folder}`, { type: 'success' });
+    return true;
+  }
+  if (typeof JSZip === 'undefined') { showAdflowAlert('JSZip is not loaded.'); return false; }
+  const zip = new JSZip();
+  list.forEach(f => zip.file(f.name, f.blob));
+  const content = await zip.generateAsync({ type: 'blob' });   // contents are already compressed (zip/png/mp4): STORE
+  return saveSingleExport(zipName, content);
+}
+
 const AD_SERVER_PREF_KEY = 'adflow-ad-server';
 const ADOBE_AMO_LIBRARY_URL = 'https://ads.everesttech.net/ads/static/local/AMOLibrary.js';
 const ADOBE_MAX_LANDING_DOMAIN = 35;
@@ -2187,6 +2266,12 @@ async function exportCanvasAsPng(c, options = {}) {
 
   let recorderIframe = null;
   let cnv = null;
+  // options.frameId — render that frame instead of the one on screen (the Export
+  // dialog's Frames picker). Image-export mode draws it even when it is skipped.
+  // options.returnBlob — hand back { name, blob } instead of downloading, so the
+  // caller can save a whole set at once. options.fileName overrides the name.
+  const prevActiveFrameId = state.activeFrameId;
+  if (options.frameId != null && state.frames.some(f => f.id === options.frameId)) state.activeFrameId = options.frameId;
   try {
     // 1. Fetch and inline required fonts + relative images as data URLs
     let html = generateExportHTML(c, null, true); // disable anims for static image
@@ -2333,20 +2418,26 @@ async function exportCanvasAsPng(c, options = {}) {
       img.src = svgUrl;
     });
 
-    const pngUrl = cnv.toDataURL('image/png');
-    const a = document.createElement('a');
     const projName = state.projectName || 'Ad';
     const fallbackSafe = projName.replace(/[^a-zA-Z0-9_-]/g, '_');
     const prefix = (options.filenamePrefix && String(options.filenamePrefix).trim())
       ? String(options.filenamePrefix).trim().replace(/[^a-zA-Z0-9_-]/g, '_')
       : fallbackSafe;
-    a.download = `${prefix}_${c.width}x${c.height}.png`;
-    a.href = pngUrl;
+    const fileName = options.fileName || `${prefix}_${c.width}x${c.height}.png`;
+    if (options.returnBlob) {
+      const blob = await new Promise(res => cnv.toBlob(res, 'image/png'));
+      return blob ? { name: fileName, blob } : null;
+    }
+    const a = document.createElement('a');
+    a.download = fileName;
+    a.href = cnv.toDataURL('image/png');
     a.click();
   } catch (err) {
     console.error('PNG export failed:', err);
     showAdflowAlert('PNG export failed. Try the ZIP export instead.');
+    return null;
   } finally {
+    state.activeFrameId = prevActiveFrameId;
     if (recorderIframe) recorderIframe.remove();
     if (cnv && cnv.parentNode) cnv.remove();
   }
@@ -3633,6 +3724,19 @@ function openExportModal() {
         </select>
         <div class="exp-note" id="exp-adserver-note"></div>
       </div>
+      <!-- PNG only, in the Ad server column's place: which frames to render. -->
+      <div id="exp-pngframes-wrap" style="display:none;">
+        <label class="exp-lbl" for="exp-png-frames">Frames</label>
+        <select class="exp-ctl" id="exp-png-frames" title="Which frames to export as PNG, for every selected size">
+          <option value="current">Current frame (Frame ${Math.max(1, state.frames.findIndex(f => f.id === state.activeFrameId) + 1)})</option>
+          <option value="all">All frames (${state.frames.length})</option>
+          <option value="pick">Choose frames…</option>
+        </select>
+        <div id="exp-png-frame-list" style="display:none; flex-wrap:wrap; gap:4px 10px; margin-top:6px;">
+          ${state.frames.map((f, i) => `<label style="display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text-main); cursor:pointer;" title="${f.skip ? 'Skipped frame — often the static fallback' : 'Frame ' + (i + 1)}"><input type="checkbox" class="exp-png-frame-chk" data-fid="${f.id}" ${f.id === state.activeFrameId ? 'checked' : ''} style="margin:0;" />Frame ${i + 1}${f.skip ? ' <span style="color:var(--text-muted);">(skipped)</span>' : ''}</label>`).join('')}
+        </div>
+        <div class="exp-note" id="exp-png-frames-note">One PNG per size.</div>
+      </div>
       ${hasVersions ? `
       <div>
         <label class="exp-lbl" for="exp-version">Data version</label>
@@ -3653,7 +3757,7 @@ function openExportModal() {
         <input type="checkbox" id="exp-skip-frames" title="Leave frames marked as skipped out of the exported ad" checked style="margin-top:3px; flex-shrink:0;" ${flaggedFrameCount === 0 ? 'disabled' : ''} />
         <div style="flex:1; min-width:0;">
           <div style="font-size:12px; font-weight:600; color:var(--text-main);">Skip frames marked as skipped${flaggedFrameCount > 0 ? ` (${flaggedFrameCount} flagged)` : ''}</div>
-          <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">${flaggedFrameCount === 0 ? 'No frames are currently flagged. Toggle "Skip Frame" on the timeline to flag one.' : 'On (default): flagged frames are excluded from HTML5 exports. Off: they\'re included. PNG always exports the active frame regardless.'}</div>
+          <div style="font-size:10.5px; color:var(--text-muted); line-height:1.4; margin-top:2px;">${flaggedFrameCount === 0 ? 'No frames are currently flagged. Toggle "Skip Frame" on the timeline to flag one.' : 'On (default): flagged frames are excluded from HTML5 exports. Off: they\'re included. PNG uses the Frames picker instead, which can include skipped frames.'}</div>
         </div>
       </label>
     </div>
@@ -4133,7 +4237,7 @@ function openExportModal() {
   // motion formats (Video / GIF), which share one control panel.
   const FORMAT_NOTES = {
     zip: 'A self-contained HTML5 package per size — the standard ad-server deliverable.',
-    png: 'A static image of the active frame, one file per size.',
+    png: 'Static images, with every animation finished, of the frames chosen beside this, for every selected size.',
     video: 'Records one loop cycle per size. H.264 MP4; falls back to WebM where MP4 encoding isn’t available.',
     gif: 'Records one loop cycle per size as a looping GIF. Capped at 256 colours, so gradients band — video keeps them clean.',
     portal: 'One offline HTML file for stakeholders with every ticked size. Plays exactly what Full preview shows.'
@@ -4173,8 +4277,43 @@ function openExportModal() {
   const adServerWrap = modalBg.querySelector('#exp-adserver-wrap');
   const adServerSel = modalBg.querySelector('#exp-adserver');
   const adServerNote = modalBg.querySelector('#exp-adserver-note');
+  // PNG puts its Frames picker in this column instead.
+  const pngFramesWrap = modalBg.querySelector('#exp-pngframes-wrap');
+  const pngFramesSel = modalBg.querySelector('#exp-png-frames');
+  const pngFrameList = modalBg.querySelector('#exp-png-frame-list');
+  const pngFramesNote = modalBg.querySelector('#exp-png-frames-note');
+  function selectedPngFrameIds() {
+    const mode = pngFramesSel ? pngFramesSel.value : 'current';
+    if (mode === 'all') return state.frames.map(f => f.id);
+    if (mode === 'pick') {
+      return Array.from(modalBg.querySelectorAll('.exp-png-frame-chk')).filter(x => x.checked)
+        .map(x => parseInt(x.dataset.fid, 10)).filter(id => state.frames.some(f => f.id === id));
+    }
+    return [state.activeFrameId];
+  }
+  function syncPngFrames() {
+    if (!pngFramesSel) return;
+    if (pngFrameList) pngFrameList.style.display = pngFramesSel.value === 'pick' ? 'flex' : 'none';
+    const n = selectedPngFrameIds().length;
+    const sizes = Array.from(chks).filter(x => x.checked).length;
+    const total = n * sizes;
+    const where = canExportToFolder() ? 'saved into a folder you pick' : 'in one zip';
+    if (pngFramesNote) pngFramesNote.textContent = !n
+      ? 'Tick at least one frame.'
+      : (n === 1 ? `One PNG per size${total > 1 ? ` (${total} files, ${where})` : ''}.`
+                 : `${n} PNGs per size, named …_frame1.png, …_frame2.png — ${total} files, ${where}.`);
+  }
+  pngFramesSel?.addEventListener('change', syncPngFrames);
+  modalBg.querySelectorAll('.exp-png-frame-chk').forEach(x => x.addEventListener('change', syncPngFrames));
+  chks.forEach(x => x.addEventListener('change', syncPngFrames));
+  modalBg.querySelector('#chk-all')?.addEventListener('change', () => setTimeout(syncPngFrames, 0));
+
   function syncAdServerColumn() {
     const on = formatSel.value === 'zip';
+    const isPng = formatSel.value === 'png';
+    if (adServerWrap) adServerWrap.style.display = isPng ? 'none' : '';
+    if (pngFramesWrap) pngFramesWrap.style.display = isPng ? '' : 'none';
+    if (isPng) syncPngFrames();
     if (adServerSel) adServerSel.disabled = !on;
     if (adServerWrap) adServerWrap.classList.toggle('is-off', !on);
     if (adServerNote) adServerNote.textContent = on ? AD_SERVER_NOTES[getExportAdServer()] : AD_SERVER_NOTES.off;
@@ -4253,15 +4392,38 @@ function openExportModal() {
     }
 
     if (format === 'png') {
-      // PNG path: one file per canvas. Wrap in dmRunExport so the
-      // selected version bakes into each render before exportCanvasAsPng
-      // snapshots it; otherwise PNGs would silently reflect whatever
-      // version was active in the editor.
-      await dmRunExport(exportVersionIdx, async () => {
-        for (const c of selectedCanvases) {
-          await exportCanvasAsPng(c, { filenamePrefix });
-        }
-      });
+      // PNG path: one file per size per chosen frame (the Frames picker). Wrapped
+      // in dmRunExport so the selected data version bakes into each render;
+      // otherwise PNGs would silently reflect whatever version the editor shows.
+      // The set is saved together: one file on its own, several into a folder in
+      // the desktop app, or one zip in a browser.
+      const frameIds = selectedPngFrameIds();
+      if (!frameIds.length) { showAdflowAlert('Tick at least one frame to export.'); return; }
+      const safe = filenamePrefix.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const multiFrame = frameIds.length > 1;
+      const total = selectedCanvases.length * frameIds.length;
+      const files = [];
+      const progress = (total > 1 && typeof showLoadingProgress === 'function') ? showLoadingProgress('Rendering PNGs…') : null;
+      try {
+        await dmRunExport(exportVersionIdx, async () => {
+          let done = 0;
+          for (const c of selectedCanvases) {
+            for (const fid of frameIds) {
+              const fNo = state.frames.findIndex(f => f.id === fid) + 1;
+              if (progress) progress.setProgress(Math.round(done / total * 100), `${c.width}×${c.height}${multiFrame ? ` · frame ${fNo}` : ''}`);
+              const r = await exportCanvasAsPng(c, {
+                filenamePrefix, frameId: fid, returnBlob: true,
+                fileName: multiFrame ? `${safe}_${c.width}x${c.height}_frame${fNo}.png` : undefined
+              });
+              if (r) files.push(r);
+              done++;
+            }
+          }
+        });
+      } finally {
+        if (progress) progress.close();
+      }
+      await saveExportFileSet(files, `${safe || 'exported_ads'}_png.zip`, { title: `Choose a folder for ${files.length} PNG files` });
       return;
     }
 
@@ -4271,7 +4433,7 @@ function openExportModal() {
 
     const prevIncludeSkipped = state._exportIncludeSkippedFrames;
     if (includeSkippedFrames) state._exportIncludeSkippedFrames = true;
-    const zip = new JSZip();
+    const adFiles = [];
     try {
       await dmRunExport(exportVersionIdx, async () => {
         for (const c of selectedCanvases) {
@@ -4280,29 +4442,17 @@ function openExportModal() {
           const html = generateExportHTML(c, adZip);
           adZip.file('index.html', html);
           const adContent = await adZip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-          zip.file(`${safePrefix}_${c.width}x${c.height}.zip`, adContent);
+          adFiles.push({ name: `${safePrefix}_${c.width}x${c.height}.zip`, blob: adContent });
         }
       });
     } finally {
       state._exportIncludeSkippedFrames = prevIncludeSkipped;
     }
 
-    const content = await zip.generateAsync({ type: 'blob' });
-    const outerName = `${safePrefix || 'exported_ads'}.zip`;
-
-    if (exportUsesPicker()) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          types: [{ description: 'Exported Ads ZIP', accept: { 'application/zip': ['.zip'] } }],
-          suggestedName: outerName
-        });
-        const writable = await handle.createWritable();
-        await writable.write(content);
-        await writable.close();
-      } catch (e) { if (e.name !== 'AbortError') console.error('Export failed:', e); }
-    } else {
-      downloadExportBlob(content, outerName);
-    }
+    // Each size is its own ad-server zip. Several of them: straight into a folder
+    // in the desktop app; one outer zip in a browser (as before). A single size is
+    // just its zip, no longer wrapped in a second one.
+    await saveExportFileSet(adFiles, `${safePrefix || 'exported_ads'}.zip`, { title: `Choose a folder for ${adFiles.length} HTML5 ZIPs` });
   });
 }
 
@@ -4601,10 +4751,18 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   const safeProj = (filenamePrefix || state.projectName || 'Ad').replace(/[^a-zA-Z0-9_-]/g, '_');
   const outerName = `${safeProj}_all_versions.zip`;
 
+  // 0. Desktop app: straight into a folder, one subfolder per version, streamed
+  //    file by file (openExportFolderWriter has ZipStreamWriter's addFile/close).
+  let folderWriter = null;
+  if (canExportToFolder()) {
+    folderWriter = await openExportFolderWriter('Choose a folder for every version — each gets its own subfolder');
+    if (!folderWriter) return;
+  }
+
   // 1. Get Writable Stream or fall back to Memory Accumulator
   let underlyingWriter = null;
   let fileHandle = null;
-  const isStreamingSupported = exportUsesPicker();
+  const isStreamingSupported = !folderWriter && exportUsesPicker();
   
   if (isStreamingSupported) {
     try {
@@ -4632,7 +4790,7 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
   }
 
   // 2. Initialize Stream Packager
-  const zipWriter = new ZipStreamWriter(underlyingWriter);
+  const zipWriter = folderWriter || new ZipStreamWriter(underlyingWriter);
 
   // 3. Setup Worker Thread
   let isCancelled = false;
@@ -4738,17 +4896,21 @@ async function dmExportAllVersionsStreaming(selectedCanvases = state.canvases, f
       progressUI.update(100, 'Export complete!', `${(totalBytesWritten / (1024 * 1024)).toFixed(2)} MB written`);
       
       // Trigger download for browser memory fallback (Safari/Firefox)
-      if (!isStreamingSupported || !fileHandle) {
+      if (!folderWriter && (!isStreamingSupported || !fileHandle)) {
         const finalBlob = new Blob(underlyingWriter.chunks, { type: 'application/zip' });
         downloadExportBlob(finalBlob, outerName);
       }
-      
-      showCanvasNotification('All versions exported successfully');
+
+      showCanvasNotification(folderWriter
+        ? `All versions exported to ${folderWriter.folder} — ${folderWriter.files} files, a subfolder per version`
+        : 'All versions exported successfully');
     }
   } catch (err) {
     console.error('Streaming version export failure:', err);
     showAdflowAlert('Version export failed: ' + err.message);
   } finally {
+    // Cancelled or failed: release the export folder without opening it.
+    if (folderWriter && !folderWriter.closed) folderWriter.close(false).catch(() => {});
     // Restore clean window environment
     window.fetch = originalFetch;
     worker.terminate();

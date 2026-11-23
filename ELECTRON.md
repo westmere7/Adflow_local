@@ -193,6 +193,17 @@ of them is code.
   `electron/main.js`; the page side is `exportUsesPicker()` in
   `scripts/export-pipeline.js`). Project saves (`.flow`, Ctrl+S) keep the
   browser's save picker, which is what lets them save over the same file.
+- **Several files go straight into a folder.** When an export produces more
+  than one file (HTML5 ZIPs for several sizes, PNGs for several sizes or
+  frames, several videos/GIFs, Export all versions), the desktop app asks for a
+  folder and writes each file into it — no outer zip — then opens the folder.
+  All versions get one subfolder each and stream file by file. The browser
+  can't write folders, so it zips the set instead. The bridge is three narrow
+  calls in `electron/preload.js` (`pickExportFolder`, `writeExportFile`,
+  `finishExportFolder`) handled in `electron/export-folder.js`: only the app's
+  own pages may call them, writes need the token of a folder the user just
+  picked, and file names are cleaned so nothing lands outside that folder.
+  Files of the same name are replaced.
 - **It still needs no network.** Everything is local: no accounts, no uploads,
   no third-party requests.
 - **The icon is the violet Adflow mark** — the same as the browser favicon: the

@@ -754,7 +754,12 @@ async function exportSelectedVideos(selectedCanvases, { format = 'video', fps = 
     }
 
     progress.update(100, 'Packaging…', '');
-    if (results.length === 1) {
+    // One file on its own; several straight into a folder in the desktop app, or
+    // one zip in a browser (saveExportFileSet, export-pipeline.js).
+    if (results.length && typeof saveExportFileSet === 'function') {
+      await saveExportFileSet(results, `${safePrefix}_${isGif ? 'gifs' : 'videos'}.zip`,
+        { title: `Choose a folder for ${results.length} ${isGif ? 'GIFs' : 'videos'}` });
+    } else if (results.length === 1) {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(results[0].blob);
       a.download = results[0].name;

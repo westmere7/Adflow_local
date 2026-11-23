@@ -1,6 +1,13 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.24 (Current) - November 2026 — Engine v3.0
+v0.65.25 (Current) - November 2026 — Engine v3.0
+- Export ▸ PNG: Frames picker (current / all / choose) replaces the Ad server
+  column; skipped frames included and labelled; files …_WxH_frameN.png.
+- Desktop app: exports of several files are written straight into a chosen
+  folder (one zip per size, subfolder per version), which then opens. Browser
+  still zips the set. One HTML5 size now saves as just its zip.
+
+v0.65.24 - November 2026 — Engine v3.0
 - Mac: two-finger scroll pans the board, pinch zooms smoothly, Cmd+scroll zooms.
   Windows unchanged.
 

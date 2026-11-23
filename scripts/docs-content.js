@@ -476,13 +476,14 @@ const DOCS_SECTIONS = [
         <p>The Export dialog's <b>Format</b> dropdown offers five outputs. The first four also appear on a canvas's own Export submenu; the fifth, the Preview portal, covers the whole set and is described in its own section below.</p>
         <ul>
           <li><b>HTML5 ZIP</b> — the real ad-server deliverable: a self-contained package per size. This is the default and the one that leads the Canvas Settings block.</li>
-          <li><b>PNG</b> — a static snapshot of the frame you're on, for networks that can't render the animation.</li>
+          <li><b>PNG</b> — static snapshots, every animation finished, for networks that can't render the animation and for the static fallback. With PNG chosen, the Ad server column becomes <b>Frames</b>: the current frame, all frames, or <b>Choose frames…</b> (skipped frames included and labelled, since the static fallback often lives in one). Several frames are named <code>…_WxH_frame1.png</code>, <code>…_frame2.png</code>.</li>
           <li><b>Video (MP4)</b> — one loop cycle recorded as H.264, for social placements, decks and sign-off emails.</li>
           <li><b>Animated GIF</b> — one loop cycle, looping forever, for chat and email where video won't embed.</li>
           <li><b>Preview portal (single HTML file)</b> — every ticked size, with the data version or versions you choose, in one offline review page for stakeholders.</li>
         </ul>
         <p>Both motion formats show an <b>estimated output size</b> before you start, updating as you change settings or tick sizes. Video estimates are an upper bound (bitrate is a ceiling and simple ads land well under it); GIF estimates are fitted, since GIF size depends on how much of the artwork actually moves.</p>
         <p>"All selected versions" works with HTML5 ZIP and the Preview portal; pick a single version to export PNG, video or GIF.</p>
+        <p><b>Several files at once.</b> When an export makes more than one file — several sizes, several frames, several videos — the <b>desktop app</b> asks for a folder and saves each file straight into it, then opens the folder; HTML5 ZIPs arrive as one ad-server zip per size, with no zip around them, and Export all versions puts each version in its own subfolder. In a <b>browser</b> the same set comes as one zip, because a web page can't write a folder. A single file is always saved on its own (one HTML5 size is now just its zip, not a zip inside a zip).</p>
       `},
       { id: 'export-ad-server', title: 'Ad server: Standard or Adobe Advertising', body: `
         <p>With <b>HTML5 ZIP</b> selected, the Export dialog's <b>Ad server</b> setting decides how the click is wired. Adflow remembers your choice, and every HTML5 ZIP export uses it, including the canvas menu and the Canvas Settings button.</p>
@@ -895,6 +896,14 @@ function renderDocsPanel(bg, activeSecId, activeSubId) {
 document.getElementById('menu-help-documentation').addEventListener('click', openDocumentation);
 
 const CHANGELOG_DATA = [
+  {
+    version: 'v0.65.25',
+    date: 'November 2026 — Engine v3.0',
+    items: [
+      "PNG Export Picks Its Frames: with PNG chosen in the Export dialog, the Ad server column (which only ever applied to HTML5 ZIP) becomes Frames — the current frame, all frames, or Choose frames… with a tick per frame. Skipped frames are listed and labelled, since a skipped frame is often the static fallback. Every chosen frame is rendered for every selected size, with all animations finished; several frames are named …_300x250_frame1.png, …_frame2.png, and the note under the picker says how many files that makes.",
+      "Desktop App Exports Several Files Straight Into a Folder: when an export makes more than one file — HTML5 ZIPs for several sizes, PNGs for several sizes or frames, several videos or GIFs, or Export all versions — the Windows and Mac apps now ask for a folder and save each file directly into it, then open the folder, instead of wrapping everything in one zip. HTML5 ZIPs arrive as one ad-server zip per size, ready to upload; Export all versions gives each version its own subfolder and streams file by file. Files of the same name in that folder are replaced. In a browser, which can't write folders, the set still comes as one zip. A single file is saved on its own everywhere — exporting one HTML5 size now gives just that ad's zip rather than a zip inside a zip."
+    ]
+  },
   {
     version: 'v0.65.24',
     date: 'November 2026 — Engine v3.0',
