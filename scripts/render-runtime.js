@@ -948,6 +948,111 @@ function frameTransEnabled(frame) {
   return !!frame && frame.transition !== 'none';
 }
 
+// ---------------------------------------------------------------------------
+// Move FX — multi-segment mode (el.panMulti + el.panSegments).
+// Each segment ("step") is { x, y, dur, ease, s, r, o }: a waypoint (offset from
+// the layer's layout position, canvas px, like panFromX/Y), the duration and
+// easing of the leg that uses it, and the layer's look AT that waypoint —
+// s scale %, r rotation °, o opacity %. The layout position has a look of its
+// own too (el.panLayoutLook, default 100% / 0° / 100%). Towards target decides
+// where the layout position sits in the chain:
+//   OFF  waypoint 1 → 2 → … → n → layout position (the move lands on the layout)
+//   ON   layout position → waypoint 1 → … → n
+// Leg i always uses segment i's duration and easing, for position AND look.
+// The whole-move Rot. offset / Target zoom / Fade are single-mode settings and
+// are not used here. The total duration is the sum of the legs and is mirrored
+// into effDuration, so the timeline bar, delay, Perform once and the timing
+// checks all keep working unchanged.
+// Keyframes are generated per layer by getPanSegmentKeyframes (export-pipeline).
+// ---------------------------------------------------------------------------
+const PAN_SEG_MAX = 5;
+const PAN_SEG_MIN_DUR = 0.05;
+const PAN_SEG_EASES = [
+  { val: 'linear', label: 'Linear' },
+  { val: 'in', label: 'Ease in' },
+  { val: 'out', label: 'Ease out' },
+  { val: 'inout', label: 'Ease in-out' },
+  { val: 'bounce', label: 'Bounce' }
+];
+
+function panMultiActive(el) {
+  return !!(el && el.effectType === 'pan' && el.panMulti && Array.isArray(el.panSegments) && el.panSegments.length > 0);
+}
+
+// Sanitised copy of the segment list (never the stored objects themselves).
+function panSegments(el) {
+  const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  const eases = PAN_SEG_EASES.map(e => e.val);
+  return (Array.isArray(el && el.panSegments) ? el.panSegments : []).slice(0, PAN_SEG_MAX).map(s => ({
+    x: num(s && s.x, 0),
+    y: num(s && s.y, 0),
+    dur: Math.max(PAN_SEG_MIN_DUR, num(s && s.dur, 1)),
+    ease: eases.includes(s && s.ease) ? s.ease : 'inout',
+    ...panSanitizeLook(s)
+  }));
+}
+
+// A look { s scale %, r rotation °, o opacity % } with defaults filled in.
+function panSanitizeLook(l) {
+  const num = (v, d) => { const n = Number(v); return Number.isFinite(n) ? n : d; };
+  return {
+    s: Math.max(1, num(l && l.s, 100)),
+    r: num(l && l.r, 0),
+    o: Math.min(100, Math.max(0, num(l && l.o, 100)))
+  };
+}
+
+// The layout position's own look (multi-segment).
+function panLayoutLook(el) {
+  return panSanitizeLook(el && el.panLayoutLook);
+}
+
+// Looks at each point of panPathPoints, in the same travel order.
+function panPathLooks(el) {
+  const looks = panSegments(el).map(s => ({ s: s.s, r: s.r, o: s.o }));
+  const home = panLayoutLook(el);
+  return el.panTowards ? [home, ...looks] : [...looks, home];
+}
+
+function panSegTotal(el) {
+  return Math.round(panSegments(el).reduce((a, s) => a + s.dur, 0) * 1000) / 1000;
+}
+
+// Points the layer passes through, in travel order, as offsets from its layout
+// position. There is always one more point than there are segments.
+function panPathPoints(el) {
+  const pts = panSegments(el).map(s => ({ x: s.x, y: s.y }));
+  return el.panTowards ? [{ x: 0, y: 0 }, ...pts] : [...pts, { x: 0, y: 0 }];
+}
+
+// True when a Move needs its own per-layer @keyframes instead of the shared
+// eff-pan / eff-pan-inverse ones (multi-segment, Towards target, or a legacy curve).
+function panUsesOwnKeyframes(el) {
+  return panMultiActive(el) || !!el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined);
+}
+
+// Mirror the segments' total into effDuration (call after editing segments).
+function panSyncDuration(el) {
+  if (panMultiActive(el)) el.effDuration = panSegTotal(el);
+}
+
+// effDuration was changed from outside the segment editor (timeline resize,
+// grid re-snap): scale every segment so they still add up to it. Replaces the
+// list rather than editing it, so a list shared by reference stays untouched.
+function panRescaleToDuration(el) {
+  if (!panMultiActive(el)) return;
+  const target = Number(el.effDuration);
+  const total = panSegTotal(el);
+  if (!Number.isFinite(target) || target <= 0 || Math.abs(target - total) < 0.001) return;
+  const k = target / total;
+  const segs = panSegments(el).map(s => ({ ...s, dur: Math.max(PAN_SEG_MIN_DUR, Math.round(s.dur * k * 100) / 100) }));
+  // Rounding can leave a hundredth over or under — settle it on the last leg.
+  const diff = Math.round((target - segs.reduce((a, s) => a + s.dur, 0)) * 100) / 100;
+  segs[segs.length - 1].dur = Math.max(PAN_SEG_MIN_DUR, Math.round((segs[segs.length - 1].dur + diff) * 100) / 100);
+  el.panSegments = segs;
+  el.effDuration = panSegTotal(el);
+}
+
 // frameCtx (optional): a presence marker passed by the export's per-frame element
 // renderer (persistent layers omit it, so they never exit). Image-export and
 // mask-effect callers omit it too, preserving their output.
@@ -1007,12 +1112,14 @@ function getElementAnimationCSS(el, isImageExport, frameCtx) {
       }
       let animName = 'eff-pan';
       let ease = el.effEase !== false ? 'ease-in-out' : 'linear';
-      if (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined)) {
+      let panDur = effDur;
+      if (panUsesOwnKeyframes(el)) {
         animName = `eff-pan-${el.id}`;
-        ease = 'linear';
+        ease = 'linear';   // easing is baked into the per-layer keyframes
       }
+      if (panMultiActive(el)) panDur = panSegTotal(el);
       const fill = el.effOnce ? 'forwards' : 'infinite';
-      if (!isImageExport) effAnims.push(`${animName} ${effDur}s ${ease} ${effDelay}s ${fill}`);
+      if (!isImageExport) effAnims.push(`${animName} ${panDur}s ${ease} ${effDelay}s ${fill}`);
       const rot = el.panRotate !== undefined ? el.panRotate : 0;
       const opStart = el.panFade ? 0 : 1;
 
@@ -1157,9 +1264,19 @@ function getInverseElementAnimationCSS(el, isImageExport, imageEl) {
       }
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';
       const fill = el.effOnce ? 'forwards' : 'infinite';
-      effAnims.push(`eff-pan-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
       const rot = el.panRotate !== undefined ? el.panRotate : 0;
-      effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg; --pan-zoom-inverse:${1 / panZoomFactor(el)};`;
+      if (panUsesOwnKeyframes(el)) {
+        // Per-layer inverse keyframes (getPanInverseKeyframes): they replay the
+        // mask's exact path backwards, so the image stays put while the mask
+        // window moves. The image's rotation enters through --pan-ic/--pan-is.
+        const rad = (imageEl ? (imageEl.rotation || 0) : 0) * Math.PI / 180;
+        const dur = panMultiActive(el) ? panSegTotal(el) : effDur;
+        effAnims.push(`eff-pan-inv-${el.id} ${dur}s linear ${effDelay}s ${fill}`);
+        effVars = `--pan-ic:${Math.cos(rad).toFixed(5)}; --pan-is:${Math.sin(rad).toFixed(5)};`;
+      } else {
+        effAnims.push(`eff-pan-inverse ${effDur}s ${ease} ${effDelay}s ${fill}`);
+        effVars = `--pan-x:${rx}px; --pan-y:${ry}px; --pan-rotate:${-rot}deg; --pan-zoom-inverse:${1 / panZoomFactor(el)};`;
+      }
     } else if (effType === 'zoom') {
       const zt = el.zoomTarget !== undefined ? el.zoomTarget / 100 : 1.5;
       const ease = el.effEase !== false ? 'ease-in-out' : 'linear';

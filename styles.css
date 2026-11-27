@@ -6399,6 +6399,146 @@ body.theme-light .outline-color-hybrid {
     stroke-dashoffset: -16;
   }
 }
+/* Multi-segment Move: panel segment editor. */
+.pan-seg-route {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin: 2px 0 8px;
+  line-height: 1.4;
+}
+/* Each step is a collapsible card: header (number, title, summary, chevron,
+   delete) and a body of ordinary panel fields shown when the card is open. */
+.pan-step {
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  margin: 0 0 6px;
+  background: transparent;
+}
+.pan-step.is-selected {
+  border-color: var(--accent-base);
+  box-shadow: inset 0 0 0 1px var(--accent-base);
+}
+.pan-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.pan-step-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.pan-step-title {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.pan-step-sum {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pan-step-chev {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--text-muted);
+  transform: rotate(-90deg);
+  transition: transform 0.15s ease;
+}
+.pan-step.is-open .pan-step-chev { transform: rotate(0deg); }
+.pan-step-ring {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin: 0 4px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-base);
+  box-sizing: border-box;
+}
+.pan-step-body {
+  padding: 2px 10px 8px;
+}
+.pan-step:not(.is-open) .pan-step-body { display: none !important; }
+.pan-seg-num {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-base);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.pan-seg-del {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+}
+.pan-seg-del:hover:not(:disabled) { color: #e5484d; background: var(--bg-input); }
+.pan-seg-del:disabled { opacity: 0.3; cursor: not-allowed; }
+.pan-seg-add {
+  margin-top: 6px;
+  width: 100%;
+  height: 26px;
+  border: 1px dashed var(--border-light);
+  background: transparent;
+  color: var(--accent-base);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pan-seg-add:hover:not(:disabled) { border-color: var(--accent-base); }
+.pan-seg-add:disabled { opacity: 0.4; cursor: not-allowed; color: var(--text-muted); }
+
+/* Multi-segment Move: numbered waypoint handles (constant on-screen size). */
+.move-guide-seg-handle {
+  position: absolute;
+  width: calc(18px / var(--z, 1));
+  height: calc(18px / var(--z, 1));
+  border-radius: 50%;
+  background: var(--accent-base);
+  border: calc(2px / var(--z, 1)) solid #fff;
+  box-shadow: 0 calc(2px / var(--z, 1)) calc(6px / var(--z, 1)) rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font: 700 calc(10px / var(--z, 1)) / 1 var(--font-ui, sans-serif);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  pointer-events: all;
+  user-select: none;
+  box-sizing: border-box;
+}
+.move-guide-seg-handle.is-selected {
+  outline: calc(2px / var(--z, 1)) solid var(--accent-base);
+  outline-offset: calc(2px / var(--z, 1));
+}
 
 /* Hide marching ants / selection outlines during hover preview animations */
 body.previewing-animation-hover .selection-outline,
@@ -6754,6 +6894,19 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   background: repeating-linear-gradient(135deg,
     rgba(255, 255, 255, 0.35) 0 calc(var(--seq-stripe) / 2.4),
     transparent calc(var(--seq-stripe) / 2.4) var(--seq-stripe));
+}
+/* Multi-segment Move: a divider at each segment boundary. `left` is measured
+   from the bar's outer edge, so pull it back by the 2px border. */
+.seq-seg-tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -3px;
+  background: #2f9e8f;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  z-index: 1;
 }
 
 /* --- Hover affordance ------------------------------------------------------

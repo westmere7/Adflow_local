@@ -661,7 +661,7 @@ function buildElementKeyframesCSS(el, opts = {}) {
     out += '\n' + getSlideKeyframes(tempEl);
   }
   if (animFxEnabled(el) && el.effectType === 'pan' && !isImageExport) {
-    out += '\n' + getPanCurveKeyframes(el);
+    out += '\n' + getPanKeyframesFor(el);
   }
   // Per-id EXIT keyframes — only when the element actually exits (its frame
   // transitions away). Static exit presets (fade/swipe/blur) use shared
@@ -1278,6 +1278,140 @@ function getPanCurveKeyframes(el) {
   }
 
   return `@keyframes ${animName} {\n${steps.join('\n')}\n    }`;
+}
+
+// ---- Move FX: multi-segment keyframes (see the model in render-runtime.js) ----
+
+// CSS timing for each segment easing. Bounce has none: it is sampled instead.
+const PAN_SEG_TIMING = {
+  linear: 'linear',
+  in: 'cubic-bezier(0.42, 0, 1, 1)',
+  out: 'cubic-bezier(0, 0, 0.58, 1)',
+  inout: 'cubic-bezier(0.42, 0, 0.58, 1)'
+};
+
+// Damped spring from 0 to 1: one overshoot (~18%) and a small undershoot, then
+// it settles exactly on 1. Same family as the Zoom entrance's Bounce.
+function panBounceProgress(s) {
+  const d = 5, f = 1.5;
+  const end = 1 - Math.exp(-d) * Math.cos(2 * Math.PI * f);
+  return (1 - Math.exp(-d * s) * Math.cos(2 * Math.PI * f * s)) / end;
+}
+
+// The move as a list of samples in travel order: { t (0..1 of the whole move),
+// x, y (canvas-space offsets from the layout position), look: { r °, o 0..1,
+// s factor }, tf (CSS timing to the next sample, or null on the last) }.
+// Ordinary easings need one sample per step boundary (the timing function
+// eases position and look together); Bounce legs are sampled, so position,
+// scale, rotation and opacity all spring with the same curve.
+function panSegmentSamples(el) {
+  const segs = panSegments(el);
+  const pts = panPathPoints(el);
+  const lks = panPathLooks(el);
+  const total = segs.reduce((a, s) => a + s.dur, 0) || 1;
+  const look = (l) => ({ r: l.r, o: l.o / 100, s: l.s / 100 });
+  const mix = (a, b, p) => a + (b - a) * p;
+  const out = [];
+  let tAcc = 0;
+  segs.forEach((s, i) => {
+    const a = pts[i], b = pts[i + 1];
+    const la = lks[i], lb = lks[i + 1];
+    if (s.ease === 'bounce') {
+      const N = 16;
+      for (let k = 0; k < N; k++) {
+        const p = panBounceProgress(k / N);
+        out.push({
+          t: (tAcc + s.dur * k / N) / total, x: mix(a.x, b.x, p), y: mix(a.y, b.y, p),
+          look: { r: mix(la.r, lb.r, p), o: Math.min(1, Math.max(0, mix(la.o, lb.o, p) / 100)), s: Math.max(0.01, mix(la.s, lb.s, p) / 100) },
+          tf: 'linear'
+        });
+      }
+    } else {
+      out.push({ t: tAcc / total, x: a.x, y: a.y, look: look(la), tf: PAN_SEG_TIMING[s.ease] || PAN_SEG_TIMING.inout });
+    }
+    tAcc += s.dur;
+  });
+  const last = pts[pts.length - 1];
+  out.push({ t: 1, x: last.x, y: last.y, look: look(lks[lks.length - 1]), tf: null });
+  return out;
+}
+
+// Single-segment move as samples — the same 21 eased steps getPanCurveKeyframes
+// writes, so masked images can replay it (see getPanInverseKeyframes).
+function panSingleSamples(el) {
+  const px = el.panFromX !== undefined ? el.panFromX : 0;
+  const py = el.panFromY !== undefined ? el.panFromY : -50;
+  const ease = el.effEase !== false;
+  const towards = !!el.panTowards;
+  const out = [];
+  for (let i = 0; i <= 20; i++) {
+    let t = i / 20;
+    if (ease) t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const factor = towards ? t : (1 - t);
+    // Rotation, fade and zoom follow the eased progress here, as in the original.
+    out.push({ t: i / 20, prog: t, x: factor * px, y: factor * py, tf: i < 20 ? 'linear' : null });
+  }
+  return out;
+}
+
+// Look (rotation °, opacity 0..1, scale factor) at a sample. Multi-segment
+// samples carry their own (per-step look); single-move samples derive it from
+// the whole-move Rot. offset / Fade / Target zoom over the eased progress.
+function panLookAt(el, sample) {
+  if (sample.look) return sample.look;
+  const u = sample.prog !== undefined ? sample.prog : sample.t;
+  const rot = el.panRotate !== undefined ? el.panRotate : 0;
+  const opStart = el.panFade ? 0 : 1;
+  const zoom = panZoomFactor(el);
+  return { r: (1 - u) * rot, o: (1 - u) * opStart + u, s: 1 + (zoom - 1) * u };
+}
+
+const panPct = (t) => `${Number((t * 100).toFixed(3))}%`;
+
+// Per-layer keyframes for a multi-segment Move.
+function getPanSegmentKeyframes(el) {
+  const angle = (el.rotation || 0) * Math.PI / 180;
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  const lines = panSegmentSamples(el).map(p => {
+    const { r, o, s } = panLookAt(el, p);
+    const lx = p.x * cos + p.y * sin;
+    const ly = -p.x * sin + p.y * cos;
+    const tf = p.tf ? ` animation-timing-function: ${p.tf};` : '';
+    return `      ${panPct(p.t)} { translate: ${lx.toFixed(1)}px ${ly.toFixed(1)}px; rotate: ${r.toFixed(1)}deg; opacity: ${o.toFixed(2)}; scale: ${s.toFixed(4)};${tf} }`;
+  });
+  return `@keyframes eff-pan-${el.id} {\n${lines.join('\n')}\n    }`;
+}
+
+// The Move keyframes a layer needs, whichever mode it is in.
+function getPanKeyframesFor(el) {
+  return panMultiActive(el) ? getPanSegmentKeyframes(el) : getPanCurveKeyframes(el);
+}
+
+// Inverse keyframes for the image under a moving mask: the exact path played
+// backwards, so the picture stays still while the mask window travels. The
+// image's own rotation comes in through --pan-ic / --pan-is (cos / sin), set by
+// getInverseElementAnimationCSS, so one set of keyframes serves any image.
+function getPanInverseKeyframes(el) {
+  const samples = panMultiActive(el) ? panSegmentSamples(el) : panSingleSamples(el);
+  const lines = samples.map(p => {
+    const { r, s } = panLookAt(el, p);
+    const nx = (-p.x).toFixed(1), ny = (-p.y).toFixed(1), x = p.x.toFixed(1);
+    const tx = `calc(${nx}px * var(--pan-ic, 1) + ${ny}px * var(--pan-is, 0))`;
+    const ty = `calc(${x}px * var(--pan-is, 0) + ${ny}px * var(--pan-ic, 1))`;
+    const tf = p.tf ? ` animation-timing-function: ${p.tf};` : '';
+    return `      ${panPct(p.t)} { translate: ${tx} ${ty}; rotate: ${(-r).toFixed(1)}deg; scale: ${(1 / s).toFixed(4)};${tf} }`;
+  });
+  return `@keyframes eff-pan-inv-${el.id} {\n${lines.join('\n')}\n    }`;
+}
+
+// Keyframes for a MASK's Move. Masks are skipped by the per-layer emitter (their
+// node is never drawn), so their per-layer Move keyframes — forward for the
+// masked wrapper, inverse for the image inside — are emitted where the mask is
+// translated onto its image: the export's mask block, the timeline playback and
+// the hover preview. '' when the mask's Move runs on the shared keyframes.
+function buildMaskPanKeyframesCSS(mask) {
+  if (!mask || mask.effectType !== 'pan' || !animFxEnabled(mask) || !panUsesOwnKeyframes(mask)) return '';
+  return '\n' + getPanKeyframesFor(mask) + '\n' + getPanInverseKeyframes(mask);
 }
 
 // Helper to calculate the keyframes for a zoom transition (with optional elastic bounce)
@@ -2814,6 +2948,9 @@ function _generateExportHTMLRaw(targetCanvas, zipRef, isImageExport = false, opt
         
         // 2. Continuous FX on the mask
         if (typeof getElementAnimationCSS === 'function' && !isImageExport) {
+          // The mask's own Move keyframes (per-layer ones only): masks are
+          // skipped by renderEl's emitter, so they're added here.
+          dynamicKeyframes += buildMaskPanKeyframesCSS(maskAbove);
           const maskEff = getElementAnimationCSS(maskAbove, isImageExport);
           if (maskEff.effConfig) {
             const animRule = maskEff.effConfig.replace('animation:', '').trim();

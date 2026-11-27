@@ -407,8 +407,8 @@ function renderImmediate(skipProps = false) {
         else if (animType === 'slide-right') { tempEl.animDirection = 'right'; tempEl.animDistance = 20; }
         dynamicStyles += '\n' + getSlideKeyframes(tempEl);
       }
-      if (el.effectType === 'pan' && (el.panTowards || (el.panMidX !== undefined && el.panMidY !== undefined))) {
-        dynamicStyles += '\n' + getPanCurveKeyframes(el);
+      if (el.effectType === 'pan' && panUsesOwnKeyframes(el)) {
+        dynamicStyles += '\n' + getPanKeyframesFor(el);
       }
     });
     
@@ -2046,6 +2046,20 @@ function sanitizeMasks(c) {
     el.maskTargetId = below.id;
   });
 }
+// Replace one named @keyframes block in the editor's dynamic style tag (used by
+// the hover/drag preview, which re-injects as values change).
+function upsertPanKeyframes(name, css) {
+  let styleTag = document.getElementById('dynamic-anim-styles');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
+    styleTag.id = 'dynamic-anim-styles';
+    document.head.appendChild(styleTag);
+  }
+  const esc = name.replace(/[-]/g, '\\-');
+  const regex = new RegExp(`@keyframes\\s+${esc}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
+  styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + css;
+}
+
 function startEffectPreview(el, tempVal) {
   if (!el) return;
   const val = tempVal !== undefined ? tempVal : (el.effectType || 'none');
@@ -2088,6 +2102,8 @@ function startEffectPreview(el, tempVal) {
       panDist: el.panDist,
       panDir: el.panDir,
       panTowards: el.panTowards,
+      panMulti: el.panMulti,
+      panSegments: el.panSegments,
       panMidX: el.panMidX,
       panMidY: el.panMidY,
       panRotate: el.panRotate,
@@ -2123,16 +2139,10 @@ function startEffectPreview(el, tempVal) {
           else px = dist;
         }
         let animName = 'eff-pan';
-        if (mergedEl.panTowards || (mergedEl.panMidX !== undefined && mergedEl.panMidY !== undefined)) {
+        const ownKf = panUsesOwnKeyframes(mergedEl);
+        if (ownKf) {
           animName = `eff-pan-${mergedEl.id}`;
-          let styleTag = document.getElementById('dynamic-anim-styles');
-          if (!styleTag) {
-            styleTag = document.createElement('style');
-            styleTag.id = 'dynamic-anim-styles';
-            document.head.appendChild(styleTag);
-          }
-          const regex = new RegExp(`@keyframes\\s+eff-pan-${mergedEl.id}\\s*\\{[\\s\\S]*?\\n\\s*\\}`, 'g');
-          styleTag.textContent = styleTag.textContent.replace(regex, '') + '\n' + getPanCurveKeyframes(mergedEl);
+          upsertPanKeyframes(`eff-pan-${mergedEl.id}`, getPanKeyframesFor(mergedEl));
         }
         const angle = (mergedEl.rotation || 0) * Math.PI / 180;
         const cos = Math.cos(angle);
@@ -2148,11 +2158,10 @@ function startEffectPreview(el, tempVal) {
         tNode.style.setProperty('--pan-opacity-start', opStart);
         tNode.style.setProperty('--pan-zoom', panZoomFactor(mergedEl));
         let ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
-        if (mergedEl.panTowards || (mergedEl.panMidX !== undefined && mergedEl.panMidY !== undefined)) {
-          ease = 'linear';
-        }
+        if (ownKf) ease = 'linear';
+        const panDur = panMultiActive(mergedEl) ? panSegTotal(mergedEl) : effDur;
         const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
-        tNode.style.animation = `${animName} ${effDur}s ${ease} 0s ${fill}`;
+        tNode.style.animation = `${animName} ${panDur}s ${ease} 0s ${fill}`;
       } else if (val === 'zoom') {
         const zt = mergedEl.zoomTarget !== undefined ? mergedEl.zoomTarget / 100 : 1.5;
         tNode.style.setProperty('--zoom-target', zt);
@@ -2240,6 +2249,17 @@ function startEffectPreview(el, tempVal) {
           rx = -px * cos - py * sin;
           ry = px * sin - py * cos;
         }
+        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
+        if (panUsesOwnKeyframes(mergedEl)) {
+          // Same per-layer inverse keyframes the export uses (getPanInverseKeyframes).
+          upsertPanKeyframes(`eff-pan-inv-${mergedEl.id}`, getPanInverseKeyframes(mergedEl));
+          const rad = (imgEl ? (imgEl.rotation || 0) : 0) * Math.PI / 180;
+          tNode.style.setProperty('--pan-ic', Math.cos(rad).toFixed(5));
+          tNode.style.setProperty('--pan-is', Math.sin(rad).toFixed(5));
+          const dur = panMultiActive(mergedEl) ? panSegTotal(mergedEl) : effDur;
+          tNode.style.animation = `eff-pan-inv-${mergedEl.id} ${dur}s linear 0s ${fill}`;
+          return;
+        }
         tNode.style.setProperty('--pan-x', rx + 'px');
         tNode.style.setProperty('--pan-y', ry + 'px');
         const rot = mergedEl.panRotate !== undefined ? mergedEl.panRotate : 0;
@@ -2247,7 +2267,6 @@ function startEffectPreview(el, tempVal) {
         tNode.style.setProperty('--pan-opacity-start', 1);
         tNode.style.setProperty('--pan-zoom-inverse', 1 / panZoomFactor(mergedEl));
         const ease = mergedEl.effEase !== false ? 'ease-in-out' : 'linear';
-        const fill = mergedEl.effOnce ? 'forwards' : 'infinite';
         tNode.style.animation = `eff-pan-inverse ${effDur}s ${ease} 0s ${fill}`;
       } else if (val === 'zoom') {
         const zt = mergedEl.zoomTarget !== undefined ? mergedEl.zoomTarget / 100 : 1.5;
@@ -3006,7 +3025,9 @@ function isolatedGroupOverlay(elements) {
 //                       full target zoom, rotation offset already gone.
 //   Towards target OFF  the layer starts AT the point → the ghost is the START:
 //                       rotation offset applied, zoom still 100%.
-function buildMoveGhost(el, c, towards) {
+// look (optional, multi-segment): { r, s } — the exact rotation offset and zoom
+// the layer has at the waypoint the ghost marks, overriding the two cases above.
+function buildMoveGhost(el, c, towards, look) {
   let node;
   try { node = elementNode(el, c).cloneNode(true); } catch (e) { return null; }
   // A copy, not the layer: drop every id so nothing finds it as the layer, and
@@ -3025,6 +3046,11 @@ function buildMoveGhost(el, c, towards) {
   node.style.opacity = '0.4';
   node.style.outline = '1px dashed var(--accent-base)';
   node.style.outlineOffset = '0';
+  if (look) {
+    if (Math.abs(look.s - 1) > 0.0001) node.style.scale = String(Number(look.s.toFixed(4)));
+    if (Math.abs(look.r) > 0.05) node.style.rotate = look.r.toFixed(1) + 'deg';
+    return node;
+  }
   const rot = el.panRotate || 0;
   const zoom = (typeof panZoomFactor === 'function') ? panZoomFactor(el) : 1;
   if (towards) { if (zoom !== 1) node.style.scale = String(zoom); }
@@ -3032,7 +3058,139 @@ function buildMoveGhost(el, c, towards) {
   return node;
 }
 
+// Which waypoint of a multi-segment Move is selected (canvas handle ↔ panel row).
+let panSegSelection = { elId: null, idx: -1 };
+function panSelectedSegIndex(el) {
+  const n = panSegments(el).length;
+  if (panSegSelection.elId === el.id && panSegSelection.idx >= 0 && panSegSelection.idx < n) return panSegSelection.idx;
+  return n - 1;
+}
+
+// Canvas guide for a multi-segment Move: dashed path through every waypoint,
+// a hollow ring at the layout position, numbered draggable handles, and the
+// optional position preview at the selected waypoint.
+function moveGuideOverlayMulti(el, c) {
+  const container = document.createElement('div');
+  container.className = 'move-guide-overlay';
+  // Above the selection outline (z 999999): a waypoint often lands on a resize
+  // handle, and the waypoint must win so it can still be grabbed and read.
+  container.style.cssText = 'position:absolute; inset:0; pointer-events:none; z-index:1000000;';
+  const cx = el.x + el.width / 2;
+  const cy = el.y + el.height / 2;
+  const towards = !!el.panTowards;
+  const SVGNS = 'http://www.w3.org/2000/svg';
+
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.style.cssText = 'position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible;';
+  const markerId = `pan-arrow-${el.id}`;
+  svg.innerHTML = `<defs><marker id="${markerId}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent-base)"/></marker></defs>`;
+  const path = document.createElementNS(SVGNS, 'path');
+  path.setAttribute('stroke', 'var(--accent-base)');
+  path.setAttribute('stroke-width', '1.5');
+  path.setAttribute('stroke-dasharray', '4,4');
+  path.setAttribute('fill', 'none');
+  path.setAttribute('class', 'move-guide-path-anim');
+  path.setAttribute('marker-end', `url(#${markerId})`);
+  svg.appendChild(path);
+  container.appendChild(svg);
+
+  const absPts = () => panPathPoints(el).map(p => ({ x: cx + p.x, y: cy + p.y }));
+  const drawPath = () => {
+    const pts = absPts();
+    path.setAttribute('d', pts.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' '));
+  };
+  drawPath();
+
+  // The layout position: where the move starts (Towards ON) or lands (OFF).
+  const anchor = document.createElement('div');
+  anchor.className = 'move-guide-anchor';
+  anchor.style.cssText = `position:absolute; left:${cx}px; top:${cy}px; width:10px; height:10px; border-radius:50%; border:2px solid var(--accent-base); background:var(--bg-panel, #fff); transform:translate(-50%,-50%); pointer-events:none;`;
+  anchor.title = towards ? 'Layout position — the move starts here' : 'Layout position — the move ends here';
+  container.appendChild(anchor);
+
+  // Position preview at the selected waypoint.
+  const selIdx = panSelectedSegIndex(el);
+  let ghost = null;
+  // The step's own look at its waypoint (scale and rotation; the copy keeps
+  // its fixed faint opacity so it stays readable).
+  const lookAt = (i) => {
+    const s = panSegments(el)[i];
+    return { r: s.r, s: s.s / 100 };
+  };
+  if (el.panGhost) {
+    ghost = buildMoveGhost(el, c, towards, lookAt(selIdx));
+    if (ghost) {
+      const s = panSegments(el)[selIdx];
+      ghost.style.left = (el.x + s.x) + 'px';
+      ghost.style.top = (el.y + s.y) + 'px';
+      ghost.title = `Waypoint ${selIdx + 1} — position preview, editor only`;
+      container.insertBefore(ghost, svg);
+    }
+  }
+
+  panSegments(el).forEach((seg, i) => {
+    const h = document.createElement('div');
+    h.className = 'move-guide-handle move-guide-seg-handle' + (i === selIdx ? ' is-selected' : '');
+    h.dataset.seg = String(i);
+    h.textContent = String(i + 1);
+    h.style.left = (cx + seg.x) + 'px';
+    h.style.top = (cy + seg.y) + 'px';
+    h.title = `Waypoint ${i + 1} — drag to move it (Shift snaps the angle). Click to edit its segment in the panel.`;
+    h.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const z = state.zoom || 1;
+      const canvasRect = e.target.closest('.canvas').getBoundingClientRect();
+      const before = JSON.stringify(el.panSegments);
+      let moved = false;
+      // The point before this one in travel order (for Shift angle snapping).
+      const travelIdx = towards ? i + 1 : i;
+      const onMove = (ev) => {
+        let nx = Math.round((ev.clientX - canvasRect.left) / z - cx);
+        let ny = Math.round((ev.clientY - canvasRect.top) / z - cy);
+        if (ev.shiftKey && travelIdx > 0) {
+          const prev = panPathPoints(el)[travelIdx - 1];
+          const dx = nx - prev.x, dy = ny - prev.y;
+          const dist = Math.hypot(dx, dy);
+          const ang = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+          nx = Math.round(prev.x + dist * Math.cos(ang));
+          ny = Math.round(prev.y + dist * Math.sin(ang));
+        }
+        moved = true;
+        const segs = panSegments(el);
+        segs[i] = { ...segs[i], x: nx, y: ny };
+        el.panSegments = segs;
+        if (i === 0) { el.panFromX = nx; el.panFromY = ny; }
+        h.style.left = (cx + nx) + 'px';
+        h.style.top = (cy + ny) + 'px';
+        drawPath();
+        if (ghost && i === selIdx) { ghost.style.left = (el.x + nx) + 'px'; ghost.style.top = (el.y + ny) + 'px'; }
+        const xi = document.getElementById(`prop-pan-seg-x-${i}`);
+        const yi = document.getElementById(`prop-pan-seg-y-${i}`);
+        if (xi) xi.value = nx;
+        if (yi) yi.value = ny;
+        startEffectPreview(el);
+      };
+      const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        panSegSelection = { elId: el.id, idx: i };
+        if (typeof panSegOpenStep === 'function') panSegOpenStep(el, i);   // expand its card in the panel
+        if (moved && JSON.stringify(el.panSegments) !== before) pushHistory();
+        renderProps();
+        render(true);
+        if (moved) startEffectPreview(el);
+      };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    });
+    container.appendChild(h);
+  });
+  return container;
+}
+
 function moveGuideOverlay(el, c) {
+  if (panMultiActive(el)) return moveGuideOverlayMulti(el, c);
   const container = document.createElement('div');
   container.className = 'move-guide-overlay';
   container.style.position = 'absolute';

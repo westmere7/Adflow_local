@@ -1,6 +1,15 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.27 (Current) - November 2026 — Engine v3.0
+v0.65.28 (Current) - November 2026 — Engine v3.0
+- Move FX: Multi-segment switch — up to 5 steps, each with its own waypoint,
+  time, easing (incl. Bounce) and Scale / Rotation / Opacity; the layout
+  position has its own look (Start / End card). Collapsible step cards,
+  numbered canvas handles, timeline dividers; resizing the FX bar scales the
+  steps. Single-segment moves unchanged.
+- Masks with a Move on its own path (Towards target or Multi-segment) now move
+  their window in exports, timeline and preview, with the image held still.
+
+v0.65.27 - November 2026 — Engine v3.0
 - Move FX: Preview position switch shows a faint copy of the layer at the handle point
   (end with Towards target on, at Target zoom; start with it off, with Rotation
   offset). Editor only — never in previews or exports.

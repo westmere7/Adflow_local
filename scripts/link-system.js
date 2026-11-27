@@ -478,9 +478,10 @@ function applyLinkSync(sourceEl, targetEl, group) {
     });
   }
   if (sync.effect) {
-    const effectProps = ['fxEnabled', 'effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panZoom', 'panFade', 'panTowards', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
+    const effectProps = ['fxEnabled', 'effectType', 'effDuration', 'effDelay', 'panDist', 'panDir', 'effEase', 'effOnce', 'effSpeed', 'zoomTarget', 'spinTarget', 'spinRepeat', 'panFromX', 'panFromY', 'panRotate', 'panZoom', 'panFade', 'panTowards', 'panMulti', 'panSegments', 'panMidX', 'panMidY', 'pulseScale', 'heartbeatScale', 'floatRange', 'floatDirection'];
     effectProps.forEach(p => {
-      if (sourceEl[p] !== undefined) targetEl[p] = sourceEl[p];
+      // panSegments is a list: copy it, or every linked size would share one.
+      if (sourceEl[p] !== undefined) targetEl[p] = (p === 'panSegments' && Array.isArray(sourceEl[p])) ? sourceEl[p].map(s => ({ ...s })) : sourceEl[p];
       else delete targetEl[p];
     });
   }

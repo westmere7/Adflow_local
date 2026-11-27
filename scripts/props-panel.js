@@ -1210,6 +1210,273 @@ function wireFrameTransitionEvents() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Move FX multi-segment editor (Animation FX → Move → Multi-segment).
+// Data model and runtime: render-runtime.js. Canvas handles: canvas-render.js
+// (moveGuideOverlayMulti). Segment edits replace el.panSegments with a fresh
+// array every time, so a list shared by reference elsewhere is never mutated.
+// ---------------------------------------------------------------------------
+// Which step cards are expanded, per layer. The selected step always opens.
+let panSegOpen = { elId: null, keys: new Set() };
+function panSegOpenSet(el) {
+  if (panSegOpen.elId !== el.id) panSegOpen = { elId: el.id, keys: new Set([String(panSelectedSegIndex(el))]) };
+  return panSegOpen.keys;
+}
+// Expand one step's card (used when its handle is picked on the canvas).
+function panSegOpenStep(el, i) {
+  panSegOpenSet(el).add(String(i));
+}
+
+function panSegmentEditorHtml(el, num) {
+  const segs = panSegments(el);
+  const sel = panSelectedSegIndex(el);
+  const open = panSegOpenSet(el);
+  const towards = !!el.panTowards;
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  const easeLabel = (v) => (PAN_SEG_EASES.find(e => e.val === v) || PAN_SEG_EASES[3]).label;
+  const easeOpts = (cur) => PAN_SEG_EASES.map(e => `<option value="${e.val}" ${e.val === cur ? 'selected' : ''}>${e.label}</option>`).join('');
+  // Look summary for a collapsed card: only what differs from 100% / 0° / 100%.
+  const lookSum = (l) => [l.s !== 100 ? `${l.s}%` : '', l.r ? `${l.r}°` : '', l.o !== 100 ? `${l.o}% opacity` : ''].filter(Boolean).join(' · ');
+  const field = (label, key, f, value, attrs, title) => `<div class="prop-row"><label>${label}</label><input type="number" class="pan-seg-control" id="prop-pan-seg-${f}-${key}" data-seg-i="${key}" data-seg-f="${f}" value="${value}" ${attrs} title="${esc(title)}" /></div>`;
+  const lookFields = (key, l, who) => `
+        ${field('Scale (%)', key, 's', l.s, 'min="1" step="1"', `Size of the layer ${who} (100 = as laid out)`)}
+        ${field('Rotation (°)', key, 'r', l.r, 'step="1"', `Rotation of the layer ${who}`)}
+        ${field('Opacity (%)', key, 'o', l.o, 'min="0" max="100" step="1"', `Opacity of the layer ${who}`)}`;
+
+  const stepCard = (s, i) => {
+    const isOpen = open.has(String(i));
+    const look = lookSum(s);
+    const sum = `${s.x}, ${s.y} · ${s.dur}s · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
+    return `
+    <div class="pan-step ${isOpen ? 'is-open' : ''} ${i === sel ? 'is-selected' : ''}" data-seg="${i}">
+      <div class="pan-step-head" data-seg-toggle="${i}" title="Show or hide step ${i + 1}'s settings">
+        <button type="button" class="pan-seg-num pan-seg-control" data-seg-pick="${i}" title="Select waypoint ${i + 1} on the canvas">${i + 1}</button>
+        <span class="pan-step-label"><span class="pan-step-title">Step ${i + 1}</span><span class="pan-step-sum">${esc(sum)}</span></span>
+        <span class="pan-step-chev" aria-hidden="true"></span>
+        <button type="button" class="pan-seg-del pan-seg-control" data-seg-del="${i}" ${segs.length <= 1 ? 'disabled' : ''} title="Remove step ${i + 1}">×</button>
+      </div>
+      <div class="pan-step-body prop-grid-2">
+        ${field('X (px)', i, 'x', s.x, 'step="1"', `Waypoint ${i + 1}: X offset from the layout position`)}
+        ${field('Y (px)', i, 'y', s.y, 'step="1"', `Waypoint ${i + 1}: Y offset from the layout position`)}
+        ${field('Time (s)', i, 'dur', s.dur, `step="0.1" min="${PAN_SEG_MIN_DUR}"`, `Step ${i + 1}: how long this leg takes`)}
+        <div class="prop-row"><label>Easing</label><select class="pan-seg-control" id="prop-pan-seg-ease-${i}" data-seg-i="${i}" data-seg-f="ease" title="Step ${i + 1}: easing of this leg (applies to position, scale, rotation and opacity)">${easeOpts(s.ease)}</select></div>
+        ${lookFields(i, s, `at waypoint ${i + 1}`)}
+      </div>
+    </div>`;
+  };
+
+  const home = panLayoutLook(el);
+  const homeOpen = open.has('home');
+  const homeLook = lookSum(home);
+  const homeTitle = towards ? 'Start · layout position' : 'End · layout position';
+  const homeCard = `
+    <div class="pan-step pan-step-home ${homeOpen ? 'is-open' : ''}" data-seg="home">
+      <div class="pan-step-head" data-seg-toggle="home" title="Show or hide the layout position's look">
+        <span class="pan-step-ring" aria-hidden="true"></span>
+        <span class="pan-step-label"><span class="pan-step-title">${homeTitle}</span><span class="pan-step-sum">${esc(homeLook || '100% · 0° · 100%')}</span></span>
+        <span class="pan-step-chev" aria-hidden="true"></span>
+      </div>
+      <div class="pan-step-body prop-grid-2">
+        ${lookFields('home', home, towards ? 'when the move starts' : 'when the move ends')}
+      </div>
+    </div>`;
+
+  const route = towards
+    ? 'Starts at the layout position, then travels through each waypoint in order.'
+    : 'Travels through each waypoint in order, then lands on the layout position.';
+  const steps = segs.map(stepCard).join('');
+  return `<div class="pan-seg-editor" style="margin-bottom:16px;">
+    <div class="prop-grid-2">
+      ${num('effDelay', 'Delay (s)', 0)}
+      <div class="prop-row"><label>Total (s)</label><input type="number" class="pan-seg-control" id="prop-pan-seg-total" value="${panSegTotal(el)}" disabled title="Sum of the step durations. Resize the FX bar on the timeline to scale every step at once." /></div>
+    </div>
+    <div class="pan-seg-route">${esc(route)}</div>
+    ${towards ? homeCard + steps : steps + homeCard}
+    <button type="button" class="pan-seg-add pan-seg-control" id="prop-pan-seg-add" ${segs.length >= PAN_SEG_MAX ? 'disabled' : ''} title="${segs.length >= PAN_SEG_MAX ? `Up to ${PAN_SEG_MAX} steps` : (towards ? 'Add a step at the end of the path' : 'Add a step just before the move lands')}">+ Add step</button>
+    <div style="display:flex; gap:16px; margin-top:10px; flex-wrap:wrap;">
+      <div class="checkbox-row"><input type="checkbox" data-k="effOnce" id="prop-eff-once" title="Run the move only once" ${el.effOnce !== false ? 'checked' : ''}/><label for="prop-eff-once" title="Run the move only once" style="cursor:pointer;">Perform once</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="panTowards" id="prop-pan-towards" title="On: start at the layout position and travel out through the waypoints. Off: travel through the waypoints and land on the layout position." ${towards ? 'checked' : ''}/><label for="prop-pan-towards" title="On: start at the layout position and travel out through the waypoints. Off: travel through the waypoints and land on the layout position." style="cursor:pointer;">Towards target</label></div>
+      <div class="checkbox-row"><input type="checkbox" data-k="panGhost" id="prop-pan-ghost" title="Show a faint copy of the layer at the selected waypoint, as it will look there — for lining things up. Editor only: never in previews or exports." ${el.panGhost ? 'checked' : ''}/><label for="prop-pan-ghost" title="Show a faint copy of the layer at the selected waypoint, as it will look there — for lining things up. Editor only: never in previews or exports." style="cursor:pointer;">Preview position</label></div>
+    </div>
+  </div>`;
+}
+
+// Wire the Multi-segment toggle and the step editor. Called from renderProps
+// after the generic input wiring (which skips .pan-seg-control).
+function wirePanSegmentEditor(el, propsEl) {
+  const toggle = propsEl.querySelector('#prop-pan-multi');
+  if (!toggle) return;
+  const commit = (opts = {}) => {
+    panSyncDuration(el);
+    if (opts.history !== false) pushHistory();
+    if (opts.rerenderPanel) renderProps();
+    render(true);
+    if (opts.preview) startEffectPreview(el);
+  };
+  const setSegs = (segs) => {
+    el.panSegments = segs.map(s => ({ ...s }));
+    // panFromX/Y mirrors waypoint 1 so single-move code paths stay meaningful.
+    if (segs.length) { el.panFromX = segs[0].x; el.panFromY = segs[0].y; }
+  };
+
+  toggle.addEventListener('change', () => {
+    if (toggle.checked) {
+      if (!Array.isArray(el.panSegments) || !el.panSegments.length) {
+        // Seed step 1 from the current single move — position, timing, and the
+        // whole-move Rot. offset / Fade (start) and Target zoom (end) as looks —
+        // so the move looks the same the moment the switch goes on.
+        const zoomPct = Math.round(panZoomFactor(el) * 100);
+        const startLook = { s: 100, r: el.panRotate !== undefined ? Number(el.panRotate) || 0 : 0, o: el.panFade ? 0 : 100 };
+        const endLook = { s: zoomPct, r: 0, o: 100 };
+        const towards = !!el.panTowards;
+        setSegs([{
+          x: el.panFromX !== undefined ? el.panFromX : 0,
+          y: el.panFromY !== undefined ? el.panFromY : -50,
+          dur: Number(el.effDuration) > 0 ? Number(el.effDuration) : 5,
+          ease: el.effEase !== false ? 'inout' : 'linear',
+          ...(towards ? endLook : startLook)
+        }]);
+        el.panLayoutLook = towards ? startLook : endLook;
+      }
+      el.panMulti = true;
+      panSegSelection = { elId: el.id, idx: 0 };
+      panSegOpen = { elId: el.id, keys: new Set(['0']) };
+    } else {
+      // Keep the steps so switching back restores them.
+      el.panMulti = false;
+    }
+    commit({ rerenderPanel: true });
+  });
+
+  if (!panMultiActive(el)) return;
+
+  const pick = (i) => {
+    panSegSelection = { elId: el.id, idx: i };
+    propsEl.querySelectorAll('.pan-step[data-seg]').forEach(r => r.classList.toggle('is-selected', r.dataset.seg === String(i)));
+    render(true);   // moves the canvas highlight and the position preview
+  };
+  propsEl.querySelectorAll('[data-seg-pick]').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const i = Number(b.dataset.segPick);
+    const card = b.closest('.pan-step');
+    panSegOpenSet(el).add(String(i));
+    if (card) card.classList.add('is-open');
+    pick(i);
+  }));
+
+  // Expand / collapse a card by clicking its header (not its buttons).
+  propsEl.querySelectorAll('[data-seg-toggle]').forEach(head => head.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    const key = head.dataset.segToggle;
+    const keys = panSegOpenSet(el);
+    const card = head.closest('.pan-step');
+    if (keys.has(key)) { keys.delete(key); card.classList.remove('is-open'); }
+    else { keys.add(key); card.classList.add('is-open'); if (key !== 'home') pick(Number(key)); }
+  }));
+
+  // Collapsed-card summary, kept current while typing.
+  const easeLabel = (v) => (PAN_SEG_EASES.find(x => x.val === v) || PAN_SEG_EASES[3]).label;
+  const lookSum = (l) => [l.s !== 100 ? `${l.s}%` : '', l.r ? `${l.r}°` : '', l.o !== 100 ? `${l.o}% opacity` : ''].filter(Boolean).join(' · ');
+  const refreshSummary = (key) => {
+    const card = propsEl.querySelector(`.pan-step[data-seg="${key}"] .pan-step-sum`);
+    if (!card) return;
+    if (key === 'home') { card.textContent = lookSum(panLayoutLook(el)) || '100% · 0° · 100%'; return; }
+    const s = panSegments(el)[Number(key)];
+    if (!s) return;
+    const look = lookSum(s);
+    card.textContent = `${s.x}, ${s.y} · ${s.dur}s · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
+  };
+
+  propsEl.querySelectorAll('input[data-seg-f], select[data-seg-f]').forEach(inp => {
+    const key = inp.dataset.segI;
+    const isHome = key === 'home';
+    const i = isHome ? -1 : Number(key);
+    const f = inp.dataset.segF;
+    if (!isHome) inp.addEventListener('focus', () => {
+      if (panSegSelection.elId !== el.id || panSegSelection.idx !== i) pick(i);
+    });
+    const apply = () => {
+      let v;
+      if (f === 'ease') v = inp.value;
+      else {
+        if (inp.value === '') return false;
+        v = Number(inp.value);
+        if (!Number.isFinite(v)) return false;
+        if (f === 'dur') v = Math.max(PAN_SEG_MIN_DUR, v);
+        if (f === 's') v = Math.max(1, v);
+        if (f === 'o') v = Math.min(100, Math.max(0, v));
+      }
+      if (isHome) {
+        el.panLayoutLook = { ...panLayoutLook(el), [f]: v };
+      } else {
+        const segs = panSegments(el);
+        if (!segs[i]) return false;
+        segs[i][f] = v;
+        setSegs(segs);
+        const tot = propsEl.querySelector('#prop-pan-seg-total');
+        if (tot) tot.value = Math.round(segs.reduce((a, s) => a + s.dur, 0) * 1000) / 1000;
+      }
+      refreshSummary(key);
+      return true;
+    };
+    if (inp.tagName === 'SELECT') {
+      inp.addEventListener('change', () => { if (apply()) commit({ preview: true }); });
+    } else {
+      inp.addEventListener('input', () => { if (apply()) { panSyncDuration(el); render(true); } });
+      inp.addEventListener('change', () => {
+        if (f === 'dur' && Number(inp.value) < PAN_SEG_MIN_DUR) inp.value = PAN_SEG_MIN_DUR;
+        if (f === 's' && Number(inp.value) < 1) inp.value = 1;
+        if (f === 'o') inp.value = Math.min(100, Math.max(0, Number(inp.value) || 0));
+        apply();
+        commit();
+      });
+    }
+  });
+
+  const addBtn = propsEl.querySelector('#prop-pan-seg-add');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    const segs = panSegments(el);
+    if (segs.length >= PAN_SEG_MAX) return;
+    const last = segs[segs.length - 1];
+    let nx, ny;
+    if (el.panTowards) {
+      // Extend the path beyond the last waypoint, along the last leg's heading.
+      const pts = panPathPoints(el);
+      const a = pts[pts.length - 2], b = pts[pts.length - 1];
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      const ux = len ? (b.x - a.x) / len : 0, uy = len ? (b.y - a.y) / len : -1;
+      nx = Math.round(b.x + ux * 50); ny = Math.round(b.y + uy * 50);
+    } else {
+      // The path lands on the layout position — slot the new waypoint halfway
+      // between the last waypoint and the layout position.
+      nx = Math.round(last.x / 2); ny = Math.round(last.y / 2);
+    }
+    // The new step starts with the previous waypoint's look (no change in look).
+    segs.push({ x: nx, y: ny, dur: 1, ease: last.ease, s: last.s, r: last.r, o: last.o });
+    setSegs(segs);
+    const idx = segs.length - 1;
+    panSegSelection = { elId: el.id, idx };
+    panSegOpenSet(el).add(String(idx));
+    commit({ rerenderPanel: true, preview: true });
+  });
+
+  propsEl.querySelectorAll('[data-seg-del]').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const i = Number(b.dataset.segDel);
+    const segs = panSegments(el);
+    if (segs.length <= 1) return;
+    segs.splice(i, 1);
+    setSegs(segs);
+    const cur = panSelectedSegIndex(el);
+    panSegSelection = { elId: el.id, idx: Math.min(cur > i ? cur - 1 : cur, segs.length - 1) };
+    // Re-key the open cards past the removed one.
+    const keys = panSegOpenSet(el);
+    const moved = new Set([...keys].map(k => (k === 'home' ? k : (Number(k) > i ? String(Number(k) - 1) : (Number(k) === i ? null : k)))).filter(Boolean));
+    panSegOpen = { elId: el.id, keys: moved };
+    commit({ rerenderPanel: true, preview: true });
+  }));
+}
+
 // First-time defaults when an effect preset is chosen — shared by the props
 // panel's dropdown and the sequencer's preset popover so both entry points
 // initialise a preset identically.
@@ -3363,6 +3630,12 @@ function renderProps() {
         }
         const px_val = el.panFromX !== undefined ? el.panFromX : 0;
         const py_val = el.panFromY !== undefined ? el.panFromY : -50;
+        const multiTitle = 'Split the move into up to 5 segments, each with its own end point, duration and easing (including Bounce).';
+        const multiToggle = `<div class="checkbox-row" style="margin:-4px 0 10px;"><input type="checkbox" class="pan-seg-control" id="prop-pan-multi" title="${multiTitle}" ${panMultiActive(el) ? 'checked' : ''}/><label for="prop-pan-multi" title="${multiTitle}" style="cursor:pointer;">Multi-segment</label></div>`;
+        if (panMultiActive(el)) {
+          f.push(multiToggle + panSegmentEditorHtml(el, num));
+        } else {
+        f.push(multiToggle);
         f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
         ${num('effDuration', 'Duration (s)', 5)}
         ${num('effDelay', 'Delay (s)', 0)}
@@ -3379,6 +3652,7 @@ function renderProps() {
         <div class="checkbox-row"><input type="checkbox" data-k="panGhost" id="prop-pan-ghost" title="Show a faint copy of the layer at the point you drag, as it will look there — for lining things up. Editor only: never in previews or exports." ${el.panGhost ? 'checked' : ''}/><label for="prop-pan-ghost" title="Show a faint copy of the layer at the point you drag, as it will look there — for lining things up. Editor only: never in previews or exports." style="cursor:pointer;">Preview position</label></div>
       </div>
       </div>`);
+        }
       } else if (el.effectType === 'zoom') {
         f.push(`<div class="prop-row" style="margin-bottom:16px; margin-top:-8px;"><div class="prop-grid-2">
         ${num('effDuration', 'Duration (s)', 5)}
@@ -3704,7 +3978,7 @@ function checkButtonFontSizeWarning(el) {
   };
 
   propsEl.querySelectorAll('input, select, textarea').forEach((inp) => {
-    if (inp.classList.contains('dm-control') || (inp.id && inp.id.startsWith('frame-trans'))) return; // dynamic-data and frame transitions controls wired separately
+    if (inp.classList.contains('dm-control') || inp.classList.contains('pan-seg-control') || (inp.id && inp.id.startsWith('frame-trans'))) return; // dynamic-data, Move segment and frame transitions controls wired separately
     inp.addEventListener('input', () => {
       let val = inp.type === 'number' ? (inp.value === '' ? undefined : Number(inp.value)) : (inp.type === 'checkbox' ? inp.checked : inp.value);
       if (inp.type === 'number' && inp.value !== '' && val !== undefined) {
@@ -3736,12 +4010,13 @@ function checkButtonFontSizeWarning(el) {
     });
     inp.addEventListener('change', () => {
       pushHistory();
-      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'cursorShow' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType' || inp.dataset.k === 'exitStart') renderProps();
+      if (inp.dataset.k === 'fontFamily' || inp.dataset.k === 'hasBg' || inp.dataset.k === 'animateBg' || inp.dataset.k === 'animFadeBg' || inp.dataset.k === 'animFadeLetters' || inp.dataset.k === 'lineHeightAuto' || inp.dataset.k === 'autoSize' || inp.dataset.k === 'maxFontSize' || inp.dataset.k === 'lockRatio' || inp.dataset.k === 'wrapText' || inp.dataset.k === 'wrapMinSize' || inp.dataset.k === 'animStaggerText' || inp.dataset.k === 'cursorShow' || inp.dataset.k === 'exitEnabled' || inp.dataset.k === 'exitType' || inp.dataset.k === 'exitStart' || (inp.dataset.k === 'panTowards' && panMultiActive(el))) renderProps();
     });
     // Shift+scroll to nudge number fields is handled app-wide by
     // scripts/numeric-wheel.js — it re-dispatches 'input' and (debounced)
     // 'change', so the two listeners above do the actual work.
   });
+  if (el.effectType === 'pan') wirePanSegmentEditor(el, propsEl);
 
   // Dynamic-data controls (data-merge). Toggling a field flag propagates across the
   // element's link group so a logical slot stays consistent across all sizes.

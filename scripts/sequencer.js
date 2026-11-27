@@ -150,6 +150,7 @@ function seqSignature() {
     animInEnabled(el) ? 1 : 0, el.animType || '', el.animDelay, el.animDuration,
     el.exitEnabled ? 1 : 0, el.exitType || '', el.exitStart, el.exitDuration,
     animFxEnabled(el) ? 1 : 0, el.effectType || '', el.effDelay, el.effDuration, el.effOnce ? 1 : 0,
+    (typeof panMultiActive === 'function' && panMultiActive(el)) ? panSegments(el).map(s => s.dur).join('/') : '',
     el.text ? String(el.text).slice(0, 20) : ''
   ].join(','));
   return [c.id, c.width + 'x' + c.height, frame ? frame.id : 0, frame ? frame.duration : 0,
@@ -221,6 +222,8 @@ function seqCommit(el, pairs, opts = {}) {
     render(true);
   };
   Object.entries(pairs).forEach(([k, v]) => up(k, v));
+  // A resized multi-segment Move keeps its segments' proportions.
+  if ('effDuration' in pairs && typeof panRescaleToDuration === 'function') panRescaleToDuration(el);
   // Keep the frame long enough for the moved animation (same undo entry).
   if (opts.syncFrame) seqSyncFrameDuration();
   pushHistory();
@@ -402,7 +405,10 @@ function seqResnapVisible(step) {
     ['animDelay', 'animDuration', 'exitStart', 'exitDuration', 'effDelay', 'effDuration'].forEach(k => {
       if (el[k] === undefined) return;
       const snapped = Math.max(k.includes('Duration') ? SEQ_MIN_DUR : 0, snapTo(Number(el[k])));
-      if (snapped !== Number(el[k])) { el[k] = snapped; changed = true; }
+      if (snapped !== Number(el[k])) {
+        el[k] = snapped; changed = true;
+        if (k === 'effDuration' && typeof panRescaleToDuration === 'function') panRescaleToDuration(el);
+      }
     });
   });
   if (changed) {
@@ -495,9 +501,19 @@ function seqRenderBody() {
     // gets resize handles (the dimmed IN/OUT bars can't intercept them).
     const editing = seqFxEditId === el.id;
     const fxLabel = seqPresetLabel('fx', el.effectType);
+    // Multi-segment Move: a thin tick at each segment boundary (first cycle).
+    let segTicks = '';
+    if (typeof panMultiActive === 'function' && panMultiActive(el)) {
+      let acc = 0;
+      segTicks = panSegments(el).slice(0, -1).map(s => {
+        acc += s.dur;
+        return `<span class="seq-seg-tick" style="left:${(acc * pxPerSec).toFixed(1)}px;"></span>`;
+      }).join('');
+    }
     return `<div class="seq-fx-veil ${b.infinite ? 'seq-fx-veil-infinite' : ''}"
       data-el="${el.id}" data-veil="fx" style="${geom}"
       title="${editing ? `FX · ${fxLabel} — drag to move, drag edges to resize. Esc to exit.` : `FX · ${fxLabel} — click to isolate for editing, drag to move. Over an IN/OUT bar underneath: drag to move it, or drag from its end to resize it.`}">
+      ${segTicks}
       ${editing ? '<span class="seq-handle seq-handle-l"></span>' : ''}
       ${editing && !b.infinite ? '<span class="seq-handle seq-handle-r"></span>' : ''}
     </div>`;
@@ -1258,6 +1274,9 @@ function seqStartPlayback() {
         }
         maxEnd = Math.max(maxEnd, mStart + mDur);
       }
+      // The mask's per-layer Move keyframes (forward + inverse) — masks never
+      // reach buildElementKeyframesCSS above, so they're emitted here.
+      if (typeof buildMaskPanKeyframesCSS === 'function') kf += buildMaskPanKeyframesCSS(m);
       const me = getElementAnimationCSS(m, false);
       if (me.effAnimList && me.effAnimList.length) {
         addAnims(node, me.effAnimList);
