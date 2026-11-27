@@ -150,7 +150,7 @@ function seqSignature() {
     animInEnabled(el) ? 1 : 0, el.animType || '', el.animDelay, el.animDuration,
     el.exitEnabled ? 1 : 0, el.exitType || '', el.exitStart, el.exitDuration,
     animFxEnabled(el) ? 1 : 0, el.effectType || '', el.effDelay, el.effDuration, el.effOnce ? 1 : 0,
-    (typeof panMultiActive === 'function' && panMultiActive(el)) ? panSegments(el).map(s => s.dur).join('/') : '',
+    (typeof panMultiActive === 'function' && panMultiActive(el)) ? panSegments(el).map(s => s.dur + '+' + s.stay).join('/') : '',
     el.text ? String(el.text).slice(0, 20) : ''
   ].join(','));
   return [c.id, c.width + 'x' + c.height, frame ? frame.id : 0, frame ? frame.duration : 0,
@@ -501,14 +501,25 @@ function seqRenderBody() {
     // gets resize handles (the dimmed IN/OUT bars can't intercept them).
     const editing = seqFxEditId === el.id;
     const fxLabel = seqPresetLabel('fx', el.effectType);
-    // Multi-segment Move: a thin tick at each segment boundary (first cycle).
+    // Multi-segment Move — still ONE self-contained FX bar, drawn as its steps
+    // (first cycle): the striped bar is the transitions, each stay is a solid
+    // hold block at its waypoint, and a divider marks each step boundary.
+    // Towards target OFF stays BEFORE the step's transition, ON stays after.
     let segTicks = '';
     if (typeof panMultiActive === 'function' && panMultiActive(el)) {
+      const towards = !!el.panTowards;
+      const segs = panSegments(el);
+      const px = (t) => (t * pxPerSec).toFixed(1);
       let acc = 0;
-      segTicks = panSegments(el).slice(0, -1).map(s => {
-        acc += s.dur;
-        return `<span class="seq-seg-tick" style="left:${(acc * pxPerSec).toFixed(1)}px;"></span>`;
-      }).join('');
+      segs.forEach((s, i) => {
+        const stayStart = towards ? acc + s.dur : acc;
+        if (s.stay > 0) {
+          const w = s.stay * pxPerSec;
+          segTicks += `<span class="seq-seg-stay" style="left:${px(stayStart)}px; width:${w.toFixed(1)}px;">${w >= 34 ? 'stay' : ''}</span>`;
+        }
+        acc += s.dur + s.stay;   // a step = its transition + its stay
+        if (i < segs.length - 1) segTicks += `<span class="seq-seg-tick" style="left:${px(acc)}px;"></span>`;
+      });
     }
     return `<div class="seq-fx-veil ${b.infinite ? 'seq-fx-veil-infinite' : ''}"
       data-el="${el.id}" data-veil="fx" style="${geom}"

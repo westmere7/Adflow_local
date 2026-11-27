@@ -1,6 +1,12 @@
 RMIT Adflow - Version & Changelog History
 
-v0.65.28 (Current) - November 2026 — Engine v3.0
+v0.65.29 (Current) - November 2026 — Engine v3.0
+- Move FX Multi-segment: each step has Transition and Stay timings. Stay holds
+  the layer at the waypoint (after arriving with Towards target on, before
+  moving on with it off). Timeline: one FX bar with striped transitions, solid
+  STAY blocks and step dividers; resizing scales both. Stays default to 0.
+
+v0.65.28 - November 2026 — Engine v3.0
 - Move FX: Multi-segment switch — up to 5 steps, each with its own waypoint,
   time, easing (incl. Bounce) and Scale / Rotation / Opacity; the layout
   position has its own look (Start / End card). Collapsible step cards,

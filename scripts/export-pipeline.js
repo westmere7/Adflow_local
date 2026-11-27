@@ -1308,12 +1308,22 @@ function panSegmentSamples(el) {
   const segs = panSegments(el);
   const pts = panPathPoints(el);
   const lks = panPathLooks(el);
-  const total = segs.reduce((a, s) => a + s.dur, 0) || 1;
+  const towards = !!el.panTowards;
+  const total = segs.reduce((a, s) => a + s.dur + s.stay, 0) || 1;
   const look = (l) => ({ r: l.r, o: l.o / 100, s: l.s / 100 });
   const mix = (a, b, p) => a + (b - a) * p;
   const out = [];
   let tAcc = 0;
+  // A stay: park at path point p (position and look unchanged) for `secs`.
+  const hold = (p, secs) => {
+    out.push({ t: tAcc / total, x: pts[p].x, y: pts[p].y, look: look(lks[p]), tf: 'linear' });
+    tAcc += secs;
+  };
   segs.forEach((s, i) => {
+    // Step i's waypoint is path point i (Towards OFF: it's where leg i starts,
+    // so the stay comes first) or path point i + 1 (ON: where leg i ends, so
+    // the stay comes after the transition).
+    if (!towards && s.stay > 0) hold(i, s.stay);
     const a = pts[i], b = pts[i + 1];
     const la = lks[i], lb = lks[i + 1];
     if (s.ease === 'bounce') {
@@ -1330,6 +1340,7 @@ function panSegmentSamples(el) {
       out.push({ t: tAcc / total, x: a.x, y: a.y, look: look(la), tf: PAN_SEG_TIMING[s.ease] || PAN_SEG_TIMING.inout });
     }
     tAcc += s.dur;
+    if (towards && s.stay > 0) hold(i + 1, s.stay);
   });
   const last = pts[pts.length - 1];
   out.push({ t: 1, x: last.x, y: last.y, look: look(lks[lks.length - 1]), tf: null });

@@ -950,10 +950,12 @@ function frameTransEnabled(frame) {
 
 // ---------------------------------------------------------------------------
 // Move FX — multi-segment mode (el.panMulti + el.panSegments).
-// Each segment ("step") is { x, y, dur, ease, s, r, o }: a waypoint (offset from
-// the layer's layout position, canvas px, like panFromX/Y), the duration and
-// easing of the leg that uses it, and the layer's look AT that waypoint —
-// s scale %, r rotation °, o opacity %. The layout position has a look of its
+// Each segment ("step") is { x, y, dur, stay, ease, s, r, o }: a waypoint (offset
+// from the layer's layout position, canvas px, like panFromX/Y), the transition
+// time (dur) and easing of the leg that uses it, how long the layer STAYS at the
+// waypoint (stay — after arriving with Towards target on; before leaving with it
+// off), and the layer's look AT that waypoint — s scale %, r rotation °,
+// o opacity %. The layout position has a look of its
 // own too (el.panLayoutLook, default 100% / 0° / 100%). Towards target decides
 // where the layout position sits in the chain:
 //   OFF  waypoint 1 → 2 → … → n → layout position (the move lands on the layout)
@@ -987,6 +989,7 @@ function panSegments(el) {
     x: num(s && s.x, 0),
     y: num(s && s.y, 0),
     dur: Math.max(PAN_SEG_MIN_DUR, num(s && s.dur, 1)),
+    stay: Math.max(0, num(s && s.stay, 0)),
     ease: eases.includes(s && s.ease) ? s.ease : 'inout',
     ...panSanitizeLook(s)
   }));
@@ -1014,8 +1017,11 @@ function panPathLooks(el) {
   return el.panTowards ? [home, ...looks] : [...looks, home];
 }
 
+// A step's share of the move: its transition plus its stay at the waypoint.
+const panStepTime = (s) => s.dur + s.stay;
+
 function panSegTotal(el) {
-  return Math.round(panSegments(el).reduce((a, s) => a + s.dur, 0) * 1000) / 1000;
+  return Math.round(panSegments(el).reduce((a, s) => a + panStepTime(s), 0) * 1000) / 1000;
 }
 
 // Points the layer passes through, in travel order, as offsets from its layout
@@ -1045,9 +1051,14 @@ function panRescaleToDuration(el) {
   const total = panSegTotal(el);
   if (!Number.isFinite(target) || target <= 0 || Math.abs(target - total) < 0.001) return;
   const k = target / total;
-  const segs = panSegments(el).map(s => ({ ...s, dur: Math.max(PAN_SEG_MIN_DUR, Math.round(s.dur * k * 100) / 100) }));
-  // Rounding can leave a hundredth over or under — settle it on the last leg.
-  const diff = Math.round((target - segs.reduce((a, s) => a + s.dur, 0)) * 100) / 100;
+  // Transitions and stays scale together, keeping each step's rhythm.
+  const segs = panSegments(el).map(s => ({
+    ...s,
+    dur: Math.max(PAN_SEG_MIN_DUR, Math.round(s.dur * k * 100) / 100),
+    stay: Math.max(0, Math.round(s.stay * k * 100) / 100)
+  }));
+  // Rounding can leave a hundredth over or under — settle it on the last transition.
+  const diff = Math.round((target - segs.reduce((a, s) => a + panStepTime(s), 0)) * 100) / 100;
   segs[segs.length - 1].dur = Math.max(PAN_SEG_MIN_DUR, Math.round((segs[segs.length - 1].dur + diff) * 100) / 100);
   el.panSegments = segs;
   el.effDuration = panSegTotal(el);

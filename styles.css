@@ -6472,6 +6472,7 @@ body.theme-light .outline-color-hybrid {
   padding: 2px 10px 8px;
 }
 .pan-step:not(.is-open) .pan-step-body { display: none !important; }
+.pan-step-body .pan-step-wide { grid-column: 1 / -1; }
 .pan-seg-num {
   flex: none;
   width: 20px;
@@ -6905,6 +6906,26 @@ body.fullscreen-mode #sequencer-panel { display: none; }
   margin-left: -3px;
   background: #2f9e8f;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  z-index: 1;
+}
+/* Multi-segment Move: a step's stay (hold at its waypoint) — solid, so it reads
+   apart from the striped transitions. Same 2px border offset as the ticks. */
+.seq-seg-stay {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  margin-left: -2px;
+  background: rgba(47, 158, 143, 0.88);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   pointer-events: none;
   z-index: 1;
 }

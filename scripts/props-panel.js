@@ -1246,7 +1246,7 @@ function panSegmentEditorHtml(el, num) {
   const stepCard = (s, i) => {
     const isOpen = open.has(String(i));
     const look = lookSum(s);
-    const sum = `${s.x}, ${s.y} · ${s.dur}s · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
+    const sum = `${s.x}, ${s.y} · ${s.dur}s${s.stay ? ` + ${s.stay}s stay` : ''} · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
     return `
     <div class="pan-step ${isOpen ? 'is-open' : ''} ${i === sel ? 'is-selected' : ''}" data-seg="${i}">
       <div class="pan-step-head" data-seg-toggle="${i}" title="Show or hide step ${i + 1}'s settings">
@@ -1258,8 +1258,9 @@ function panSegmentEditorHtml(el, num) {
       <div class="pan-step-body prop-grid-2">
         ${field('X (px)', i, 'x', s.x, 'step="1"', `Waypoint ${i + 1}: X offset from the layout position`)}
         ${field('Y (px)', i, 'y', s.y, 'step="1"', `Waypoint ${i + 1}: Y offset from the layout position`)}
-        ${field('Time (s)', i, 'dur', s.dur, `step="0.1" min="${PAN_SEG_MIN_DUR}"`, `Step ${i + 1}: how long this leg takes`)}
-        <div class="prop-row"><label>Easing</label><select class="pan-seg-control" id="prop-pan-seg-ease-${i}" data-seg-i="${i}" data-seg-f="ease" title="Step ${i + 1}: easing of this leg (applies to position, scale, rotation and opacity)">${easeOpts(s.ease)}</select></div>
+        ${field('Transition (s)', i, 'dur', s.dur, `step="0.1" min="${PAN_SEG_MIN_DUR}"`, `Step ${i + 1}: how long the move to this waypoint takes`)}
+        ${field('Stay (s)', i, 'stay', s.stay, 'step="0.1" min="0"', towards ? `Step ${i + 1}: how long the layer holds at this waypoint before the next step` : `Step ${i + 1}: how long the layer holds at this waypoint before it moves on`)}
+        <div class="prop-row pan-step-wide"><label>Easing</label><select class="pan-seg-control" id="prop-pan-seg-ease-${i}" data-seg-i="${i}" data-seg-f="ease" title="Step ${i + 1}: easing of this leg (applies to position, scale, rotation and opacity)">${easeOpts(s.ease)}</select></div>
         ${lookFields(i, s, `at waypoint ${i + 1}`)}
       </div>
     </div>`;
@@ -1288,7 +1289,7 @@ function panSegmentEditorHtml(el, num) {
   return `<div class="pan-seg-editor" style="margin-bottom:16px;">
     <div class="prop-grid-2">
       ${num('effDelay', 'Delay (s)', 0)}
-      <div class="prop-row"><label>Total (s)</label><input type="number" class="pan-seg-control" id="prop-pan-seg-total" value="${panSegTotal(el)}" disabled title="Sum of the step durations. Resize the FX bar on the timeline to scale every step at once." /></div>
+      <div class="prop-row"><label>Total (s)</label><input type="number" class="pan-seg-control" id="prop-pan-seg-total" value="${panSegTotal(el)}" disabled title="Sum of every step's transition and stay. Resize the FX bar on the timeline to scale them all at once." /></div>
     </div>
     <div class="pan-seg-route">${esc(route)}</div>
     ${towards ? homeCard + steps : steps + homeCard}
@@ -1333,6 +1334,7 @@ function wirePanSegmentEditor(el, propsEl) {
           x: el.panFromX !== undefined ? el.panFromX : 0,
           y: el.panFromY !== undefined ? el.panFromY : -50,
           dur: Number(el.effDuration) > 0 ? Number(el.effDuration) : 5,
+          stay: 0,
           ease: el.effEase !== false ? 'inout' : 'linear',
           ...(towards ? endLook : startLook)
         }]);
@@ -1384,7 +1386,7 @@ function wirePanSegmentEditor(el, propsEl) {
     const s = panSegments(el)[Number(key)];
     if (!s) return;
     const look = lookSum(s);
-    card.textContent = `${s.x}, ${s.y} · ${s.dur}s · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
+    card.textContent = `${s.x}, ${s.y} · ${s.dur}s${s.stay ? ` + ${s.stay}s stay` : ''} · ${easeLabel(s.ease)}${look ? ' · ' + look : ''}`;
   };
 
   propsEl.querySelectorAll('input[data-seg-f], select[data-seg-f]').forEach(inp => {
@@ -1403,6 +1405,7 @@ function wirePanSegmentEditor(el, propsEl) {
         v = Number(inp.value);
         if (!Number.isFinite(v)) return false;
         if (f === 'dur') v = Math.max(PAN_SEG_MIN_DUR, v);
+        if (f === 'stay') v = Math.max(0, v);
         if (f === 's') v = Math.max(1, v);
         if (f === 'o') v = Math.min(100, Math.max(0, v));
       }
@@ -1414,7 +1417,7 @@ function wirePanSegmentEditor(el, propsEl) {
         segs[i][f] = v;
         setSegs(segs);
         const tot = propsEl.querySelector('#prop-pan-seg-total');
-        if (tot) tot.value = Math.round(segs.reduce((a, s) => a + s.dur, 0) * 1000) / 1000;
+        if (tot) tot.value = Math.round(segs.reduce((a, s) => a + s.dur + s.stay, 0) * 1000) / 1000;
       }
       refreshSummary(key);
       return true;
@@ -1425,6 +1428,7 @@ function wirePanSegmentEditor(el, propsEl) {
       inp.addEventListener('input', () => { if (apply()) { panSyncDuration(el); render(true); } });
       inp.addEventListener('change', () => {
         if (f === 'dur' && Number(inp.value) < PAN_SEG_MIN_DUR) inp.value = PAN_SEG_MIN_DUR;
+        if (f === 'stay' && !(Number(inp.value) >= 0)) inp.value = 0;
         if (f === 's' && Number(inp.value) < 1) inp.value = 1;
         if (f === 'o') inp.value = Math.min(100, Math.max(0, Number(inp.value) || 0));
         apply();
@@ -1452,7 +1456,7 @@ function wirePanSegmentEditor(el, propsEl) {
       nx = Math.round(last.x / 2); ny = Math.round(last.y / 2);
     }
     // The new step starts with the previous waypoint's look (no change in look).
-    segs.push({ x: nx, y: ny, dur: 1, ease: last.ease, s: last.s, r: last.r, o: last.o });
+    segs.push({ x: nx, y: ny, dur: 1, stay: 0, ease: last.ease, s: last.s, r: last.r, o: last.o });
     setSegs(segs);
     const idx = segs.length - 1;
     panSegSelection = { elId: el.id, idx };
